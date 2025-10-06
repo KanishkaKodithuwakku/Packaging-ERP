@@ -18,7 +18,7 @@
 <body class="font-sans antialiased bg-gray-100">
     <div class="min-h-screen flex">
         <!-- Sidebar Navigation -->
-        <div class="w-64 bg-gray-800 text-white shadow-lg">
+        <div class="w-64 bg-gray-800 text-white shadow-lg fixed h-full z-50">
             <div class="p-6">
                 <h1 class="text-xl font-bold text-white">Packaging ERP</h1>
             </div>
@@ -102,35 +102,49 @@
         </div>
 
         <!-- Main Content -->
-        <div class="flex-1 flex flex-col">
+        <div class="flex-1 flex flex-col ml-64">
             <!-- Top Header -->
             <header class="bg-white shadow-sm border-b border-gray-200">
-                <div class="px-6 py-4">
-                        <h2 class="text-2xl font-semibold text-gray-800">
-                            @if(request()->routeIs('dashboard'))
-                                Dashboard
-                            @elseif(request()->routeIs('quotations'))
-                                Quotations
-                            @elseif(request()->routeIs('customer-orders'))
-                                Customer Orders
-                            @elseif(request()->routeIs('job-orders'))
-                                Job Orders
-                            @elseif(request()->routeIs('supplier-orders'))
-                                Supplier Orders
-                            @elseif(request()->routeIs('grns'))
-                                Goods Receipt Notes
-                            @elseif(request()->routeIs('material-requests'))
-                                Material Requests
-                            @elseif(request()->routeIs('delivery-notes'))
-                                Delivery Notes
-                            @elseif(request()->routeIs('inventory-dashboard'))
-                                Inventory Dashboard
-                            @elseif(request()->routeIs('inventory-transactions'))
-                                Inventory Transactions
-                            @else
-                                Packaging ERP
-                            @endif
-                        </h2>
+                <div class="px-6 py-4 flex justify-between items-center">
+                    <h2 class="text-2xl font-semibold text-gray-800">
+                        @if(request()->routeIs('dashboard'))
+                            Dashboard
+                        @elseif(request()->routeIs('quotations'))
+                            Quotations
+                        @elseif(request()->routeIs('customer-orders'))
+                            Customer Orders
+                        @elseif(request()->routeIs('job-orders'))
+                            Job Orders
+                        @elseif(request()->routeIs('supplier-orders'))
+                            Supplier Orders
+                        @elseif(request()->routeIs('grns'))
+                            Goods Receipt Notes
+                        @elseif(request()->routeIs('material-requests'))
+                            Material Requests
+                        @elseif(request()->routeIs('delivery-notes'))
+                            Delivery Notes
+                        @elseif(request()->routeIs('inventory-dashboard'))
+                            Inventory Dashboard
+                        @elseif(request()->routeIs('inventory-transactions'))
+                            Inventory Transactions
+                        @else
+                            Packaging ERP
+                        @endif
+                    </h2>
+                    
+                    <!-- User Menu -->
+                    <div class="flex items-center space-x-4">
+                        <div class="text-sm text-gray-600">
+                            <span class="font-medium">{{ auth()->user()->name }}</span>
+                            <span class="text-gray-500">({{ auth()->user()->getRoleNames()->first() }})</span>
+                        </div>
+                        <form method="POST" action="{{ route('logout') }}">
+                            @csrf
+                            <button type="submit" class="text-sm text-gray-600 hover:text-gray-900">
+                                Logout
+                            </button>
+                        </form>
+                    </div>
                 </div>
             </header>
 
