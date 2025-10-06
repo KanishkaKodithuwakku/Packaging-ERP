@@ -114,4 +114,29 @@ Route::get('/permission-management', function () {
     return view('permission-management');
 })->middleware(['auth'])->name('permission-management');
 
+// UOM Management Routes
+Route::get('/uom-management', App\Livewire\UomManagement::class)
+    ->middleware(['auth', 'role:admin|planner'])
+    ->name('uom-management');
+
+Route::get('/uom-conversion-management', App\Livewire\UomConversionManagement::class)
+    ->middleware(['auth', 'role:admin|planner'])
+    ->name('uom-conversion-management');
+
+Route::get('/uom-conversion-profile-management', App\Livewire\UomConversionProfileManagement::class)
+    ->middleware(['auth', 'role:admin|planner'])
+    ->name('uom-conversion-profile-management');
+
+// UOM Dashboard
+Route::get('/uom-dashboard', function () {
+    return view('uom-dashboard');
+})->middleware(['auth', 'role:admin|planner'])
+  ->name('uom-dashboard');
+
+// UOM Conversion Examples
+Route::get('/uom-conversion-examples', function () {
+    return view('uom-conversion-example');
+})->middleware(['auth', 'role:admin|planner'])
+  ->name('uom-conversion-examples');
+
 require __DIR__.'/auth.php';
