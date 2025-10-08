@@ -12,8 +12,12 @@
     <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
 
     <!-- Scripts -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    
+    <!-- Custom CSS for compact inputs (fallback) -->
+    <link href="{{ asset('css/compact-inputs.css') }}" rel="stylesheet">
+    
     @livewireStyles
 </head>
 <body class="font-sans antialiased bg-gray-100">
@@ -53,6 +57,17 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"></path>
                         </svg>
                         Job Orders
+
+                        <ul>
+
+                            <li>
+                                Main 
+
+                                <ul>
+                                    <li>Sub</li>
+                                </ul>
+                            </li>
+                        </ul>
                     </a>
                     
                     <a href="{{ route('supplier-orders') }}" class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('supplier-orders') ? 'bg-gray-700 text-white' : '' }}">
@@ -152,6 +167,20 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                         </svg>
                         Conversion Examples
+                    </a>
+                    
+                    <div class="border-t border-gray-700 my-4"></div>
+                    
+                    <!-- UI Components Section -->
+                    <div class="px-3 mb-2">
+                        <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">UI Components</h3>
+                    </div>
+                    
+                    <a href="{{ route('compact-inputs-guide') }}" class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('compact-inputs-guide') ? 'bg-gray-700 text-white' : '' }}">
+                        <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        Compact Inputs Guide
                     </a>
                     
                     <div class="border-t border-gray-700 my-4"></div>

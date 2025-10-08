@@ -139,4 +139,22 @@ Route::get('/uom-conversion-examples', function () {
 })->middleware(['auth', 'role:admin|planner'])
   ->name('uom-conversion-examples');
 
+// Compact Form Example
+Route::get('/compact-form-example', function () {
+    return view('compact-form-example');
+})->middleware(['auth'])
+  ->name('compact-form-example');
+
+// Compact Inputs Guide
+Route::get('/compact-inputs-guide', function () {
+    return view('compact-inputs-guide');
+})->middleware(['auth'])
+  ->name('compact-inputs-guide');
+
+// Compact Test
+Route::get('/compact-test', function () {
+    return view('compact-test');
+})->middleware(['auth'])
+  ->name('compact-test');
+
 require __DIR__.'/auth.php';
