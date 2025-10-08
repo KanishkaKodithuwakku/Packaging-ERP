@@ -31,7 +31,7 @@
 
             <nav class="mt-6 flex-1 overflow-y-auto" x-show="sidebarOpen">
                 <div class="px-3 space-y-1 pb-4">
-                    <a href="{{ route('dashboard') }}"
+                    <a wire:navigate href="{{ route('dashboard') }}"
                         class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('dashboard') ? 'bg-gray-700 text-white' : '' }}">
                         <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -42,7 +42,71 @@
                         Dashboard
                     </a>
 
-                    <a href="{{ route('quotations') }}"
+                    <!-- Test Menu with Submenu -->
+                    <div x-data="{ testMenuOpen: false }" class="space-y-1">
+                        <button @click="testMenuOpen = !testMenuOpen"
+                            class="group flex items-center justify-between w-full px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200">
+                            <div class="flex items-center">
+                                <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z">
+                                    </path>
+                                </svg>
+                                Test Menu
+                            </div>
+                            <svg class="h-4 w-4 transition-transform duration-1000"
+                                :class="testMenuOpen ? 'rotate-180' : 'rotate-0'" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+
+                        <!-- Submenu Items -->
+                        <div x-show="testMenuOpen"
+                             x-transition:enter="transition ease-out duration-300"
+                             x-transition:enter-start="opacity-0 transform -translate-y-1"
+                             x-transition:enter-end="opacity-100 transform translate-y-0"
+                             x-transition:leave="transition ease-in duration-200"
+                             x-transition:leave-start="opacity-100 transform translate-y-0"
+                             x-transition:leave-end="opacity-0 transform -translate-y-1"
+                             class="ml-6 space-y-1">
+                            <a href="#"
+                                class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-400 hover:bg-gray-700 hover:text-white transition-colors duration-200">
+                                <svg class="mr-3 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                Test Item 1
+                            </a>
+                            <a href="#"
+                                class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-400 hover:bg-gray-700 hover:text-white transition-colors duration-200">
+                                <svg class="mr-3 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                Test Item 2
+                            </a>
+                            <a href="#"
+                                class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-400 hover:bg-gray-700 hover:text-white transition-colors duration-200">
+                                <svg class="mr-3 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                Test Item 3
+                            </a>
+                            <a href="#"
+                                class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-400 hover:bg-gray-700 hover:text-white transition-colors duration-200">
+                                <svg class="mr-3 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                Test Item 4
+                            </a>
+                        </div>
+                    </div>
+
+                    <a wire:navigate href="{{ route('quotations') }}"
                         class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('quotations') ? 'bg-gray-700 text-white' : '' }}">
                         <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -52,7 +116,7 @@
                         Quotations
                     </a>
 
-                    <a href="{{ route('customer-orders') }}"
+                    <a wire:navigate href="{{ route('customer-orders') }}"
                         class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('customer-orders') ? 'bg-gray-700 text-white' : '' }}">
                         <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -61,7 +125,7 @@
                         Customer Orders
                     </a>
 
-                    <a href="{{ route('job-orders') }}"
+                    <a wire:navigate href="{{ route('job-orders') }}"
                         class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('job-orders') ? 'bg-gray-700 text-white' : '' }}">
                         <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -71,7 +135,7 @@
                         Job Orders
                     </a>
 
-                    <a href="{{ route('supplier-orders') }}"
+                    <a wire:navigate href="{{ route('supplier-orders') }}"
                         class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('supplier-orders') ? 'bg-gray-700 text-white' : '' }}">
                         <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -80,7 +144,7 @@
                         Supplier Orders
                     </a>
 
-                    <a href="{{ route('grns') }}"
+                    <a wire:navigate href="{{ route('grns') }}"
                         class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('grns') ? 'bg-gray-700 text-white' : '' }}">
                         <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -90,7 +154,7 @@
                         GRNs
                     </a>
 
-                    <a href="{{ route('material-requests') }}"
+                    <a wire:navigate href="{{ route('material-requests') }}"
                         class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('material-requests') ? 'bg-gray-700 text-white' : '' }}">
                         <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -100,7 +164,7 @@
                         Material Requests
                     </a>
 
-                    <a href="{{ route('delivery-notes') }}"
+                    <a wire:navigate href="{{ route('delivery-notes') }}"
                         class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('delivery-notes') ? 'bg-gray-700 text-white' : '' }}">
                         <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -116,7 +180,7 @@
                         <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Administration</h3>
                     </div>
 
-                    <a href="{{ route('role-management') }}"
+                    <a wire:navigate href="{{ route('role-management') }}"
                         class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('role-management') ? 'bg-gray-700 text-white' : '' }}">
                         <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -126,7 +190,7 @@
                         Role Management
                     </a>
 
-                    <a href="{{ route('user-management') }}"
+                    <a wire:navigate href="{{ route('user-management') }}"
                         class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('user-management') ? 'bg-gray-700 text-white' : '' }}">
                         <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -136,7 +200,7 @@
                         User Management
                     </a>
 
-                    <a href="{{ route('permission-management') }}"
+                    <a wire:navigate href="{{ route('permission-management') }}"
                         class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('permission-management') ? 'bg-gray-700 text-white' : '' }}">
                         <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -153,7 +217,7 @@
                         <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">UOM Management</h3>
                     </div>
 
-                    <a href="{{ route('uom-dashboard') }}"
+                    <a wire:navigate href="{{ route('uom-dashboard') }}"
                         class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('uom-dashboard') ? 'bg-gray-700 text-white' : '' }}">
                         <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -164,7 +228,7 @@
                         UOM Dashboard
                     </a>
 
-                    <a href="{{ route('uom-management') }}"
+                    <a wire:navigate href="{{ route('uom-management') }}"
                         class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('uom-management') ? 'bg-gray-700 text-white' : '' }}">
                         <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -174,7 +238,7 @@
                         UOM Management
                     </a>
 
-                    <a href="{{ route('uom-conversion-management') }}"
+                    <a wire:navigate href="{{ route('uom-conversion-management') }}"
                         class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('uom-conversion-management') ? 'bg-gray-700 text-white' : '' }}">
                         <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -183,7 +247,7 @@
                         UOM Conversions
                     </a>
 
-                    <a href="{{ route('uom-conversion-profile-management') }}"
+                    <a wire:navigate href="{{ route('uom-conversion-profile-management') }}"
                         class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('uom-conversion-profile-management') ? 'bg-gray-700 text-white' : '' }}">
                         <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -193,7 +257,7 @@
                         Conversion Profiles
                     </a>
 
-                    <a href="{{ route('uom-conversion-examples') }}"
+                    <a wire:navigate href="{{ route('uom-conversion-examples') }}"
                         class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('uom-conversion-examples') ? 'bg-gray-700 text-white' : '' }}">
                         <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -205,7 +269,7 @@
 
                     <div class="border-t border-gray-700 my-4"></div>
 
-                    <a href="{{ route('inventory-dashboard') }}"
+                    <a wire:navigate href="{{ route('inventory-dashboard') }}"
                         class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('inventory-dashboard') ? 'bg-gray-700 text-white' : '' }}">
                         <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -214,7 +278,7 @@
                         Inventory Dashboard
                     </a>
 
-                    <a href="{{ route('inventory-transactions') }}"
+                    <a wire:navigate href="{{ route('inventory-transactions') }}"
                         class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('inventory-transactions') ? 'bg-gray-700 text-white' : '' }}">
                         <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -224,66 +288,13 @@
                         Inventory Transactions
                     </a>
 
-                    <div class="border-t border-gray-700 my-4"></div>
-
-                    <!-- Test Menu with Submenu -->
-                    <div class="px-3 mb-2">
-                        <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Test Menu</h3>
-                    </div>
-
-                    <div x-data="{ testMenuOpen: false }" class="space-y-1">
-                        <button @click="testMenuOpen = !testMenuOpen"
-                            class="group flex items-center justify-between w-full px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200">
-                            <div class="flex items-center">
-                                <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z">
-                                    </path>
-                                </svg>
-                                Test Menu
-                            </div>
-                            <svg class="h-4 w-4 transition-transform duration-200"
-                                 :class="testMenuOpen ? 'rotate-180' : 'rotate-0'"
-                                 fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                            </svg>
-                        </button>
-
-                        <!-- Submenu Items -->
-                        <div x-show="testMenuOpen" x-transition class="ml-6 space-y-1">
-                            <a href="#" class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-400 hover:bg-gray-700 hover:text-white transition-colors duration-200">
-                                <svg class="mr-3 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
-                                Test Item 1
-                            </a>
-                            <a href="#" class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-400 hover:bg-gray-700 hover:text-white transition-colors duration-200">
-                                <svg class="mr-3 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
-                                Test Item 2
-                            </a>
-                            <a href="#" class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-400 hover:bg-gray-700 hover:text-white transition-colors duration-200">
-                                <svg class="mr-3 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
-                                Test Item 3
-                            </a>
-                            <a href="#" class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-400 hover:bg-gray-700 hover:text-white transition-colors duration-200">
-                                <svg class="mr-3 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
-                                Test Item 4
-                            </a>
-                        </div>
-                    </div>
                 </div>
             </nav>
 
             <!-- Collapsed Navigation (Icons Only) -->
             <nav class="mt-6 flex-1 overflow-y-auto" x-show="!sidebarOpen">
                 <div class="px-2 space-y-1 pb-4">
-                    <a href="{{ route('dashboard') }}"
+                    <a wire:navigate href="{{ route('dashboard') }}"
                         class="group flex items-center justify-center px-2 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('dashboard') ? 'bg-gray-700 text-white' : '' }}"
                         title="Dashboard">
                         <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -293,7 +304,16 @@
                                 d="M8 5a2 2 0 012-2h4a2 2 0 012 2v2H8V5z"></path>
                         </svg>
                     </a>
-                    <a href="{{ route('quotations') }}"
+                    <a href="#"
+                        class="group flex items-center justify-center px-2 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200"
+                        title="Test Menu">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z">
+                            </path>
+                        </svg>
+                    </a>
+                    <a wire:navigate href="{{ route('quotations') }}"
                         class="group flex items-center justify-center px-2 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('quotations') ? 'bg-gray-700 text-white' : '' }}"
                         title="Quotations">
                         <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -302,7 +322,7 @@
                             </path>
                         </svg>
                     </a>
-                    <a href="{{ route('customer-orders') }}"
+                    <a wire:navigate href="{{ route('customer-orders') }}"
                         class="group flex items-center justify-center px-2 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('customer-orders') ? 'bg-gray-700 text-white' : '' }}"
                         title="Customer Orders">
                         <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -310,7 +330,7 @@
                                 d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
                         </svg>
                     </a>
-                    <a href="{{ route('job-orders') }}"
+                    <a wire:navigate href="{{ route('job-orders') }}"
                         class="group flex items-center justify-center px-2 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('job-orders') ? 'bg-gray-700 text-white' : '' }}"
                         title="Job Orders">
                         <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -319,7 +339,7 @@
                             </path>
                         </svg>
                     </a>
-                    <a href="{{ route('supplier-orders') }}"
+                    <a wire:navigate href="{{ route('supplier-orders') }}"
                         class="group flex items-center justify-center px-2 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('supplier-orders') ? 'bg-gray-700 text-white' : '' }}"
                         title="Supplier Orders">
                         <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -327,7 +347,7 @@
                                 d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
                         </svg>
                     </a>
-                    <a href="{{ route('grns') }}"
+                    <a wire:navigate href="{{ route('grns') }}"
                         class="group flex items-center justify-center px-2 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('grns') ? 'bg-gray-700 text-white' : '' }}"
                         title="GRNs">
                         <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -336,7 +356,7 @@
                             </path>
                         </svg>
                     </a>
-                    <a href="{{ route('material-requests') }}"
+                    <a wire:navigate href="{{ route('material-requests') }}"
                         class="group flex items-center justify-center px-2 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('material-requests') ? 'bg-gray-700 text-white' : '' }}"
                         title="Material Requests">
                         <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -345,7 +365,7 @@
                             </path>
                         </svg>
                     </a>
-                    <a href="{{ route('delivery-notes') }}"
+                    <a wire:navigate href="{{ route('delivery-notes') }}"
                         class="group flex items-center justify-center px-2 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('delivery-notes') ? 'bg-gray-700 text-white' : '' }}"
                         title="Delivery Notes">
                         <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -353,7 +373,7 @@
                                 d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
                         </svg>
                     </a>
-                    <a href="{{ route('inventory-dashboard') }}"
+                    <a wire:navigate href="{{ route('inventory-dashboard') }}"
                         class="group flex items-center justify-center px-2 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('inventory-dashboard') ? 'bg-gray-700 text-white' : '' }}"
                         title="Inventory Dashboard">
                         <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -361,21 +381,12 @@
                                 d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
                         </svg>
                     </a>
-                    <a href="{{ route('inventory-transactions') }}"
+                    <a wire:navigate href="{{ route('inventory-transactions') }}"
                         class="group flex items-center justify-center px-2 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('inventory-transactions') ? 'bg-gray-700 text-white' : '' }}"
                         title="Inventory Transactions">
                         <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4">
-                            </path>
-                        </svg>
-                    </a>
-                    <a href="#"
-                        class="group flex items-center justify-center px-2 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200"
-                        title="Test Menu">
-                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z">
                             </path>
                         </svg>
                     </a>
@@ -396,14 +407,24 @@
                         <button @click="sidebarOpen = !sidebarOpen"
                             class="mr-4 p-1.5 bg-gray-100 text-gray-600 hover:text-gray-500 hover:bg-indigo-100 rounded-md transition-all duration-200">
                             <!-- Folding Icon (when sidebar is open) -->
-                            <svg x-show="sidebarOpen" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" class="h-5 w-5 transition-opacity duration-200" aria-hidden="true" fill="#878d96">
-                                <path fill-rule="evenodd" clip-rule="evenodd" d="M157.3 413.2c-6.6 0-13.1-2.5-18.2-7.5L7.5 274c-10-10-10-26.3 0-36.3L139.2 106c10-10 26.3-10 36.3 0s10 26.3 0 36.3L62 255.9l113.5 113.5c10 10 10 26.3 0 36.3-5 5-11.6 7.5-18.2 7.5"></path>
-                                <path fill-rule="evenodd" clip-rule="evenodd" d="M290.1 285H73.5c-14.2 0-25.7-11.5-25.7-25.7s11.5-25.7 25.7-25.7h216.7c14.2 0 25.7 11.5 25.7 25.7-.1 14.2-11.6 25.7-25.8 25.7m195.2 0h-94.4c-14.2 0-25.7-11.5-25.7-25.7s11.5-25.7 25.7-25.7h94.4c14.2 0 25.7 11.5 25.7 25.7S499.5 285 485.3 285m0 125.1H342c-14.2 0-25.7-11.5-25.7-25.7s11.5-25.7 25.7-25.7h143.3c14.2 0 25.7 11.5 25.7 25.7s-11.5 25.7-25.7 25.7m0-250.1H342c-14.2 0-25.7-11.5-25.7-25.7s11.5-25.7 25.7-25.7h143.3c14.2 0 25.7 11.5 25.7 25.7S499.5 160 485.3 160"></path>
+                            <svg x-show="sidebarOpen" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"
+                                class="h-5 w-5 transition-opacity duration-200" aria-hidden="true" fill="#878d96">
+                                <path fill-rule="evenodd" clip-rule="evenodd"
+                                    d="M157.3 413.2c-6.6 0-13.1-2.5-18.2-7.5L7.5 274c-10-10-10-26.3 0-36.3L139.2 106c10-10 26.3-10 36.3 0s10 26.3 0 36.3L62 255.9l113.5 113.5c10 10 10 26.3 0 36.3-5 5-11.6 7.5-18.2 7.5">
+                                </path>
+                                <path fill-rule="evenodd" clip-rule="evenodd"
+                                    d="M290.1 285H73.5c-14.2 0-25.7-11.5-25.7-25.7s11.5-25.7 25.7-25.7h216.7c14.2 0 25.7 11.5 25.7 25.7-.1 14.2-11.6 25.7-25.8 25.7m195.2 0h-94.4c-14.2 0-25.7-11.5-25.7-25.7s11.5-25.7 25.7-25.7h94.4c14.2 0 25.7 11.5 25.7 25.7S499.5 285 485.3 285m0 125.1H342c-14.2 0-25.7-11.5-25.7-25.7s11.5-25.7 25.7-25.7h143.3c14.2 0 25.7 11.5 25.7 25.7s-11.5 25.7-25.7 25.7m0-250.1H342c-14.2 0-25.7-11.5-25.7-25.7s11.5-25.7 25.7-25.7h143.3c14.2 0 25.7 11.5 25.7 25.7S499.5 160 485.3 160">
+                                </path>
                             </svg>
                             <!-- Unfolding Icon (when sidebar is closed) -->
-                            <svg x-show="!sidebarOpen" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" class="h-5 w-5 transition-opacity duration-200" aria-hidden="true" fill="#878d96">
-                                <path fill-rule="evenodd" clip-rule="evenodd" d="M353.7 98.5c6.6 0 13.1 2.5 18.2 7.5l131.7 131.7c10 10 10 26.3 0 36.3L371.8 405.7c-10 10-26.3 10-36.3 0s-10-26.3 0-36.3L449 255.9 335.5 142.4c-10-10-10-26.3 0-36.3 5-5.1 11.6-7.6 18.2-7.6"></path>
-                                <path fill-rule="evenodd" clip-rule="evenodd" d="M220.9 226.8h216.7c14.2 0 25.7 11.5 25.7 25.7s-11.5 25.7-25.7 25.7H220.9c-14.2 0-25.7-11.5-25.7-25.7s11.5-25.7 25.7-25.7m-195.2 0h94.4c14.2 0 25.7 11.5 25.7 25.7s-11.5 25.7-25.7 25.7H25.7C11.5 278.1 0 266.6 0 252.5s11.5-25.7 25.7-25.7m0-125.1H169c14.2 0 25.7 11.5 25.7 25.7S183.2 153 169 153H25.7C11.5 153 0 141.5 0 127.3s11.5-25.6 25.7-25.6m0 250H169c14.2 0 25.7 11.5 25.7 25.7s-11.5 25.7-25.7 25.7H25.7C11.5 403.1 0 391.6 0 377.4s11.5-25.7 25.7-25.7"></path>
+                            <svg x-show="!sidebarOpen" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"
+                                class="h-5 w-5 transition-opacity duration-200" aria-hidden="true" fill="#878d96">
+                                <path fill-rule="evenodd" clip-rule="evenodd"
+                                    d="M353.7 98.5c6.6 0 13.1 2.5 18.2 7.5l131.7 131.7c10 10 10 26.3 0 36.3L371.8 405.7c-10 10-26.3 10-36.3 0s-10-26.3 0-36.3L449 255.9 335.5 142.4c-10-10-10-26.3 0-36.3 5-5.1 11.6-7.6 18.2-7.6">
+                                </path>
+                                <path fill-rule="evenodd" clip-rule="evenodd"
+                                    d="M220.9 226.8h216.7c14.2 0 25.7 11.5 25.7 25.7s-11.5 25.7-25.7 25.7H220.9c-14.2 0-25.7-11.5-25.7-25.7s11.5-25.7 25.7-25.7m-195.2 0h94.4c14.2 0 25.7 11.5 25.7 25.7s-11.5 25.7-25.7 25.7H25.7C11.5 278.1 0 266.6 0 252.5s11.5-25.7 25.7-25.7m0-125.1H169c14.2 0 25.7 11.5 25.7 25.7S183.2 153 169 153H25.7C11.5 153 0 141.5 0 127.3s11.5-25.6 25.7-25.6m0 250H169c14.2 0 25.7 11.5 25.7 25.7s-11.5 25.7-25.7 25.7H25.7C11.5 403.1 0 391.6 0 377.4s11.5-25.7 25.7-25.7">
+                                </path>
                             </svg>
                         </button>
 
@@ -449,7 +470,7 @@
                         <!-- Dropdown Menu -->
                         <div x-show="open" @click.away="open = false" x-transition
                             class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border">
-                            <a href="{{ route('profile') }}"
+                            <a wire:navigate href="{{ route('profile') }}"
                                 class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                 <svg class="inline w-4 h-4 mr-2" fill="none" stroke="currentColor"
                                     viewBox="0 0 24 24">
@@ -458,7 +479,7 @@
                                 </svg>
                                 Profile
                             </a>
-                            <a href="{{ route('profile') }}"
+                            <a wire:navigate href="{{ route('profile') }}"
                                 class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                 <svg class="inline w-4 h-4 mr-2" fill="none" stroke="currentColor"
                                     viewBox="0 0 24 24">
