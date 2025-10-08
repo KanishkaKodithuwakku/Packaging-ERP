@@ -1,32 +1,32 @@
 <x-layouts.app>
     <div class="py-6">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+        <div class="max-w-8xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900">
                     <h1 class="text-2xl font-bold mb-6">Packaging ERP Dashboard</h1>
-                    
+
                         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
                             <!-- Quick Stats Cards -->
                             <div class="bg-indigo-50 p-6 rounded-lg">
                                 <h3 class="text-lg font-semibold text-indigo-800">Quotations</h3>
                                 <p class="text-3xl font-bold text-indigo-600">{{ $stats['quotations'] }}</p>
                             </div>
-                            
+
                             <div class="bg-blue-50 p-6 rounded-lg">
                                 <h3 class="text-lg font-semibold text-blue-800">Customer Orders</h3>
                                 <p class="text-3xl font-bold text-blue-600">{{ $stats['customer_orders'] }}</p>
                             </div>
-                            
+
                             <div class="bg-green-50 p-6 rounded-lg">
                                 <h3 class="text-lg font-semibold text-green-800">Job Orders</h3>
                                 <p class="text-3xl font-bold text-green-600">{{ $stats['job_orders'] }}</p>
                             </div>
-                            
+
                             <div class="bg-yellow-50 p-6 rounded-lg">
                                 <h3 class="text-lg font-semibold text-yellow-800">Supplier Orders</h3>
                                 <p class="text-3xl font-bold text-yellow-600">{{ $stats['supplier_orders'] }}</p>
                             </div>
-                            
+
                             <div class="bg-purple-50 p-6 rounded-lg">
                                 <h3 class="text-lg font-semibold text-purple-800">Inventory Items</h3>
                                 <p class="text-3xl font-bold text-purple-600">{{ $stats['inventory_items'] }}</p>
@@ -53,7 +53,7 @@
                                                 <p class="font-medium">{{ $quotation->qt_no }}</p>
                                                 <p class="text-sm text-gray-600">{{ $quotation->customer ? $quotation->customer->name : 'No Customer' }}</p>
                                             </div>
-                                            <span class="px-2 py-1 text-xs rounded-full 
+                                            <span class="px-2 py-1 text-xs rounded-full
                                                 @if($quotation->status == 'draft') bg-gray-100 text-gray-800
                                                 @elseif($quotation->status == 'sent') bg-blue-100 text-blue-800
                                                 @elseif($quotation->status == 'accepted') bg-green-100 text-green-800
@@ -114,7 +114,7 @@
     <script>
         // Order Status Pie Chart
         const ctx = document.getElementById('orderStatusChart').getContext('2d');
-        
+
             // Get order status data from backend
             const orderStatusData = {
                 labels: {!! json_encode(array_keys($order_status_counts)) !!},
