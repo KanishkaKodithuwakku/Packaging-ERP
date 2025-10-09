@@ -36,6 +36,7 @@ Route::get('/job-orders', JobOrdersCrud::class)
     ->middleware(['auth'])
     ->name('job-orders');
 
+
 // Supplier Orders
 Route::get('/supplier-orders', SupplierOrdersCrud::class)
     ->middleware(['auth'])
