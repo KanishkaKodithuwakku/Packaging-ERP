@@ -10,6 +10,9 @@ use App\Livewire\MaterialRequestsCrud;
 use App\Livewire\DeliveryNotesCrud;
 use App\Livewire\InventoryDashboard;
 use App\Livewire\InventoryTransactionsHistory;
+use App\Livewire\Accounts\ChartOfAccounts;
+use App\Livewire\Accounts\CreateGroup;
+use App\Livewire\Accounts\EditGroup;
 
 // Redirect root to dashboard (protected)
 Route::get('/', [App\Http\Controllers\DashboardController::class, 'index'])
@@ -71,6 +74,19 @@ Route::get('/inventory-dashboard', InventoryDashboard::class)
 Route::get('/inventory-transactions', InventoryTransactionsHistory::class)
     ->middleware(['auth'])
     ->name('inventory-transactions');
+
+// Accounts Routes
+Route::get('/chart-of-accounts', ChartOfAccounts::class)
+    ->middleware(['auth'])
+    ->name('chart-of-accounts');
+
+Route::get('/create-group', CreateGroup::class)
+    ->middleware(['auth'])
+    ->name('create-group');
+
+Route::get('/edit-group/{id}', EditGroup::class)
+    ->middleware(['auth'])
+    ->name('edit-group');
 
 // Profile - accessible to all authenticated users
 Route::view('profile', 'profile')

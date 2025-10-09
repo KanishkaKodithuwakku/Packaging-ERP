@@ -15,46 +15,46 @@
     <!-- Scripts -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
-    
+
     <!-- Custom Scrollbar Styling -->
     <style>
         /* Custom scrollbar for the sidebar navigation */
         .sidebar-scroll::-webkit-scrollbar {
             width: 8px;
         }
-        
+
         .sidebar-scroll::-webkit-scrollbar-track {
             background: #374151; /* gray-700 - matches sidebar background */
             border-radius: 4px;
         }
-        
+
         .sidebar-scroll::-webkit-scrollbar-thumb {
             background: #4B5563; /* gray-600 - slightly lighter than background */
             border-radius: 4px;
             transition: background-color 0.2s ease;
         }
-        
+
         .sidebar-scroll::-webkit-scrollbar-thumb:hover {
             background: #6B7280; /* gray-500 - lighter on hover */
         }
-        
+
         /* Firefox scrollbar styling */
         .sidebar-scroll {
             scrollbar-width: thin;
             scrollbar-color: #4B5563 #374151;
         }
-        
+
         /* Smooth scrolling */
         .sidebar-scroll {
             scroll-behavior: smooth;
         }
-        
+
         /* Hide scrollbar arrows on webkit browsers */
         .sidebar-scroll::-webkit-scrollbar-button {
             display: none;
         }
     </style>
-    
+
     @livewireStyles
 </head>
 
@@ -90,7 +90,7 @@
                     </a>
 
                     <!-- Test Menu with Submenu -->
-                    <div x-data="{ 
+                    <div x-data="{
                         testMenuOpen: false,
                         item1Visible: false,
                         item2Visible: false,
@@ -303,6 +303,71 @@
 
                     <div class="border-t border-gray-700 my-4"></div>
 
+                    <!-- Finance Section -->
+                    <div class="px-3 mb-2">
+                        <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Finance</h3>
+                    </div>
+
+                    <!-- Accounts with Submenu -->
+                    <div x-data="{
+                        accountsMenuOpen: false,
+                        accountsItem1Visible: false,
+                        accountsItem2Visible: false,
+                        toggleAccountsMenu() {
+                            if (this.accountsMenuOpen) {
+                                // Closing - hide items one by one with delays
+                                this.accountsItem2Visible = false;
+                                setTimeout(() => this.accountsItem1Visible = false, 50);
+                                setTimeout(() => this.accountsMenuOpen = false, 100);
+                            } else {
+                                // Opening - show menu first, then items one by one with same timing
+                                this.accountsMenuOpen = true;
+                                setTimeout(() => this.accountsItem1Visible = true, 50);
+                                setTimeout(() => this.accountsItem2Visible = true, 100);
+                            }
+                        }
+                    }" class="space-y-1">
+                        <button @click="toggleAccountsMenu()"
+                            class="group flex items-center justify-between w-full px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200">
+                            <div class="flex items-center">
+                                <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z">
+                                    </path>
+                                </svg>
+                                Accounts
+                            </div>
+                            <svg class="h-4 w-4 transition-transform duration-300 ease-in-out"
+                                :class="accountsMenuOpen ? 'rotate-180' : 'rotate-0'" fill="none" stroke="currentColor"
+                                viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+
+                        <!-- Accounts Submenu Items -->
+                        <div x-show="accountsMenuOpen" class="ml-6 space-y-1">
+                            <a wire:navigate href="{{ route('chart-of-accounts') }}"
+                                class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-400 hover:bg-gray-700 hover:text-white transition-all duration-800 ease-out {{ request()->routeIs('chart-of-accounts') ? 'bg-gray-700 text-white' : '' }}"
+                                x-show="accountsItem2Visible"
+                                x-transition:enter="transition ease-out duration-800"
+                                x-transition:enter-start="opacity-0 transform translate-x-4"
+                                x-transition:enter-end="opacity-100 transform translate-x-0"
+                                x-transition:leave="transition ease-in duration-800"
+                                x-transition:leave-start="opacity-100 transform translate-x-0"
+                                x-transition:leave-end="opacity-0 transform translate-x-4">
+                                <svg class="mr-3 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z">
+                                    </path>
+                                </svg>
+                                Chart of Accounts
+                            </a>
+                        </div>
+                    </div>
+
+                    <div class="border-t border-gray-700 my-4"></div>
+
                     <!-- UOM Management Section -->
                     <div class="px-3 mb-2">
                         <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">UOM Management</h3>
@@ -464,6 +529,15 @@
                                 d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
                         </svg>
                     </a>
+                    <a wire:navigate href="{{ route('chart-of-accounts') }}"
+                        class="group flex items-center justify-center px-2 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('chart-of-accounts') ? 'bg-gray-700 text-white' : '' }}"
+                        title="Chart of Accounts">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z">
+                            </path>
+                        </svg>
+                    </a>
                     <a wire:navigate href="{{ route('inventory-dashboard') }}"
                         class="group flex items-center justify-center px-2 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('inventory-dashboard') ? 'bg-gray-700 text-white' : '' }}"
                         title="Inventory Dashboard">
@@ -536,6 +610,10 @@
                                 Material Requests
                             @elseif(request()->routeIs('delivery-notes'))
                                 Delivery Notes
+                            @elseif(request()->routeIs('accounts'))
+                                Accounts
+                            @elseif(request()->routeIs('chart-of-accounts'))
+                                Chart of Accounts
                             @elseif(request()->routeIs('inventory-dashboard'))
                                 Inventory Dashboard
                             @elseif(request()->routeIs('inventory-transactions'))
@@ -621,13 +699,13 @@
     </div>
 
     @livewireScripts
-    
+
     <!-- Alternative Navigation Solution -->
     <script>
         // Wait for both DOM and Livewire to be ready
         document.addEventListener('DOMContentLoaded', function() {
             console.log('DOM loaded, checking Livewire...');
-            
+
             // Check if Livewire is available
             const checkLivewire = () => {
                 if (window.Livewire) {
@@ -638,31 +716,31 @@
                     setTimeout(checkLivewire, 100);
                 }
             };
-            
+
             checkLivewire();
         });
-        
+
         function initNavigation() {
             // Find all wire:navigate links
             const navLinks = document.querySelectorAll('a[wire\\:navigate]');
             console.log(`Found ${navLinks.length} wire:navigate links`);
-            
+
             navLinks.forEach((link, index) => {
                 console.log(`Processing link ${index + 1}: ${link.href}`);
-                
+
                 // Remove existing click listeners
                 link.removeEventListener('click', handleNavClick);
-                
+
                 // Add new click listener
                 link.addEventListener('click', handleNavClick);
             });
         }
-        
+
         function handleNavClick(e) {
             e.preventDefault();
             const href = this.href;
             console.log('Navigation clicked:', href);
-            
+
             // Try Livewire navigation first
             if (window.Livewire && window.Livewire.navigate) {
                 console.log('Using Livewire navigation');
@@ -673,18 +751,18 @@
                     console.error('Livewire navigation failed:', error);
                 }
             }
-            
+
             // Fallback to regular navigation
             console.log('Using regular navigation');
             window.location.href = href;
         }
-        
+
         // Re-initialize when Livewire is ready
         document.addEventListener('livewire:init', function() {
             console.log('Livewire initialized, setting up navigation...');
             setTimeout(initNavigation, 100);
         });
-        
+
         // Also try to re-initialize after navigation
         document.addEventListener('livewire:navigated', function() {
             console.log('Navigation completed, re-initializing...');
