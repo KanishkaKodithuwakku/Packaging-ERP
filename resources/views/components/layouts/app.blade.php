@@ -266,6 +266,58 @@
 
                     <div class="border-t border-gray-700 my-4"></div>
 
+                    <!-- Accounting Section -->
+                    <div class="px-3 mb-2">
+                        <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Accounting</h3>
+                    </div>
+
+                    <a wire:navigate href="{{ route('accounting.chart-of-accounts') }}"
+                        class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('accounting.chart-of-accounts') ? 'bg-gray-700 text-white' : '' }}">
+                        <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                        </svg>
+                        Chart of Accounts
+                    </a>
+
+                    <a wire:navigate href="{{ route('accounting.journal-entries') }}"
+                        class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('accounting.journal-entries') ? 'bg-gray-700 text-white' : '' }}">
+                        <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        Journal Entries
+                    </a>
+
+                    <a wire:navigate href="{{ route('accounting.currencies') }}"
+                        class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('accounting.currencies') ? 'bg-gray-700 text-white' : '' }}">
+                        <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        Currencies
+                    </a>
+
+                    <a wire:navigate href="{{ route('accounting.exchange-rates') }}"
+                        class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('accounting.exchange-rates') ? 'bg-gray-700 text-white' : '' }}">
+                        <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path>
+                        </svg>
+                        Exchange Rates
+                    </a>
+
+                    <a wire:navigate href="{{ route('accounting.entry-types') }}"
+                        class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('accounting.entry-types') ? 'bg-gray-700 text-white' : '' }}">
+                        <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                        </svg>
+                        Entry Types
+                    </a>
+
+                    <div class="border-t border-gray-700 my-4"></div>
+
                     <!-- Role Management Section -->
                     <div class="px-3 mb-2">
                         <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Administration</h3>
@@ -481,6 +533,48 @@
                             </path>
                         </svg>
                     </a>
+                    
+                    <!-- Accounting Icons (Collapsed) -->
+                    <a wire:navigate href="{{ route('accounting.chart-of-accounts') }}"
+                        class="group flex items-center justify-center px-2 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('accounting.chart-of-accounts') ? 'bg-gray-700 text-white' : '' }}"
+                        title="Chart of Accounts">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                        </svg>
+                    </a>
+                    <a wire:navigate href="{{ route('accounting.journal-entries') }}"
+                        class="group flex items-center justify-center px-2 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('accounting.journal-entries') ? 'bg-gray-700 text-white' : '' }}"
+                        title="Journal Entries">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                    </a>
+                    <a wire:navigate href="{{ route('accounting.currencies') }}"
+                        class="group flex items-center justify-center px-2 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('accounting.currencies') ? 'bg-gray-700 text-white' : '' }}"
+                        title="Currencies">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </a>
+                    <a wire:navigate href="{{ route('accounting.exchange-rates') }}"
+                        class="group flex items-center justify-center px-2 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('accounting.exchange-rates') ? 'bg-gray-700 text-white' : '' }}"
+                        title="Exchange Rates">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path>
+                        </svg>
+                    </a>
+                    <a wire:navigate href="{{ route('accounting.entry-types') }}"
+                        class="group flex items-center justify-center px-2 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('accounting.entry-types') ? 'bg-gray-700 text-white' : '' }}"
+                        title="Entry Types">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                        </svg>
+                    </a>
                 </div>
 
 
@@ -540,6 +634,16 @@
                                 Inventory Dashboard
                             @elseif(request()->routeIs('inventory-transactions'))
                                 Inventory Transactions
+                            @elseif(request()->routeIs('accounting.chart-of-accounts'))
+                                Chart of Accounts
+                            @elseif(request()->routeIs('accounting.journal-entries'))
+                                Journal Entries
+                            @elseif(request()->routeIs('accounting.currencies'))
+                                Currencies
+                            @elseif(request()->routeIs('accounting.exchange-rates'))
+                                Exchange Rates
+                            @elseif(request()->routeIs('accounting.entry-types'))
+                                Entry Types
                             @else
                                 Packaging ERP
                             @endif
@@ -550,8 +654,8 @@
                     <div class="relative" x-data="{ open: false }">
                         <button @click="open = !open"
                             class="flex items-center space-x-2 text-sm text-gray-600 hover:text-gray-900 focus:outline-none">
-                            <span class="font-medium">{{ auth()->user()->name }}</span>
-                            <span class="text-gray-500">({{ auth()->user()->getRoleNames()->first() }})</span>
+                            <span class="font-medium">{{ auth()->user()?->name ?? 'Guest' }}</span>
+                            <span class="text-gray-500">({{ auth()->user()?->getRoleNames()->first() ?? 'No Role' }})</span>
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M19 9l-7 7-7-7"></path>

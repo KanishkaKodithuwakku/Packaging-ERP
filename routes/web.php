@@ -10,6 +10,11 @@ use App\Livewire\MaterialRequestsCrud;
 use App\Livewire\DeliveryNotesCrud;
 use App\Livewire\InventoryDashboard;
 use App\Livewire\InventoryTransactionsHistory;
+use App\Livewire\ChartOfAccountsCrud;
+use App\Livewire\CurrencyManagement;
+use App\Livewire\ExchangeRateManagement;
+use App\Livewire\EntryTypeManagement;
+use App\Livewire\JournalEntryCrud;
 
 // Redirect root to dashboard (protected)
 Route::get('/', [App\Http\Controllers\DashboardController::class, 'index'])
@@ -71,6 +76,35 @@ Route::get('/inventory-dashboard', InventoryDashboard::class)
 Route::get('/inventory-transactions', InventoryTransactionsHistory::class)
     ->middleware(['auth'])
     ->name('inventory-transactions');
+
+// Accounting Routes
+Route::get('/accounting/chart-of-accounts', ChartOfAccountsCrud::class)
+    ->middleware(['auth'])
+    ->name('accounting.chart-of-accounts');
+
+Route::get('/accounting/journal-entries', JournalEntryCrud::class)
+    ->middleware(['auth'])
+    ->name('accounting.journal-entries');
+
+Route::get('/accounting/currencies', CurrencyManagement::class)
+    ->middleware(['auth'])
+    ->name('accounting.currencies');
+
+Route::get('/accounting/exchange-rates', ExchangeRateManagement::class)
+    ->middleware(['auth'])
+    ->name('accounting.exchange-rates');
+
+Route::get('/accounting/entry-types', EntryTypeManagement::class)
+    ->middleware(['auth'])
+    ->name('accounting.entry-types');
+
+// Debug modal test
+Route::get('/debug-modal', \App\Livewire\DebugModal::class)
+    ->name('debug-modal');
+
+
+Route::get('/test-modal-simple', \App\Livewire\TestModalSimple::class)
+    ->name('test-modal-simple');
 
 // Profile - accessible to all authenticated users
 Route::view('profile', 'profile')
