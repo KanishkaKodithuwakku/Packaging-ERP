@@ -118,4 +118,55 @@ class AccountGroup extends Model
     {
         return $query->whereNull('parent_id')->orWhere('parent_id', 0);
     }
+
+    /**
+     * Calculate opening balance for this group and all its children
+     */
+    public function calculateOpeningBalance(): float
+    {
+        $openingTotal = 0;
+
+        // Calculate opening balance from direct ledgers
+        foreach ($this->ledgers as $ledger) {
+            $openingTotal = bcadd($openingTotal, $ledger->op_balance, 2);
+        }
+
+        // Calculate opening balance from child groups recursively
+        foreach ($this->children as $childGroup) {
+            $openingTotal = bcadd($openingTotal, $childGroup->calculateOpeningBalance(), 2);
+        }
+
+        return $openingTotal;
+    }
+
+    /**
+     * Calculate closing balance for this group and all its children
+     */
+    public function calculateClosingBalance($startDate = null, $endDate = null): array
+    {
+        $debitTotal = 0;
+        $creditTotal = 0;
+
+        // Calculate balance from direct ledgers
+        foreach ($this->ledgers as $ledger) {
+            $balance = $ledger->closingBalance($startDate, $endDate);
+            if ($balance['dc'] == 'D') {
+                $debitTotal = bcadd($debitTotal, $balance['amount'], 2);
+            } else {
+                $creditTotal = bcadd($creditTotal, $balance['amount'], 2);
+            }
+        }
+
+        // Calculate balance from child groups recursively
+        foreach ($this->children as $childGroup) {
+            $childBalance = $childGroup->calculateClosingBalance($startDate, $endDate);
+            $debitTotal = bcadd($debitTotal, $childBalance['debit'], 2);
+            $creditTotal = bcadd($creditTotal, $childBalance['credit'], 2);
+        }
+
+        return [
+            'debit' => $debitTotal,
+            'credit' => $creditTotal
+        ];
+    }
 }

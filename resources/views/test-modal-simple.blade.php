@@ -32,6 +32,6 @@
         @endif
     </div>
     
-    @livewireScripts
 </body>
 </html>
+

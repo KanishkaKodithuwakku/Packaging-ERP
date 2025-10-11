@@ -14,7 +14,6 @@
 
     <!-- Scripts -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
     
     <!-- Custom Scrollbar Styling -->
     <style>
@@ -72,14 +71,7 @@
             <nav class="mt-6 flex-1 overflow-y-auto sidebar-scroll" x-show="sidebarOpen">
                 <div class="px-3 space-y-1 pb-4">
                     <a wire:navigate href="{{ route('dashboard') }}"
-                        class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('dashboard') ? 'bg-gray-700 text-white' : '' }}"
-                        x-data="{}"
-                        @click="
-                            if (window.Livewire && window.Livewire.navigate) {
-                                $event.preventDefault();
-                                window.Livewire.navigate($event.target.closest('a').href);
-                            }
-                        ">
+                        class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('dashboard') ? 'bg-gray-700 text-white' : '' }}">
                         <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
@@ -280,6 +272,15 @@
                         Chart of Accounts
                     </a>
 
+                    <a wire:navigate href="{{ route('accounting.entries') }}"
+                        class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('accounting.entries') ? 'bg-gray-700 text-white' : '' }}">
+                        <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        Entries
+                    </a>
+
                     <a wire:navigate href="{{ route('accounting.journal-entries') }}"
                         class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('accounting.journal-entries') ? 'bg-gray-700 text-white' : '' }}">
                         <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -347,7 +348,7 @@
                         class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('permission-management') ? 'bg-gray-700 text-white' : '' }}">
                         <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1721 9z">
+                                d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 0117 9z">
                             </path>
                         </svg>
                         Permission Management
@@ -543,6 +544,15 @@
                                 d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
                         </svg>
                     </a>
+                    
+                    <a wire:navigate href="{{ route('accounting.entries') }}"
+                        class="group flex items-center justify-center px-2 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('accounting.entries') ? 'bg-gray-700 text-white' : '' }}"
+                        title="Entries">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                    </a>
                     <a wire:navigate href="{{ route('accounting.journal-entries') }}"
                         class="group flex items-center justify-center px-2 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('accounting.journal-entries') ? 'bg-gray-700 text-white' : '' }}"
                         title="Journal Entries">
@@ -636,6 +646,8 @@
                                 Inventory Transactions
                             @elseif(request()->routeIs('accounting.chart-of-accounts'))
                                 Chart of Accounts
+                            @elseif(request()->routeIs('accounting.entries'))
+                                Entries
                             @elseif(request()->routeIs('accounting.journal-entries'))
                                 Journal Entries
                             @elseif(request()->routeIs('accounting.currencies'))
@@ -725,76 +737,6 @@
     </div>
 
     @livewireScripts
-    
-    <!-- Alternative Navigation Solution -->
-    <script>
-        // Wait for both DOM and Livewire to be ready
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('DOM loaded, checking Livewire...');
-            
-            // Check if Livewire is available
-            const checkLivewire = () => {
-                if (window.Livewire) {
-                    console.log('Livewire found, initializing navigation...');
-                    initNavigation();
-                } else {
-                    console.log('Livewire not ready, retrying in 100ms...');
-                    setTimeout(checkLivewire, 100);
-                }
-            };
-            
-            checkLivewire();
-        });
-        
-        function initNavigation() {
-            // Find all wire:navigate links
-            const navLinks = document.querySelectorAll('a[wire\\:navigate]');
-            console.log(`Found ${navLinks.length} wire:navigate links`);
-            
-            navLinks.forEach((link, index) => {
-                console.log(`Processing link ${index + 1}: ${link.href}`);
-                
-                // Remove existing click listeners
-                link.removeEventListener('click', handleNavClick);
-                
-                // Add new click listener
-                link.addEventListener('click', handleNavClick);
-            });
-        }
-        
-        function handleNavClick(e) {
-            e.preventDefault();
-            const href = this.href;
-            console.log('Navigation clicked:', href);
-            
-            // Try Livewire navigation first
-            if (window.Livewire && window.Livewire.navigate) {
-                console.log('Using Livewire navigation');
-                try {
-                    window.Livewire.navigate(href);
-                    return;
-                } catch (error) {
-                    console.error('Livewire navigation failed:', error);
-                }
-            }
-            
-            // Fallback to regular navigation
-            console.log('Using regular navigation');
-            window.location.href = href;
-        }
-        
-        // Re-initialize when Livewire is ready
-        document.addEventListener('livewire:init', function() {
-            console.log('Livewire initialized, setting up navigation...');
-            setTimeout(initNavigation, 100);
-        });
-        
-        // Also try to re-initialize after navigation
-        document.addEventListener('livewire:navigated', function() {
-            console.log('Navigation completed, re-initializing...');
-            setTimeout(initNavigation, 100);
-        });
-    </script>
 </body>
 
 </html>

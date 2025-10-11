@@ -86,6 +86,10 @@ Route::get('/accounting/journal-entries', JournalEntryCrud::class)
     ->middleware(['auth'])
     ->name('accounting.journal-entries');
 
+Route::get('/accounting/entries', \App\Livewire\EntriesManagement::class)
+    ->middleware(['auth'])
+    ->name('accounting.entries');
+
 Route::get('/accounting/currencies', CurrencyManagement::class)
     ->middleware(['auth'])
     ->name('accounting.currencies');

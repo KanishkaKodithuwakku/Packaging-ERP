@@ -18,3 +18,4 @@ class SimpleModalTest extends Component
         return view('livewire.simple-modal-test');
     }
 }
+

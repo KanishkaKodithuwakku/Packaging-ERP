@@ -97,7 +97,7 @@ class Ledger extends Model
             $opTotalDc = 'D';
         } elseif (bccomp($drTotalFinal, $crTotalFinal, 2) == 0) {
             $opTotal = 0;
-            $opTotalDc = $opTotalDc;
+            // $opTotalDc remains the same
         } else {
             $opTotal = bcsub($crTotalFinal, $drTotalFinal, 2);
             $opTotalDc = 'C';
@@ -197,5 +197,17 @@ class Ledger extends Model
     public function isBankCash(): bool
     {
         return $this->type == self::TYPE_BANK_CASH;
+    }
+
+    /**
+     * Calculate closing balance (alias for closingBalance method)
+     */
+    public function calculateClosingBalance($startDate = null, $endDate = null): array
+    {
+        $balance = $this->closingBalance($startDate, $endDate);
+        return [
+            'debit' => $balance['dc'] == 'D' ? $balance['amount'] : 0,
+            'credit' => $balance['dc'] == 'C' ? $balance['amount'] : 0
+        ];
     }
 }

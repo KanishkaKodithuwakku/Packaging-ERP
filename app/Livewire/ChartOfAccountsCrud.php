@@ -14,7 +14,35 @@ class ChartOfAccountsCrud extends Component
 
     public $showAddGroupModal = false;
     public $showAddLedgerModal = false;
+    public $isEditingLedger = false;
     public $search = '';
+
+    public function mount()
+    {
+        // Force reset all modal states on component mount
+        $this->showAddGroupModal = false;
+        $this->showAddLedgerModal = false;
+        $this->isEditingLedger = false;
+        
+        // Clear any cached session data for this component
+        session()->forget('livewire.chart-of-accounts-crud');
+        session()->forget('livewire.' . $this->getId());
+        
+        // Force reset all form data
+        $this->resetGroupForm();
+        $this->resetLedgerForm();
+        
+        // Force re-render to ensure clean state
+        $this->dispatch('$refresh');
+    }
+
+    public function hydrate()
+    {
+        // Ensure modals are closed when component hydrates
+        $this->showAddGroupModal = false;
+        $this->showAddLedgerModal = false;
+        $this->isEditingLedger = false;
+    }
 
     public $groupForm = [
         'name' => '',
@@ -41,22 +69,54 @@ class ChartOfAccountsCrud extends Component
     {
         $this->resetGroupForm();
         $this->showAddGroupModal = true;
-        session()->flash('message', 'Group modal opened!');
     }
 
     public function openAddLedgerModal()
     {
         $this->resetLedgerForm();
         $this->showAddLedgerModal = true;
-        session()->flash('message', 'Ledger modal opened!');
     }
 
     public function closeModal()
     {
         $this->showAddGroupModal = false;
         $this->showAddLedgerModal = false;
+        $this->isEditingLedger = false;
         $this->resetGroupForm();
         $this->resetLedgerForm();
+    }
+
+    public function clearLivewireCache()
+    {
+        // Clear Livewire component cache
+        if (function_exists('opcache_reset')) {
+            opcache_reset();
+        }
+        
+        // Clear Livewire cache
+        \Artisan::call('livewire:discover');
+        
+        // Reset component state
+        $this->reset();
+    }
+
+    public function forceReset()
+    {
+        // Force reset all component state
+        $this->showAddGroupModal = false;
+        $this->showAddLedgerModal = false;
+        $this->isEditingLedger = false;
+        $this->search = '';
+        
+        // Reset forms
+        $this->resetGroupForm();
+        $this->resetLedgerForm();
+        
+        // Clear session
+        session()->forget('livewire.chart-of-accounts-crud');
+        
+        // Force re-render
+        $this->dispatch('$refresh');
     }
 
     public function addGroup()
@@ -99,23 +159,47 @@ class ChartOfAccountsCrud extends Component
                 'ledgerForm.currency_id' => 'nullable|exists:currencies,id',
             ]);
 
-            Ledger::create([
-                'name' => $this->ledgerForm['name'],
-                'code' => $this->ledgerForm['code'],
-                'group_id' => $this->ledgerForm['group_id'],
-                'op_balance' => $this->ledgerForm['op_balance'],
-                'op_balance_dc' => $this->ledgerForm['op_balance_dc'],
-                'type' => $this->ledgerForm['type'],
-                'reconciliation' => $this->ledgerForm['reconciliation'],
-                'notes' => $this->ledgerForm['notes'],
-                'currency_id' => $this->ledgerForm['currency_id'],
-            ]);
+            if ($this->isEditingLedger) {
+                // Update existing ledger
+                $ledger = Ledger::findOrFail($this->ledgerForm['id'] ?? null);
+                $ledger->update([
+                    'name' => $this->ledgerForm['name'],
+                    'code' => $this->ledgerForm['code'],
+                    'group_id' => $this->ledgerForm['group_id'],
+                    'op_balance' => $this->ledgerForm['op_balance'],
+                    'op_balance_dc' => $this->ledgerForm['op_balance_dc'],
+                    'type' => $this->ledgerForm['type'],
+                    'reconciliation' => $this->ledgerForm['reconciliation'],
+                    'notes' => $this->ledgerForm['notes'],
+                    'currency_id' => $this->ledgerForm['currency_id'],
+                ]);
+                session()->flash('success', 'Ledger updated successfully!');
+            } else {
+                // Create new ledger
+                Ledger::create([
+                    'name' => $this->ledgerForm['name'],
+                    'code' => $this->ledgerForm['code'],
+                    'group_id' => $this->ledgerForm['group_id'],
+                    'op_balance' => $this->ledgerForm['op_balance'],
+                    'op_balance_dc' => $this->ledgerForm['op_balance_dc'],
+                    'type' => $this->ledgerForm['type'],
+                    'reconciliation' => $this->ledgerForm['reconciliation'],
+                    'notes' => $this->ledgerForm['notes'],
+                    'currency_id' => $this->ledgerForm['currency_id'],
+                ]);
+                session()->flash('success', 'Ledger created successfully!');
+            }
 
-            session()->flash('success', 'Ledger created successfully!');
             $this->closeModal();
         } catch (\Exception $e) {
-            session()->flash('error', 'Error creating ledger: ' . $e->getMessage());
+            session()->flash('error', 'Error saving ledger: ' . $e->getMessage());
         }
+    }
+
+    public function updatedLedgerFormType($value)
+    {
+        // Handle checkbox for bank/cash account
+        $this->ledgerForm['type'] = $value ? 1 : 0;
     }
 
     public function editGroup($id)
@@ -136,6 +220,7 @@ class ChartOfAccountsCrud extends Component
     {
         $ledger = Ledger::findOrFail($id);
         $this->ledgerForm = [
+            'id' => $ledger->id,
             'name' => $ledger->name,
             'code' => $ledger->code,
             'group_id' => $ledger->group_id,
@@ -146,6 +231,7 @@ class ChartOfAccountsCrud extends Component
             'notes' => $ledger->notes,
             'currency_id' => $ledger->currency_id,
         ];
+        $this->isEditingLedger = true;
         $this->showAddLedgerModal = true;
     }
 
@@ -199,14 +285,22 @@ class ChartOfAccountsCrud extends Component
     public function render()
     {
         try {
-            $query = AccountGroup::with(['children.ledgers', 'children.children', 'ledgers']);
+            $query = AccountGroup::with([
+                'children.ledgers.entryItems.entry',
+                'children.children.ledgers.entryItems.entry', 
+                'ledgers.entryItems.entry'
+            ]);
             
             if ($this->search) {
-                $query->where('name', 'like', '%' . $this->search . '%');
+                $query->where(function($q) {
+                    $q->where('name', 'like', '%' . $this->search . '%')
+                      ->orWhere('code', 'like', '%' . $this->search . '%');
+                });
             }
             
             $rootGroups = $query->whereNull('parent_id')
                 ->orWhere('parent_id', 0)
+                ->orderBy('name')
                 ->get();
 
             $currencies = Currency::active()->get();

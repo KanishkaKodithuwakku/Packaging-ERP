@@ -25,3 +25,4 @@ class TestModalSimple extends Component
         return view('test-modal-simple');
     }
 }
+

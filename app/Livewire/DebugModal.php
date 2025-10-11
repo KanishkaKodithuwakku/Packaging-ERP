@@ -19,3 +19,4 @@ class DebugModal extends Component
             ->layout('components.layouts.blank');
     }
 }
+
