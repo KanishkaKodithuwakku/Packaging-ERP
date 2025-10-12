@@ -308,6 +308,20 @@
                         Exchange Rates
                     </a>
 
+                    <!-- Reports Section -->
+                    <div class="px-3 mb-2 mt-4">
+                        <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Reports</h3>
+                    </div>
+
+                    <a wire:navigate href="{{ route('accounting.reports.balance-sheet') }}"
+                        class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('accounting.reports.balance-sheet') ? 'bg-gray-700 text-white' : '' }}">
+                        <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path>
+                        </svg>
+                        Balance Sheet
+                    </a>
+
                     <a wire:navigate href="{{ route('accounting.entry-types') }}"
                         class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('accounting.entry-types') ? 'bg-gray-700 text-white' : '' }}">
                         <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -575,6 +589,16 @@
                         <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"></path>
+                        </svg>
+                    </a>
+                    
+                    <!-- Reports Icons (Collapsed) -->
+                    <a wire:navigate href="{{ route('accounting.reports.balance-sheet') }}"
+                        class="group flex items-center justify-center px-2 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('accounting.reports.balance-sheet') ? 'bg-gray-700 text-white' : '' }}"
+                        title="Balance Sheet">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path>
                         </svg>
                     </a>
                     <a wire:navigate href="{{ route('accounting.entry-types') }}"

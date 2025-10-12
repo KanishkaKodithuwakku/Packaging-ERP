@@ -98,6 +98,11 @@ Route::get('/accounting/exchange-rates', ExchangeRateManagement::class)
     ->middleware(['auth'])
     ->name('accounting.exchange-rates');
 
+// Reports Routes
+Route::get('/accounting/reports/balance-sheet', \App\Livewire\BalanceSheetReport::class)
+    ->middleware(['auth'])
+    ->name('accounting.reports.balance-sheet');
+
 Route::get('/accounting/entry-types', EntryTypeManagement::class)
     ->middleware(['auth'])
     ->name('accounting.entry-types');
