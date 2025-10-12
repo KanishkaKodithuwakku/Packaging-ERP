@@ -90,6 +90,10 @@ Route::get('/accounting/entries', \App\Livewire\EntriesManagement::class)
     ->middleware(['auth'])
     ->name('accounting.entries');
 
+Route::get('/accounting/search', \App\Livewire\EntrySearch::class)
+    ->middleware(['auth'])
+    ->name('accounting.search');
+
 Route::get('/accounting/currencies', CurrencyManagement::class)
     ->middleware(['auth'])
     ->name('accounting.currencies');
