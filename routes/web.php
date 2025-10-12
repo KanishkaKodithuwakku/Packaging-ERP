@@ -107,6 +107,10 @@ Route::get('/accounting/reports/profit-loss', \App\Livewire\ProfitLossReport::cl
     ->middleware(['auth'])
     ->name('accounting.reports.profit-loss');
 
+Route::get('/accounting/reports/trial-balance', \App\Livewire\TrialBalanceReport::class)
+    ->middleware(['auth'])
+    ->name('accounting.reports.trial-balance');
+
 Route::get('/accounting/entry-types', EntryTypeManagement::class)
     ->middleware(['auth'])
     ->name('accounting.entry-types');
