@@ -103,6 +103,10 @@ Route::get('/accounting/reports/balance-sheet', \App\Livewire\BalanceSheetReport
     ->middleware(['auth'])
     ->name('accounting.reports.balance-sheet');
 
+Route::get('/accounting/reports/profit-loss', \App\Livewire\ProfitLossReport::class)
+    ->middleware(['auth'])
+    ->name('accounting.reports.profit-loss');
+
 Route::get('/accounting/entry-types', EntryTypeManagement::class)
     ->middleware(['auth'])
     ->name('accounting.entry-types');
