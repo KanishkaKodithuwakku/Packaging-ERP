@@ -94,6 +94,10 @@ Route::get('/accounting/search', \App\Livewire\EntrySearch::class)
     ->middleware(['auth'])
     ->name('accounting.search');
 
+Route::get('/accounting/dashboard', \App\Livewire\AccountingDashboard::class)
+    ->middleware(['auth'])
+    ->name('accounting.dashboard');
+
 Route::get('/accounting/currencies', CurrencyManagement::class)
     ->middleware(['auth'])
     ->name('accounting.currencies');

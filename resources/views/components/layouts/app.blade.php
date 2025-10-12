@@ -263,6 +263,17 @@
                         <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Accounting</h3>
                     </div>
 
+                    <a wire:navigate href="{{ route('accounting.dashboard') }}"
+                        class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('accounting.dashboard') ? 'bg-gray-700 text-white' : '' }}">
+                        <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M8 5a2 2 0 012-2h4a2 2 0 012 2v2H8V5z"></path>
+                        </svg>
+                        Dashboard
+                    </a>
+
                     <a wire:navigate href="{{ route('accounting.chart-of-accounts') }}"
                         class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('accounting.chart-of-accounts') ? 'bg-gray-700 text-white' : '' }}">
                         <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -604,6 +615,17 @@
                     </a>
                     
                     <!-- Accounting Icons (Collapsed) -->
+                    <a wire:navigate href="{{ route('accounting.dashboard') }}"
+                        class="group flex items-center justify-center px-2 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('accounting.dashboard') ? 'bg-gray-700 text-white' : '' }}"
+                        title="Dashboard">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M8 5a2 2 0 012-2h4a2 2 0 012 2v2H8V5z"></path>
+                        </svg>
+                    </a>
+                    
                     <a wire:navigate href="{{ route('accounting.chart-of-accounts') }}"
                         class="group flex items-center justify-center px-2 py-2 text-sm font-medium rounded-md text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-200 {{ request()->routeIs('accounting.chart-of-accounts') ? 'bg-gray-700 text-white' : '' }}"
                         title="Chart of Accounts">
@@ -776,6 +798,8 @@
                                 Inventory Dashboard
                             @elseif(request()->routeIs('inventory-transactions'))
                                 Inventory Transactions
+                            @elseif(request()->routeIs('accounting.dashboard'))
+                                Dashboard
                             @elseif(request()->routeIs('accounting.chart-of-accounts'))
                                 Chart of Accounts
                             @elseif(request()->routeIs('accounting.entries'))
