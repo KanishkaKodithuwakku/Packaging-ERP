@@ -119,6 +119,10 @@ Route::get('/accounting/reports/ledger-entries', \App\Livewire\LedgerEntriesRepo
     ->middleware(['auth'])
     ->name('accounting.reports.ledger-entries');
 
+Route::get('/accounting/reports/reconciliation', \App\Livewire\ReconciliationReport::class)
+    ->middleware(['auth'])
+    ->name('accounting.reports.reconciliation');
+
 Route::get('/accounting/entry-types', EntryTypeManagement::class)
     ->middleware(['auth'])
     ->name('accounting.entry-types');

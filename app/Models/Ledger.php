@@ -210,4 +210,55 @@ class Ledger extends Model
             'credit' => $balance['dc'] == 'C' ? $balance['amount'] : 0
         ];
     }
+
+    /**
+     * Calculate reconciliation pending balance for unreconciled transactions
+     * Following Webzash logic exactly
+     */
+    public function reconciliationPending($startDate = null, $endDate = null): array
+    {
+        $drTotal = 0;
+        $crTotal = 0;
+
+        // Calculate debit total for unreconciled transactions
+        $drQuery = $this->entryItems()
+            ->where('dc', 'D')
+            ->whereNull('reconciliation_date');
+
+        if (!is_null($startDate)) {
+            $drQuery->whereHas('entry', function ($query) use ($startDate) {
+                $query->where('date', '>=', $startDate);
+            });
+        }
+        if (!is_null($endDate)) {
+            $drQuery->whereHas('entry', function ($query) use ($endDate) {
+                $query->where('date', '<=', $endDate);
+            });
+        }
+
+        $drTotal = $drQuery->sum('amount') ?? 0;
+
+        // Calculate credit total for unreconciled transactions
+        $crQuery = $this->entryItems()
+            ->where('dc', 'C')
+            ->whereNull('reconciliation_date');
+
+        if (!is_null($startDate)) {
+            $crQuery->whereHas('entry', function ($query) use ($startDate) {
+                $query->where('date', '>=', $startDate);
+            });
+        }
+        if (!is_null($endDate)) {
+            $crQuery->whereHas('entry', function ($query) use ($endDate) {
+                $query->where('date', '<=', $endDate);
+            });
+        }
+
+        $crTotal = $crQuery->sum('amount') ?? 0;
+
+        return [
+            'dr_total' => $drTotal,
+            'cr_total' => $crTotal
+        ];
+    }
 }
