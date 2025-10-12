@@ -74,6 +74,11 @@
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                     <button wire:click="edit({{ $order->id }})" class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</button>
+                                    @if($order->orderItems->count() == 0)
+                                        <button wire:click="addItems({{ $order->id }})" class="text-green-600 hover:text-green-900 mr-3">Add Items</button>
+                                    @else
+                                        <button wire:click="addItems({{ $order->id }})" class="text-blue-600 hover:text-blue-900 mr-3">Manage Items</button>
+                                    @endif
                                     @if($order->status != 'delivered')
                                         <a href="{{ route('job-orders') }}?create_from={{ $order->id }}" class="text-green-600 hover:text-green-900 mr-3">Create Job Order</a>
                                         <a href="{{ route('delivery-notes') }}?create_from={{ $order->id }}" class="text-purple-600 hover:text-purple-900 mr-3">Create Delivery Note</a>
@@ -141,6 +146,49 @@
                             <textarea wire:model="notes" rows="2" class="w-full border border-gray-300 rounded-md px-3 py-2"></textarea>
                         </div>
 
+                        @if(!$editing)
+                            <div class="bg-blue-50 border border-blue-200 rounded-md p-4 mb-6">
+                                <div class="flex">
+                                    <div class="flex-shrink-0">
+                                        <svg class="h-5 w-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+                                        </svg>
+                                    </div>
+                                    <div class="ml-3">
+                                        <h3 class="text-sm font-medium text-blue-800">Two-Step Process</h3>
+                                        <div class="mt-2 text-sm text-blue-700">
+                                            <p>Step 1: Create the customer order with basic details</p>
+                                            <p>Step 2: Add items to the order after creation</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
+
+                        <div class="flex justify-end space-x-3">
+                            <button type="button" wire:click="closeModal" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded">
+                                Cancel
+                            </button>
+                            <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                                {{ $editing ? 'Update' : 'Create' }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    <!-- Items Modal -->
+    @if($showItemsModal)
+        <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div class="relative top-10 mx-auto p-5 border w-11/12 max-w-6xl shadow-lg rounded-md bg-white">
+                <div class="mt-3">
+                    <h3 class="text-lg font-medium text-gray-900 mb-4">
+                        Manage Items for Order: {{ $order_no }}
+                    </h3>
+                    
+                    <form wire:submit.prevent="saveItems">
                         <!-- Order Items Section -->
                         <div class="mb-6">
                             <div class="flex justify-between items-center mb-4">
@@ -242,11 +290,11 @@
                         </div>
 
                         <div class="flex justify-end space-x-3">
-                            <button type="button" wire:click="closeModal" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded">
+                            <button type="button" wire:click="closeItemsModal" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded">
                                 Cancel
                             </button>
-                            <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                                {{ $editing ? 'Update' : 'Create' }}
+                            <button type="submit" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded">
+                                Save Items
                             </button>
                         </div>
                     </form>
