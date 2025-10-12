@@ -115,6 +115,10 @@ Route::get('/accounting/reports/ledger-statement', \App\Livewire\LedgerStatement
     ->middleware(['auth'])
     ->name('accounting.reports.ledger-statement');
 
+Route::get('/accounting/reports/ledger-entries', \App\Livewire\LedgerEntriesReport::class)
+    ->middleware(['auth'])
+    ->name('accounting.reports.ledger-entries');
+
 Route::get('/accounting/entry-types', EntryTypeManagement::class)
     ->middleware(['auth'])
     ->name('accounting.entry-types');
