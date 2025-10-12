@@ -111,6 +111,10 @@ Route::get('/accounting/reports/trial-balance', \App\Livewire\TrialBalanceReport
     ->middleware(['auth'])
     ->name('accounting.reports.trial-balance');
 
+Route::get('/accounting/reports/ledger-statement', \App\Livewire\LedgerStatementReport::class)
+    ->middleware(['auth'])
+    ->name('accounting.reports.ledger-statement');
+
 Route::get('/accounting/entry-types', EntryTypeManagement::class)
     ->middleware(['auth'])
     ->name('accounting.entry-types');
