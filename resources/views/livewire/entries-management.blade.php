@@ -296,13 +296,14 @@
                                 
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-1">Entry Type</label>
-                                    <select wire:model="form.entrytype_id" 
-                                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                                        <option value="">Select Entry Type</option>
-                                        @foreach($entryTypes as $entryType)
-                                            <option value="{{ $entryType->id }}">{{ $entryType->name }}</option>
-                                        @endforeach
-                                    </select>
+                                    <div class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
+                                        @if($form['entrytype_id'])
+                                            @php $selectedEntryType = $entryTypes->find($form['entrytype_id']) @endphp
+                                            {{ $selectedEntryType ? $selectedEntryType->name : 'Unknown Entry Type' }}
+                                        @else
+                                            Please select an entry type from the dropdown above
+                                        @endif
+                                    </div>
                                     @error('form.entrytype_id') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                                 </div>
                             </div>
@@ -351,7 +352,7 @@
                                                 @foreach($form['entry_items'] as $index => $item)
                                                     <tr>
                                                         <td class="px-3 py-2">
-                                                            <select wire:model="form.entry_items.{{ $index }}.dc" 
+                                                            <select wire:model.live="form.entry_items.{{ $index }}.dc" 
                                                                     class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm">
                                                                 <option value="D">Dr</option>
                                                                 <option value="C">Cr</option>
@@ -365,16 +366,29 @@
                                                                     <option value="{{ $ledger->id }}">{{ $ledger->name }}</option>
                                                                 @endforeach
                                                             </select>
+                                                            @error('form.entry_items.'.$index.'.ledger_id') 
+                                                                <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> 
+                                                            @enderror
                                                         </td>
                                                         <td class="px-3 py-2">
-                                                            <input type="number" step="0.01" wire:model="form.entry_items.{{ $index }}.amount" 
+                                                            <input type="number" step="0.01" 
+                                                                   wire:model.live="form.entry_items.{{ $index }}.dr_amount" 
                                                                    class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
-                                                                   @if($item['dc'] == 'C') disabled @endif>
+                                                                   @if($item['dc'] == 'C') disabled @endif
+                                                                   placeholder="0.00">
+                                                            @error('form.entry_items.'.$index.'.dr_amount') 
+                                                                <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> 
+                                                            @enderror
                                                         </td>
                                                         <td class="px-3 py-2">
-                                                            <input type="number" step="0.01" wire:model="form.entry_items.{{ $index }}.amount" 
+                                                            <input type="number" step="0.01" 
+                                                                   wire:model.live="form.entry_items.{{ $index }}.cr_amount" 
                                                                    class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
-                                                                   @if($item['dc'] == 'D') disabled @endif>
+                                                                   @if($item['dc'] == 'D') disabled @endif
+                                                                   placeholder="0.00">
+                                                            @error('form.entry_items.'.$index.'.cr_amount') 
+                                                                <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> 
+                                                            @enderror
                                                         </td>
                                                         <td class="px-3 py-2">
                                                             <div class="flex items-center space-x-2">
@@ -441,6 +455,10 @@
                     </div>
 
                     <div class="bg-gray-50 px-6 py-4 sm:px-6 sm:flex sm:flex-row-reverse">
+                        <button type="button" wire:click="testSubmit" 
+                                class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:ml-3 sm:w-auto sm:text-sm">
+                            Test Submit
+                        </button>
                         <button type="submit" 
                                 class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm {{ $this->drTotal != $this->crTotal ? 'opacity-50 cursor-not-allowed' : '' }}"
                                 {{ $this->drTotal != $this->crTotal ? 'disabled' : '' }}>

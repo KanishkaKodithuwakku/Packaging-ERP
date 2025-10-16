@@ -8,6 +8,7 @@ use App\Models\Tag;
 use App\Models\Ledger;
 use Livewire\Component;
 use Livewire\WithPagination;
+use Illuminate\Support\Facades\Log;
 
 class EntriesManagement extends Component
 {
@@ -36,12 +37,12 @@ class EntriesManagement extends Component
     // Computed properties
     public function getDrTotalProperty()
     {
-        return collect($this->form['entry_items'])->where('dc', 'D')->sum('amount');
+        return collect($this->form['entry_items'])->sum('dr_amount');
     }
     
     public function getCrTotalProperty()
     {
-        return collect($this->form['entry_items'])->where('dc', 'C')->sum('amount');
+        return collect($this->form['entry_items'])->sum('cr_amount');
     }
 
     public function mount()
@@ -69,7 +70,8 @@ class EntriesManagement extends Component
     {
         $this->form['entry_items'][] = [
             'ledger_id' => '',
-            'amount' => 0,
+            'dr_amount' => 0,
+            'cr_amount' => 0,
             'dc' => 'D',
             'reconciliation_date' => ''
         ];
@@ -81,20 +83,75 @@ class EntriesManagement extends Component
         $this->form['entry_items'] = array_values($this->form['entry_items']);
     }
 
+    public function updatedFormEntryItems($value, $index)
+    {
+        // Handle when the Dr/Cr dropdown changes - clear amounts when switching
+        if (str_contains($index, '.dc')) {
+            $itemIndex = explode('.', $index)[1];
+            if (isset($this->form['entry_items'][$itemIndex])) {
+                // Clear amounts when switching between Dr/Cr
+                $this->form['entry_items'][$itemIndex]['dr_amount'] = 0;
+                $this->form['entry_items'][$itemIndex]['cr_amount'] = 0;
+            }
+        }
+    }
+
+    public function testSubmit()
+    {
+        Log::info('testSubmit method called!');
+        session()->flash('success', 'Test submit works!');
+    }
+
     public function addEntry()
     {
-        $this->validate([
-            'form.date' => 'required|date',
-            'form.entrytype_id' => 'required|exists:entry_types,id',
-            'form.number' => 'nullable|integer',
-            'form.tag_id' => 'nullable|exists:tags,id',
-            'form.narration' => 'nullable|string|max:500',
-            'form.entry_items' => 'required|array|min:2',
-            'form.entry_items.*.ledger_id' => 'required|exists:ledgers,id',
-            'form.entry_items.*.amount' => 'required|numeric|min:0.01',
-            'form.entry_items.*.dc' => 'required|in:D,C',
-            'form.entry_items.*.reconciliation_date' => 'nullable|date',
-        ]);
+        // Debug: Log the form data
+        Log::info('addEntry method called!');
+        Log::info('Form data before validation:', $this->form);
+        Log::info('Dr Total: ' . $this->drTotal);
+        Log::info('Cr Total: ' . $this->crTotal);
+        Log::info('Entry items count: ' . count($this->form['entry_items']));
+
+        try {
+            $this->validate([
+                'form.date' => 'required|date',
+                'form.entrytype_id' => 'required|exists:entrytypes,id',
+                'form.number' => 'nullable|integer',
+                'form.tag_id' => 'nullable|exists:tags,id',
+                'form.narration' => 'nullable|string|max:500',
+                'form.entry_items' => 'required|array|min:2',
+                'form.entry_items.*.ledger_id' => 'required|exists:ledgers,id',
+                'form.entry_items.*.dr_amount' => 'nullable|numeric|min:0',
+                'form.entry_items.*.cr_amount' => 'nullable|numeric|min:0',
+                'form.entry_items.*.dc' => 'required|in:D,C',
+                'form.entry_items.*.reconciliation_date' => 'nullable|date',
+            ]);
+            Log::info('Validation passed successfully');
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::error('Validation failed: ' . json_encode($e->errors()));
+            throw $e;
+        }
+
+        // Custom validation: ensure each entry item has a non-zero amount
+        foreach ($this->form['entry_items'] as $index => $item) {
+            $drAmount = $item['dr_amount'] ?? 0;
+            $crAmount = $item['cr_amount'] ?? 0;
+            
+            if ($drAmount <= 0 && $crAmount <= 0) {
+                $this->addError("form.entry_items.{$index}.dr_amount", 'Either debit or credit amount must be greater than 0.');
+                return;
+            }
+            
+            // Ensure only one amount is set based on DC selection
+            if ($item['dc'] == 'D' && $crAmount > 0) {
+                $this->addError("form.entry_items.{$index}.cr_amount", 'Credit amount should be 0 for debit entries.');
+                return;
+            }
+            
+            if ($item['dc'] == 'C' && $drAmount > 0) {
+                $this->addError("form.entry_items.{$index}.dr_amount", 'Debit amount should be 0 for credit entries.');
+                return;
+            }
+        }
 
         // Check if entry is balanced
         if ($this->drTotal != $this->crTotal) {
@@ -102,29 +159,66 @@ class EntriesManagement extends Component
             return;
         }
 
-        $entry = Entry::create([
-            'date' => $this->form['date'],
-            'entrytype_id' => $this->form['entrytype_id'],
-            'number' => $this->form['number'],
-            'tag_id' => $this->form['tag_id'] ?: null,
-            'narration' => $this->form['narration'],
-            'dr_total' => $this->drTotal,
-            'cr_total' => $this->crTotal,
-        ]);
+        try {
+            Log::info('Attempting to create entry...');
+            $entry = Entry::create([
+                'date' => $this->form['date'],
+                'entrytype_id' => $this->form['entrytype_id'],
+                'number' => $this->form['number'],
+                'tag_id' => $this->form['tag_id'] ?: null,
+                'narration' => $this->form['narration'],
+                'dr_total' => $this->drTotal,
+                'cr_total' => $this->crTotal,
+            ]);
+            Log::info('Entry created successfully with ID: ' . $entry->id);
+        } catch (\Exception $e) {
+            Log::error('Failed to create entry: ' . $e->getMessage());
+            session()->flash('error', 'Failed to create entry: ' . $e->getMessage());
+            return;
+        }
 
         // Create entry items
-        foreach ($this->form['entry_items'] as $item) {
-            $entry->entryItems()->create([
-                'ledger_id' => $item['ledger_id'],
-                'amount' => $item['amount'],
-                'dc' => $item['dc'],
-                'reconciliation_date' => $item['reconciliation_date'] ?: null,
-            ]);
+        try {
+            Log::info('Creating entry items...');
+            foreach ($this->form['entry_items'] as $index => $item) {
+                $drAmount = $item['dr_amount'] ?? 0;
+                $crAmount = $item['cr_amount'] ?? 0;
+                
+                // Determine the amount and DC based on which amount is greater than 0
+                if ($drAmount > 0) {
+                    $amount = $drAmount;
+                    $dc = 'D';
+                } elseif ($crAmount > 0) {
+                    $amount = $crAmount;
+                    $dc = 'C';
+                } else {
+                    // Skip items with no amount (this shouldn't happen due to validation)
+                    Log::warning("Skipping entry item {$index} - no amount");
+                    continue;
+                }
+                
+                Log::info("Creating entry item {$index}: ledger_id={$item['ledger_id']}, amount={$amount}, dc={$dc}");
+                $entry->entryItems()->create([
+                    'ledger_id' => $item['ledger_id'],
+                    'amount' => $amount,
+                    'dc' => $dc,
+                    'reconciliation_date' => $item['reconciliation_date'] ?: null,
+                ]);
+            }
+            Log::info('Entry items created successfully');
+        } catch (\Exception $e) {
+            Log::error('Failed to create entry items: ' . $e->getMessage());
+            session()->flash('error', 'Failed to create entry items: ' . $e->getMessage());
+            return;
         }
 
         $this->resetForm();
         $this->showModal = false;
         session()->flash('success', 'Entry created successfully!');
+        
+        // Debug: Log final success
+        Log::info('Entry creation completed successfully with ID: ' . $entry->id);
+        Log::info('Total entry items created: ' . $entry->entryItems()->count());
     }
 
     public function updateEntry()

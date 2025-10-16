@@ -62,7 +62,7 @@ class EntryTypeManagement extends Component
     public function addEntryType()
     {
         $this->validate([
-            'form.label' => 'required|string|max:255|unique:entry_types,label',
+            'form.label' => 'required|string|max:255|unique:entrytypes,label',
             'form.name' => 'required|string|max:255',
             'form.description' => 'required|string|max:500',
             'form.base_type' => 'required|integer|in:0,1,2,3',

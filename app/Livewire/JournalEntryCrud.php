@@ -82,7 +82,7 @@ class JournalEntryCrud extends Component
     {
         $this->validate([
             'form.date' => 'required|date',
-            'form.entry_type_id' => 'required|exists:entry_types,id',
+            'form.entry_type_id' => 'required|exists:entrytypes,id',
             'form.number' => 'nullable|integer',
             'form.tag_id' => 'nullable|exists:tags,id',
             'form.narration' => 'nullable|string|max:500',
