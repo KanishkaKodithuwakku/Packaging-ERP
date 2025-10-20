@@ -34,7 +34,7 @@ class JobOrdersCrud extends Component
         'size_mm' => 'required|integer|min:1',
         'ply' => 'required|integer|min:1',
         'qty_to_make' => 'required|numeric|min:0.01',
-        'status' => 'required|in:pending,in_progress,completed',
+        'status' => 'required|in:pending,in_production,completed',
     ];
 
     protected $messages = [

@@ -4,11 +4,18 @@ namespace App\Services;
 
 use App\Models\Inventory;
 use App\Models\InventoryTransaction;
+use App\Services\InventoryCostingService;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class InventoryService
 {
+    protected $costingService;
+
+    public function __construct(InventoryCostingService $costingService)
+    {
+        $this->costingService = $costingService;
+    }
     /**
      * Generate a systematic lot code
      * Format: PO001-YYYYMMDD-01
@@ -24,39 +31,69 @@ class InventoryService
     /**
      * Record inventory transaction and update inventory balance
      */
-    public function recordTransaction(array $data): InventoryTransaction
+    public function recordTransaction(array $data, string $costingMethod = 'FIFO'): InventoryTransaction
     {
-        return DB::transaction(function () use ($data) {
-            // Create the transaction record
-            $transaction = InventoryTransaction::create($data);
-
-            // Update or create inventory record
-            $inventory = Inventory::where('lot_code', $data['lot_code'])->first();
-
-            if ($inventory) {
-                // Update existing inventory
-                $newQty = $this->calculateNewQuantity(
-                    $inventory->qty_available,
+        return DB::transaction(function () use ($data, $costingMethod) {
+            // Handle receipts with FIFO/LIFO costing
+            if (in_array($data['txn_type'], ['receipt', 'produce'])) {
+                return $this->costingService->processReceipt($data, $costingMethod);
+            }
+            
+            // Handle consumption with FIFO/LIFO costing
+            if (in_array($data['txn_type'], ['consume', 'delivery'])) {
+                $costingResult = $this->costingService->processConsumption(
+                    $data['item_code'],
+                    $data['category'],
+                    $data['warehouse'],
                     $data['qty'],
-                    $data['txn_type']
+                    $costingMethod
                 );
-                $inventory->update(['qty_available' => $newQty]);
-            } else {
-                // Create new inventory record
-                Inventory::create([
-                    'lot_code' => $data['lot_code'],
-                    'item_code' => $data['item_code'],
-                    'category' => $data['category'],
-                    'qty_available' => $data['qty'],
-                    'uom' => $data['uom'],
-                    'warehouse' => $data['warehouse'],
-                    'source' => $data['related_doc_type'],
-                    'ref_doc' => $data['related_doc_id'],
+                
+                // Create transaction record with calculated costs
+                return InventoryTransaction::create([
+                    ...$data,
+                    'unit_cost' => $costingResult['average_cost'],
+                    'total_cost' => $costingResult['total_cost'],
+                    'costing_method' => $costingMethod,
                 ]);
             }
 
-            return $transaction;
+            // Fallback to original method for other transaction types
+            return $this->recordBasicTransaction($data);
         });
+    }
+
+    /**
+     * Record basic transaction without FIFO/LIFO costing
+     */
+    private function recordBasicTransaction(array $data): InventoryTransaction
+    {
+        $transaction = InventoryTransaction::create($data);
+
+        // Update or create inventory record
+        $inventory = Inventory::where('lot_code', $data['lot_code'])->first();
+
+        if ($inventory) {
+            $newQty = $this->calculateNewQuantity(
+                $inventory->qty_available,
+                $data['qty'],
+                $data['txn_type']
+            );
+            $inventory->update(['qty_available' => $newQty]);
+        } else {
+            Inventory::create([
+                'lot_code' => $data['lot_code'],
+                'item_code' => $data['item_code'],
+                'category' => $data['category'],
+                'qty_available' => $data['qty'],
+                'uom' => $data['uom'],
+                'warehouse' => $data['warehouse'],
+                'source' => $data['related_doc_type'],
+                'ref_doc' => $data['related_doc_id'],
+            ]);
+        }
+
+        return $transaction;
     }
 
     /**

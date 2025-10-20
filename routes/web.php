@@ -6,6 +6,7 @@ use App\Livewire\CustomerOrdersCrud;
 use App\Livewire\JobOrdersCrud;
 use App\Livewire\SupplierOrdersCrud;
 use App\Livewire\GRNsCrud;
+use App\Livewire\GRNDetail;
 use App\Livewire\MaterialRequestsCrud;
 use App\Livewire\DeliveryNotesCrud;
 use App\Livewire\InventoryDashboard;
@@ -41,6 +42,31 @@ Route::get('/job-orders', JobOrdersCrud::class)
     ->middleware(['auth'])
     ->name('job-orders');
 
+// New Job Order Management
+Route::get('/job-order-management', \App\Livewire\JobOrderManagement::class)
+    ->middleware(['auth'])
+    ->name('job-order-management');
+
+// Job Order Detail Page
+Route::get('/job-order-detail/{id}', \App\Livewire\JobOrderDetail::class)
+    ->middleware(['auth'])
+    ->name('job-order-detail');
+
+// Purchase Order Management
+Route::get('/purchase-order-management', \App\Livewire\PurchaseOrderManagement::class)
+    ->middleware(['auth'])
+    ->name('purchase-order-management');
+
+// Production Order Management
+Route::get('/production-order-management', \App\Livewire\ProductionOrderManagement::class)
+    ->middleware(['auth'])
+    ->name('production-order-management');
+
+// Production Order Detail Page
+Route::get('/production-order-detail/{id}', \App\Livewire\ProductionOrderDetail::class)
+    ->middleware(['auth'])
+    ->name('production-order-detail');
+
 // Supplier Orders
 Route::get('/supplier-orders', SupplierOrdersCrud::class)
     ->middleware(['auth'])
@@ -50,6 +76,16 @@ Route::get('/supplier-orders', SupplierOrdersCrud::class)
 Route::get('/grns', GRNsCrud::class)
     ->middleware(['auth'])
     ->name('grns');
+
+// GRN Detail
+Route::get('/grns/{id}', GRNDetail::class)
+    ->middleware(['auth'])
+    ->name('grn-detail');
+
+// Test GRN
+Route::get('/test-grn/{id}', \App\Livewire\TestGRN::class)
+    ->middleware(['auth'])
+    ->name('test-grn');
 
 // Material Requests
 Route::get('/material-requests', MaterialRequestsCrud::class)

@@ -27,8 +27,8 @@ class SupplierOrder extends Model
         return $this->belongsTo(Supplier::class);
     }
 
-    public function goodsReceipts(): HasMany
+    public function grns(): HasMany
     {
-        return $this->hasMany(GoodsReceipt::class, 'supplier_po_id');
+        return $this->hasMany(GRN::class, 'supplier_po_id');
     }
 }
