@@ -121,6 +121,7 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Unit <span class="text-red-500">*</span></label>
                     <select wire:model.live="boxForm.unit" 
+                            wire:change="calculateDimensions"
                             class="w-full px-3 py-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-white">
                         <option value="CM">CM</option>
                         <option value="MM">MM</option>
@@ -131,7 +132,8 @@
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Type <span class="text-red-500">*</span></label>
-                    <select wire:model="boxForm.dimension_type" 
+                    <select wire:model.live="boxForm.dimension_type" 
+                            wire:change="calculateDimensions"
                             class="w-full px-3 py-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-white">
                         <option value="INTERNAL">INTERNAL</option>
                         <option value="EXTERNAL">EXTERNAL</option>
@@ -212,19 +214,32 @@
 
         <!-- Calculated Fields -->
         <div class="mt-6">
-            <h5 class="text-md font-medium text-gray-700 mb-2">Calculated Fields</h5>
+            <div class="flex justify-between items-center mb-2">
+                <h5 class="text-md font-medium text-gray-700">Calculated Fields</h5>
+                <button type="button" 
+                        wire:click="forceCalculation"
+                        class="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600">
+                    Recalculate
+                </button>
+            </div>
+            <!-- Debug Info -->
+            <div class="mb-4 p-2 bg-yellow-100 text-xs">
+                <strong>Debug:</strong> Unit={{ $boxForm['unit'] }}, Type={{ $boxForm['dimension_type'] }}, L={{ $boxForm['length'] }}, W={{ $boxForm['width'] }}, H={{ $boxForm['height'] }}
+                <br><strong>Calculated:</strong> Reel={{ $calculatedReelSize }}, Cut={{ $calculatedCutSize }}
+            </div>
+            
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Reel Size</label>
                     <div class="w-full px-3 py-1 border border-gray-300 rounded-md bg-gray-100 text-gray-700">
-                        {{ $calculatedReelSize ? number_format($calculatedReelSize, 2) . ' cm' : 'Enter dimensions' }}
+                        {{ $calculatedReelSize ? number_format($calculatedReelSize, 2) . ' inches' : 'Enter dimensions' }}
                     </div>
                 </div>
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Cut Size</label>
                     <div class="w-full px-3 py-1 border border-gray-300 rounded-md bg-gray-100 text-gray-700">
-                        {{ $calculatedCutSize ? number_format($calculatedCutSize, 2) . ' cm' : 'Enter dimensions' }}
+                        {{ $calculatedCutSize ? number_format($calculatedCutSize, 2) . ' inches' : 'Enter dimensions' }}
                     </div>
                 </div>
 
@@ -267,8 +282,9 @@
         <div class="mt-6 flex justify-end">
             <button wire:click="addBox" 
                     class="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700">
-                Add Box
+                Add Box 
             </button>
         </div>
+
     </div>
 </div>

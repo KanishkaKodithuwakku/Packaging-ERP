@@ -100,12 +100,16 @@ class JobOrderManagement extends Component
     {
         $this->form['date'] = now()->format('Y-m-d');
         $this->resetBoxForm();
-        $this->calculateDimensions();
         
-        \Log::info('Component mounted', [
-            'boxForm' => $this->boxForm,
-            'form' => $this->form
-        ]);
+        // Set default values and calculate immediately
+        $this->boxForm['length'] = 15;
+        $this->boxForm['width'] = 14.7;
+        $this->boxForm['height'] = 17;
+        $this->boxForm['unit'] = 'INCHES';
+        $this->boxForm['dimension_type'] = 'INTERNAL';
+        $this->boxForm['ply'] = '3';
+        
+        $this->calculateDimensions();
     }
 
     public function openCreateModal()
@@ -113,6 +117,9 @@ class JobOrderManagement extends Component
         $this->resetForm();
         $this->showModal = true;
         $this->editingJobOrder = false;
+        
+        // Force calculation when modal opens
+        $this->calculateDimensions();
         
         \Log::info('Create modal opened', [
             'form' => $this->form
@@ -168,33 +175,49 @@ class JobOrderManagement extends Component
 
     public function updatedBoxFormUnit($value)
     {
+        \Log::info('=== UNIT CHANGED METHOD CALLED ===', ['unit' => $value, 'form' => $this->boxForm]);
         $this->calculateDimensions();
+        $this->dispatch('$refresh');
+        session()->flash('success', 'Unit changed to: ' . $value);
     }
 
     public function updatedBoxFormDimensionType($value)
     {
+        \Log::info('=== TYPE CHANGED METHOD CALLED ===', ['type' => $value, 'form' => $this->boxForm]);
         $this->calculateDimensions();
+        $this->dispatch('$refresh');
+        session()->flash('success', 'Type changed to: ' . $value);
     }
 
     public function updatedBoxFormLength($value)
     {
         $this->calculateDimensions();
+        $this->dispatch('$refresh');
     }
 
     public function updatedBoxFormWidth($value)
     {
         $this->calculateDimensions();
+        $this->dispatch('$refresh');
     }
 
     public function updatedBoxFormHeight($value)
     {
         $this->calculateDimensions();
+        $this->dispatch('$refresh');
     }
 
     public function updatedBoxForm($value, $field)
     {
+        \Log::info('=== BOX FORM FIELD CHANGED ===', [
+            'field' => $field,
+            'value' => $value,
+            'boxForm' => $this->boxForm
+        ]);
+        
         if (in_array($field, ['length', 'width', 'height', 'ply', 'unit', 'dimension_type'])) {
             $this->calculateDimensions();
+            $this->dispatch('$refresh');
         }
         
         if (in_array($field, ['order_qty', 'no_of_ups'])) {
@@ -212,31 +235,56 @@ class JobOrderManagement extends Component
     public function calculateDimensions()
     {
         if ($this->boxForm['length'] && $this->boxForm['width'] && $this->boxForm['height']) {
-            // Create a temporary box model to use calculation methods
-            $tempBox = new JobOrderBox($this->boxForm);
+            // Calculate dimensions directly in Livewire
+            $length = (float) $this->boxForm['length'];
+            $width = (float) $this->boxForm['width'];
+            $height = (float) $this->boxForm['height'];
+            $unit = $this->boxForm['unit'];
+            $type = $this->boxForm['dimension_type'];
             
-            // Calculate reel size with supplier if available, otherwise use default calculation
-            $supplierId = $this->form['supplier_id'] ?? null;
-            if ($supplierId) {
-                $this->calculatedReelSize = $tempBox->calculateReelSize($supplierId);
+            // Debug input values
+            \Log::info('Calculation input values', [
+                'length' => $length,
+                'width' => $width,
+                'height' => $height,
+                'unit' => $unit,
+                'type' => $type,
+                'unit_type' => gettype($unit)
+            ]);
+            
+            // Convert to inches
+            $lengthInches = $this->convertToInches($length, $unit);
+            $widthInches = $this->convertToInches($width, $unit);
+            $heightInches = $this->convertToInches($height, $unit);
+            
+            // Debug conversion
+            \Log::info('Unit conversion debug', [
+                'unit' => $unit,
+                'original_length' => $length,
+                'original_width' => $width,
+                'original_height' => $height,
+                'converted_length' => $lengthInches,
+                'converted_width' => $widthInches,
+                'converted_height' => $heightInches
+            ]);
+            
+            // Calculate reel size: (W + H) + 0.75
+            $reelSize = $widthInches + $heightInches + 0.75;
+            $this->calculatedReelSize = $this->roundToNextReelSize($reelSize);
+            
+            // Calculate cut size: ((L + W) * 2) + addition
+            $cutSize = ($lengthInches + $widthInches) * 2;
+            if ($type === 'EXTERNAL') {
+                $cutSize += 2; // EXTERNAL adds 2 inches
             } else {
-                // Calculate without supplier-specific reel size rounding
-                $dimensions = $tempBox->applyPlyAdjustments();
-                $reelSize = ($dimensions['width'] + $dimensions['height']) / 2.54;
-                $reelSize += 0.75; // Add waste
-                $this->calculatedReelSize = $reelSize;
+                $cutSize += 2.5; // INTERNAL adds 2.5 inches
             }
+            $this->calculatedCutSize = $cutSize;
             
-            $this->calculatedCutSize = $tempBox->calculateCutSize();
-            
-            // Debug: Log the calculations
-            \Log::info('Calculations:', [
-                'supplier_id' => $supplierId,
-                'length' => $this->boxForm['length'],
-                'width' => $this->boxForm['width'], 
-                'height' => $this->boxForm['height'],
-                'ply' => $this->boxForm['ply'],
-                'dimension_type' => $this->boxForm['dimension_type'],
+            // Debug logging
+            \Log::info('Dimensions calculated', [
+                'unit' => $unit,
+                'type' => $type,
                 'reel_size' => $this->calculatedReelSize,
                 'cut_size' => $this->calculatedCutSize
             ]);
@@ -245,6 +293,89 @@ class JobOrderManagement extends Component
             $this->calculatedCutSize = 0;
         }
     }
+    
+    private function convertToInches(float $dimension, string $unit): float
+    {
+        \Log::info('convertToInches called', [
+            'dimension' => $dimension, 
+            'unit_received' => $unit,
+            'unit_type' => gettype($unit),
+            'unit_length' => strlen($unit)
+        ]);
+        
+        switch ($unit) {
+            case 'MM':
+                $result = $dimension / 25.4;
+                \Log::info('MM conversion', ['result' => $result]);
+                return $result;
+            case 'CM':
+                $result = $dimension / 2.54;
+                \Log::info('CM conversion', ['result' => $result]);
+                return $result;
+            case 'INCHES':
+            default:
+                \Log::info('INCHES - no conversion', ['result' => $dimension]);
+                return $dimension; // Already in inches
+        }
+    }
+    
+    private function roundToNextReelSize(float $size): float
+    {
+        // Standard rounding logic based on Excel sheet
+        if ($size <= 13.50) {
+            return 13.50;
+        } elseif ($size <= 15.00) {
+            return 15.00;
+        } elseif ($size <= 17.00) {
+            return 17.00;
+        } elseif ($size <= 19.00) {
+            return 19.00;
+        } elseif ($size <= 21.00) {
+            return 21.00;
+        } elseif ($size <= 23.00) {
+            return 23.00;
+        } elseif ($size <= 25.00) {
+            return 25.00;
+        } elseif ($size <= 27.00) {
+            return 27.00;
+        } elseif ($size <= 29.00) {
+            return 29.00;
+        } elseif ($size <= 31.00) {
+            return 31.00;
+        } elseif ($size <= 33.00) {
+            return 33.00;
+        } elseif ($size <= 35.00) {
+            return 35.00;
+        } elseif ($size <= 37.00) {
+            return 37.00;
+        } elseif ($size <= 39.00) {
+            return 39.00;
+        } elseif ($size <= 41.00) {
+            return 41.00;
+        } elseif ($size <= 43.00) {
+            return 43.00;
+        } elseif ($size <= 45.00) {
+            return 45.00;
+        } elseif ($size <= 47.00) {
+            return 47.00;
+        } elseif ($size <= 49.00) {
+            return 49.00;
+        } else {
+            // For sizes above 49, round to next 2-inch increment
+            return ceil($size / 2) * 2;
+        }
+    }
+
+    public function forceCalculation()
+    {
+        $this->calculateDimensions();
+        $this->dispatch('$refresh');
+        session()->flash('success', 'Calculation forced');
+    }
+
+
+
+
 
     public function calculateBoardQty()
     {
@@ -511,7 +642,7 @@ class JobOrderManagement extends Component
             'length' => '',
             'width' => '',
             'height' => '',
-            'unit' => 'CM',
+            'unit' => 'INCHES',
             'dimension_type' => 'INTERNAL',
             'top_liner' => 'WHITE',
             'ply' => '',

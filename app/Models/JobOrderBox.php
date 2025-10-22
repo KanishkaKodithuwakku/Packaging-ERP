@@ -94,16 +94,17 @@ class JobOrderBox extends Model
      */
     public function applyPlyAdjustments(): array
     {
-        $dimensions = $this->convertToCm();
+        // Keep original dimensions in their original unit
+        $dimensions = [
+            'length' => $this->length,
+            'width' => $this->width,
+            'height' => $this->height
+        ];
         
         if ($this->dimension_type === 'INTERNAL') {
-            $adjustment = match($this->ply) {
-                '3' => 0.3,
-                '5' => 0.5,
-                '7' => 1.0,
-                default => 0
-            };
-
+            // Convert adjustment to the same unit as input
+            $adjustment = $this->getPlyAdjustmentInOriginalUnit();
+            
             $dimensions['length'] += $adjustment;
             $dimensions['width'] += $adjustment;
             $dimensions['height'] += $adjustment;
@@ -113,35 +114,45 @@ class JobOrderBox extends Model
     }
 
     /**
-     * Calculate reel size (WIDTH)
+     * Calculate reel size (WIDTH) - Always returns INCHES
      */
     public function calculateReelSize($supplierId = null): float
     {
         $dimensions = $this->applyPlyAdjustments();
         
-        // Formula: (W + H) / 2.54
-        $reelSize = ($dimensions['width'] + $dimensions['height']) / 2.54;
+        // Convert dimensions to inches based on input unit
+        $widthInInches = $this->convertToInches($dimensions['width']);
+        $heightInInches = $this->convertToInches($dimensions['height']);
         
-        // Add 0.75 waste
+        // Formula: (W + H) in inches
+        $reelSize = $widthInInches + $heightInInches;
+        
+        // Add 0.75 waste (in inches)
         $reelSize += 0.75;
         
-        // Round to next available reel size from supplier
+        // Always apply standard rounding logic for reel sizes
         return $this->roundToNextReelSize($reelSize, $supplierId);
     }
 
     /**
-     * Calculate cut size (LENTH)
+     * Calculate cut size (LENTH) - Always returns INCHES
+     * Note: Cut size does NOT use ply adjustments
      */
     public function calculateCutSize(): float
     {
-        $dimensions = $this->applyPlyAdjustments();
+        // Use original dimensions without ply adjustments
+        $lengthInInches = $this->convertToInches($this->length);
+        $widthInInches = $this->convertToInches($this->width);
+        
+        // Formula: ((L + W) × 2) in inches
+        $cutSize = ($lengthInInches + $widthInInches) * 2;
         
         if ($this->dimension_type === 'EXTERNAL') {
-            // Formula: (((L + W) × 2) / 2.54) + 2
-            $cutSize = ((($dimensions['length'] + $dimensions['width']) * 2) / 2.54) + 2;
+            // Add 2 inches for external
+            $cutSize += 2;
         } else {
-            // Formula: (((L + W) × 2) / 2.54) + 2.5
-            $cutSize = ((($dimensions['length'] + $dimensions['width']) * 2) / 2.54) + 2.5;
+            // Add 2.5 inches for internal
+            $cutSize += 2.5;
         }
 
         return $cutSize;
@@ -152,27 +163,51 @@ class JobOrderBox extends Model
      */
     private function roundToNextReelSize(float $size, $supplierId = null): float
     {
-        // Get supplier from parameter or relationship
-        if ($supplierId) {
-            $supplier = Supplier::find($supplierId);
+        // Standard rounding logic based on Excel sheet
+        // Round to next available reel size: 13.50, 15.00, 17.00, 19.00, 21.00, 23.00, 25.00, 27.00, 29.00, 31.00, 33.00, 35.00, etc.
+        
+        if ($size <= 13.50) {
+            return 13.50;
+        } elseif ($size <= 15.00) {
+            return 15.00;
+        } elseif ($size <= 17.00) {
+            return 17.00;
+        } elseif ($size <= 19.00) {
+            return 19.00;
+        } elseif ($size <= 21.00) {
+            return 21.00;
+        } elseif ($size <= 23.00) {
+            return 23.00;
+        } elseif ($size <= 25.00) {
+            return 25.00;
+        } elseif ($size <= 27.00) {
+            return 27.00;
+        } elseif ($size <= 29.00) {
+            return 29.00;
+        } elseif ($size <= 31.00) {
+            return 31.00;
+        } elseif ($size <= 33.00) {
+            return 33.00;
+        } elseif ($size <= 35.00) {
+            return 35.00;
+        } elseif ($size <= 37.00) {
+            return 37.00;
+        } elseif ($size <= 39.00) {
+            return 39.00;
+        } elseif ($size <= 41.00) {
+            return 41.00;
+        } elseif ($size <= 43.00) {
+            return 43.00;
+        } elseif ($size <= 45.00) {
+            return 45.00;
+        } elseif ($size <= 47.00) {
+            return 47.00;
+        } elseif ($size <= 49.00) {
+            return 49.00;
         } else {
-            $supplier = $this->jobOrder->supplier;
+            // For sizes above 49, round to next 2-inch increment
+            return ceil($size / 2) * 2;
         }
-        
-        if (!$supplier) {
-            return $size; // Return original size if no supplier found
-        }
-        
-        $reelSizes = $supplier->reelSizes()->orderBy('reel_size')->pluck('reel_size')->toArray();
-        
-        foreach ($reelSizes as $reelSize) {
-            if ($reelSize >= $size) {
-                return $reelSize;
-            }
-        }
-        
-        // If no reel size found, return the original size
-        return $size;
     }
 
     /**
@@ -191,9 +226,50 @@ class JobOrderBox extends Model
      */
     public function calculateDimensions(): void
     {
-        $this->reel_size = $this->calculateReelSize();
-        $this->cut_size = $this->calculateCutSize();
+        $this->reel_size = (string) $this->calculateReelSize();
+        $this->cut_size = (string) $this->calculateCutSize();
         $this->board_qty = $this->calculateBoardQty();
+    }
+
+    /**
+     * Convert dimension to inches based on input unit
+     */
+    private function convertToInches(float $dimension): float
+    {
+        switch ($this->unit) {
+            case 'MM':
+                return $dimension / 25.4; // MM to inches
+            case 'CM':
+                return $dimension / 2.54; // CM to inches
+            case 'INCHES':
+            default:
+                return $dimension; // Already in inches
+        }
+    }
+
+    /**
+     * Get ply adjustment in the original unit
+     */
+    private function getPlyAdjustmentInOriginalUnit(): float
+    {
+        // Base adjustment in inches
+        $adjustmentInInches = match($this->ply) {
+            '3' => 0.125, // 1/8 inch
+            '5' => 0.25,  // 1/4 inch
+            '7' => 0.5,   // 1/2 inch
+            default => 0
+        };
+
+        // Convert to original unit
+        switch ($this->unit) {
+            case 'MM':
+                return $adjustmentInInches * 25.4; // Convert inches to MM
+            case 'CM':
+                return $adjustmentInInches * 2.54; // Convert inches to CM
+            case 'INCHES':
+            default:
+                return $adjustmentInInches; // Already in inches
+        }
     }
 
     /**
