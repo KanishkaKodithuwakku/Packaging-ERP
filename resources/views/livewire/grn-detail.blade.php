@@ -29,7 +29,14 @@
             </div>
             <div>
                 <label class="text-xs text-gray-500">Lot Code</label>
-                <div class="font-medium">{{ $grn->lot_code }}</div>
+                <div class="font-medium">
+                    {{ $grn->lot_code }}
+                    @if($grn->isMultiItemGRN())
+                        <span class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                            Multi-Item
+                        </span>
+                    @endif
+                </div>
             </div>
             <div>
                 <label class="text-xs text-gray-500">Received Date</label>
@@ -132,20 +139,18 @@
                 <div class="mt-3">
                     <h3 class="text-lg font-medium text-gray-900 mb-4">Process GRN to Stock</h3>
                     
+                    @php
+                        $enablePartialProcessing = \App\Models\SystemConfiguration::getValue('grn_enable_partial_processing', false);
+                        $costingMethod = \App\Models\SystemConfiguration::getValue('grn_default_costing_method', 'FIFO');
+                    @endphp
+                    
                     <div class="mb-4">
-                        <label class="block text-sm font-medium text-gray-700 mb-2">Costing Method</label>
-                        <select wire:model="costingMethod" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="FIFO">FIFO (First In, First Out)</option>
-                            <option value="LIFO">LIFO (Last In, First Out)</option>
-                        </select>
-                    </div>
-
-                    <div class="mb-4">
-                        <label class="flex items-center">
-                            <input type="checkbox" wire:model="enablePartialProcessing" class="mr-2">
-                            <span class="text-sm font-medium text-gray-700">Enable Partial Processing</span>
-                        </label>
-                        <p class="text-xs text-gray-500 mt-1">Allow processing partial quantities of items</p>
+                        <h4 class="text-sm font-medium text-gray-700 mb-2">Processing Configuration</h4>
+                        <div class="text-sm text-gray-600 bg-gray-50 p-3 rounded">
+                            <p><strong>Costing Method:</strong> {{ $costingMethod }}</p>
+                            <p><strong>Partial Processing:</strong> {{ $enablePartialProcessing ? 'Enabled' : 'Disabled' }}</p>
+                            <p class="text-xs text-gray-500 mt-1">These settings are configured in the master configuration. <a href="{{ route('configuration-management') }}" class="text-blue-600 hover:text-blue-800">Change settings</a></p>
+                        </div>
                     </div>
 
                     @if($enablePartialProcessing)

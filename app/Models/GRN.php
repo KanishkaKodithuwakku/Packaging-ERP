@@ -74,4 +74,38 @@ class GRN extends Model
     {
         return $this->items()->count();
     }
+
+    /**
+     * Get total processed quantity
+     */
+    public function getTotalProcessedQuantity(): float
+    {
+        return $this->items()->sum('qty_processed') ?? 0;
+    }
+
+    /**
+     * Get total remaining quantity
+     */
+    public function getTotalRemainingQuantity(): float
+    {
+        return $this->items()->sum('qty_remaining') ?? 0;
+    }
+
+    /**
+     * Get balance quantity (remaining to be processed)
+     */
+    public function getBalanceQuantity(): float
+    {
+        return $this->getTotalRemainingQuantity();
+    }
+
+    /**
+     * Check if this is a multi-item GRN
+     * Multi-item GRNs don't end with B (Box) or D (Divider)
+     */
+    public function isMultiItemGRN(): bool
+    {
+        $lotCode = $this->lot_code;
+        return !preg_match('/-[BD]$/', $lotCode);
+    }
 }

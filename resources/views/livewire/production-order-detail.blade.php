@@ -34,9 +34,20 @@
             <div>
                 <h1 class="text-3xl font-bold text-gray-900">Production Order Details</h1>
                 <p class="text-gray-600 mt-1">Production Order Number: {{ $productionOrder->production_order_number }}</p>
-                @if(!$hasAnyGRN)
-                    <span class="mt-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">GRN Pending</span>
-                @endif
+                <div class="mt-2 flex items-center space-x-2">
+                    @if(!$hasAnyGRN)
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">GRN Pending</span>
+                    @else
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            {{ $grnCount }} GRN{{ $grnCount > 1 ? 's' : '' }} Created
+                        </span>
+                        @if($totalBalanceQuantity > 0)
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                {{ number_format($totalBalanceQuantity, 0) }} Balance Qty
+                            </span>
+                        @endif
+                    @endif
+                </div>
             </div>
 
             <!-- Right side: Action buttons -->
@@ -192,6 +203,20 @@
                         {{ $productionOrder->items->count() }} items
                     </div>
                 </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">GRN Count</label>
+                    <div class="w-full px-3 py-1 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
+                        {{ $grnCount }} GRN{{ $grnCount !== 1 ? 's' : '' }}
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Balance Quantity</label>
+                    <div class="w-full px-3 py-1 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
+                        {{ number_format($totalBalanceQuantity, 0) }} units
+                    </div>
+                </div>
             </div>
 
             <!-- Column 3 -->
@@ -289,6 +314,90 @@
         </div>
         @endif
     </div>
+
+    <!-- GRN Details Section -->
+    @if($hasAnyGRN)
+    <div class="bg-white rounded-lg shadow-sm border mt-6">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <div class="flex justify-between items-center">
+                <h3 class="text-lg font-medium text-gray-900">GRN Details</h3>
+                <span class="text-sm text-gray-500">{{ $grnCount }} GRN{{ $grnCount > 1 ? 's' : '' }} • {{ number_format($totalBalanceQuantity, 0) }} Balance Qty</span>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">GRN No</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lot Code</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Received Date</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Qty</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Processed</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Balance</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    @php
+                        $grns = \App\Models\GRN::where('production_order_id', $productionOrder->id)->with('items')->get();
+                    @endphp
+                    @foreach($grns as $grn)
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <a href="{{ route('grn-detail', $grn->id) }}" class="text-blue-600 hover:text-blue-800">
+                                {{ $grn->grn_no }}
+                            </a>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{ $grn->lot_code }}
+                            @if($grn->isMultiItemGRN())
+                                <span class="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                                    Multi
+                                </span>
+                            @endif
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {{ $grn->received_date ? $grn->received_date->format('M d, Y') : 'N/A' }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {{ number_format($grn->getTotalQuantity(), 0) }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {{ number_format($grn->getTotalProcessedQuantity(), 0) }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {{ number_format($grn->getBalanceQuantity(), 0) }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            @if($grn->status === 'processed')
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    Processed
+                                </span>
+                            @elseif($grn->status === 'cancelled')
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                    Cancelled
+                                </span>
+                            @else
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                    Pending
+                                </span>
+                            @endif
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            <a href="{{ route('grn-detail', $grn->id) }}" 
+                               class="text-blue-600 hover:text-blue-800 font-medium">
+                                View Details
+                            </a>
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+    @endif
 
     <!-- Print Preview Modal -->
     @if($showPrintPreviewModal)

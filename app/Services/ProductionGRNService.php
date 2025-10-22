@@ -348,7 +348,7 @@ class ProductionGRNService
         $date = now()->format('Ymd');
         $productionNumber = str_replace('PROD-', '', $productionOrder->production_order_number);
         
-        return "LOT-{$date}-{$productionNumber}-MULTI";
+        return "LOT-{$date}-{$productionNumber}";
     }
 
     /**

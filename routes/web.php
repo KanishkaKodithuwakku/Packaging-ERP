@@ -167,6 +167,10 @@ Route::get('/accounting/reports/reconciliation', \App\Livewire\ReconciliationRep
     ->middleware(['auth'])
     ->name('accounting.reports.reconciliation');
 
+Route::get('/accounting/reports/stock-movement', \App\Livewire\StockMovementReport::class)
+    ->middleware(['auth'])
+    ->name('accounting.reports.stock-movement');
+
 Route::get('/accounting/entry-types', EntryTypeManagement::class)
     ->middleware(['auth'])
     ->name('accounting.entry-types');
@@ -245,5 +249,10 @@ Route::get('/uom-conversion-examples', function () {
     return view('uom-conversion-example');
 })->middleware(['auth', 'role:admin|planner'])
   ->name('uom-conversion-examples');
+
+// Configuration Management
+Route::get('/configuration-management', \App\Livewire\ConfigurationManagement::class)
+    ->middleware(['auth', 'role:admin'])
+    ->name('configuration-management');
 
 require __DIR__.'/auth.php';

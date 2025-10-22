@@ -11,11 +11,9 @@ class GRNDetail extends Component
 {
     public int $grnId;
     public ?GRN $grn = null;
-    public string $costingMethod = 'FIFO';
     public array $processingStatus = [];
     public bool $showProcessingModal = false;
     public array $partialQuantities = [];
-    public bool $enablePartialProcessing = false;
 
     public function mount(int $id)
     {
@@ -58,16 +56,20 @@ class GRNDetail extends Component
         try {
             $processingService = app(GRNProcessingService::class);
             
-            if ($this->enablePartialProcessing) {
+            // Get configuration values
+            $costingMethod = \App\Models\SystemConfiguration::getValue('grn_default_costing_method', 'FIFO');
+            $enablePartialProcessing = \App\Models\SystemConfiguration::getValue('grn_enable_partial_processing', false);
+            
+            if ($enablePartialProcessing) {
                 // Process with partial quantities
-                $result = $processingService->processGRNToStockPartial($this->grn, $this->partialQuantities, $this->costingMethod);
+                $result = $processingService->processGRNToStockPartial($this->grn, $this->partialQuantities, $costingMethod);
             } else {
                 // Process full quantities
-                $result = $processingService->processGRNToStock($this->grn, $this->costingMethod);
+                $result = $processingService->processGRNToStock($this->grn, $costingMethod);
             }
             
             if ($result['success']) {
-                $message = $this->enablePartialProcessing 
+                $message = $enablePartialProcessing 
                     ? 'GRN items processed to stock successfully! Total value: $' . number_format($result['total_value'], 2)
                     : 'GRN processed to stock successfully! Total value: $' . number_format($result['total_value'], 2);
                     
@@ -89,11 +91,6 @@ class GRNDetail extends Component
     public function updatePartialQuantity($itemId, $quantity)
     {
         $this->partialQuantities[$itemId] = max(0, (float)$quantity);
-    }
-
-    public function togglePartialProcessing()
-    {
-        $this->enablePartialProcessing = !$this->enablePartialProcessing;
     }
 
 

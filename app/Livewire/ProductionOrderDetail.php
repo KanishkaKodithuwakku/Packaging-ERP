@@ -27,6 +27,8 @@ class ProductionOrderDetail extends Component
     public $selectedItems = [];
     public $itemQuantities = [];
     public bool $hasAnyGRN = false; // Whether any GRN exists for this production order
+    public int $grnCount = 0; // Number of GRNs for this production order
+    public float $totalBalanceQuantity = 0; // Total balance quantity across all GRNs
     
     // Form data
     public $form = [];
@@ -49,8 +51,13 @@ class ProductionOrderDetail extends Component
         
         $this->form = $this->productionOrder->toArray();
         $this->form['date'] = $this->productionOrder->date ? $this->productionOrder->date->format('Y-m-d') : null;
-        // Compute GRN existence status
-        $this->hasAnyGRN = GRN::where('production_order_id', $this->productionOrder->id)->exists();
+        // Compute GRN existence status, count, and balance quantities
+        $grns = GRN::where('production_order_id', $this->productionOrder->id)->get();
+        $this->grnCount = $grns->count();
+        $this->hasAnyGRN = $this->grnCount > 0;
+        $this->totalBalanceQuantity = $grns->sum(function($grn) {
+            return $grn->getBalanceQuantity();
+        });
         
         // Load available quantities for GRN generation
         $this->loadAvailableQuantities();

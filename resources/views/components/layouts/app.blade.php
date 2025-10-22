@@ -259,6 +259,7 @@
                         GRNs
                     </a>
 
+
                     <a wire:navigate href="{{ route('material-requests') }}"
                         class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-colors duration-200 {{ request()->routeIs('material-requests') ? 'bg-gray-200 text-gray-900' : '' }}">
                         <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -409,6 +410,15 @@
                         Reconciliation
                     </a>
 
+                    <a wire:navigate href="{{ route('accounting.reports.stock-movement') }}"
+                        class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-colors duration-200 {{ request()->routeIs('accounting.reports.stock-movement') ? 'bg-gray-200 text-gray-900' : '' }}">
+                        <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
+                        </svg>
+                        Stock Movement
+                    </a>
+
                     <a wire:navigate href="{{ route('accounting.entry-types') }}"
                         class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-colors duration-200 {{ request()->routeIs('accounting.entry-types') ? 'bg-gray-200 text-gray-900' : '' }}">
                         <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -434,6 +444,21 @@
                         </svg>
                         Role Management
                     </a>
+
+                    @if(auth()->user()->hasRole('admin'))
+                    <a wire:navigate href="{{ route('configuration-management') }}"
+                        class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-colors duration-200 {{ request()->routeIs('configuration-management') ? 'bg-gray-200 text-gray-900' : '' }}">
+                        <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z">
+                            </path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z">
+                            </path>
+                        </svg>
+                        Configuration
+                    </a>
+                    @endif
 
                     <a wire:navigate href="{{ route('user-management') }}"
                         class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-colors duration-200 {{ request()->routeIs('user-management') ? 'bg-gray-200 text-gray-900' : '' }}">
@@ -760,6 +785,15 @@
                         <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </a>
+
+                    <a wire:navigate href="{{ route('accounting.reports.stock-movement') }}"
+                        class="group flex items-center justify-center px-2 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-colors duration-200 {{ request()->routeIs('accounting.reports.stock-movement') ? 'bg-gray-200 text-gray-900' : '' }}"
+                        title="Stock Movement">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path>
                         </svg>
                     </a>
                     <a wire:navigate href="{{ route('accounting.entry-types') }}"
