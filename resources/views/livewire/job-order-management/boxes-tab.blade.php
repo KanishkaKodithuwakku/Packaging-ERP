@@ -199,13 +199,13 @@
         <!-- Combination Fields (Dynamic based on PLY) -->
         <div class="mt-6">
             <h5 class="text-md font-medium text-gray-700 mb-2">Combination Parameters</h5>
-            <!-- Single Row - 5 inputs -->
-            <div class="grid grid-cols-5 gap-2">
-                @for($i = 1; $i <= 5; $i++)
+            <!-- Responsive Grid - up to 7 inputs -->
+            <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-1">
+                @for($i = 1; $i <= 7; $i++)
                     <div @if(($boxForm['ply'] == '3' && $i > 3) || ($boxForm['ply'] == '5' && $i > 5) || ($boxForm['ply'] == '7' && $i > 7) || (!$boxForm['ply'] && $i > 3)) style="display: none;" @endif>
                         <input type="text" 
                                wire:model="boxForm.combination_{{ $i }}" 
-                               class="w-full px-3 py-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                               class="w-full px-2 py-1 text-xs border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                                placeholder="e.g., 140KL">
                     </div>
                 @endfor

@@ -102,9 +102,9 @@ class JobOrderManagement extends Component
         $this->resetBoxForm();
         
         // Set default values and calculate immediately
-        $this->boxForm['length'] = 15;
-        $this->boxForm['width'] = 14.7;
-        $this->boxForm['height'] = 17;
+        $this->boxForm['length'] = 0;
+        $this->boxForm['width'] = 0;
+        $this->boxForm['height'] = 0;
         $this->boxForm['unit'] = 'INCHES';
         $this->boxForm['dimension_type'] = 'INTERNAL';
         $this->boxForm['ply'] = '3';
@@ -270,7 +270,7 @@ class JobOrderManagement extends Component
             
             // Calculate reel size: (W + H) + 0.75
             $reelSize = $widthInches + $heightInches + 0.75;
-            $this->calculatedReelSize = $this->roundToNextReelSize($reelSize);
+            $this->calculatedReelSize = $this->roundToNextReelSize($reelSize, $this->boxForm['supplier_id'] ?? null);
             
             // Calculate cut size: ((L + W) * 2) + addition
             $cutSize = ($lengthInches + $widthInches) * 2;
@@ -319,9 +319,27 @@ class JobOrderManagement extends Component
         }
     }
     
-    private function roundToNextReelSize(float $size): float
+    private function roundToNextReelSize(float $size, $supplierId = null): float
     {
-        // Standard rounding logic based on Excel sheet
+        // Get supplier-specific reel sizes if supplier is provided
+        if ($supplierId) {
+            $supplier = \App\Models\Supplier::find($supplierId);
+            if ($supplier) {
+                $reelSizes = $supplier->getReelSizesArray();
+                if (!empty($reelSizes)) {
+                    // Find the next available reel size from supplier
+                    foreach ($reelSizes as $reelSize) {
+                        if ($size <= $reelSize) {
+                            return (float) $reelSize;
+                        }
+                    }
+                    // If size is larger than all supplier sizes, return the largest
+                    return (float) end($reelSizes);
+                }
+            }
+        }
+        
+        // Fallback to standard rounding if no supplier or no supplier reel sizes
         if ($size <= 13.50) {
             return 13.50;
         } elseif ($size <= 15.00) {
