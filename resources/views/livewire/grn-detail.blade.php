@@ -6,7 +6,7 @@
     <div class="flex justify-between items-center">
         <h1 class="mt-2 text-2xl font-bold">GRN Details</h1>
         
-        @if($grn && $grn->status === 'pending')
+        @if($grn && ($grn->status === 'pending' || $grn->hasPartialReceiving()))
             <div class="flex space-x-2">
                 <button wire:click="openModal" 
                         wire:loading.attr="disabled"
@@ -14,7 +14,11 @@
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
-                    Process to Stock
+                    @if($grn->hasPartialReceiving() && !$grn->isFullyReceived())
+                        Process Partial to Stock
+                    @else
+                        Process to Stock
+                    @endif
                 </button>
             </div>
         @endif
@@ -47,6 +51,8 @@
                 <div class="font-medium">
                     @if($grn->isFromProductionOrder())
                         Production - {{ $grn->productionOrder->production_order_number ?? 'N/A' }}
+                    @elseif($grn->isFromPurchaseOrder())
+                        Purchase Order - {{ $grn->purchaseOrder->po_number ?? 'N/A' }}
                     @else
                         Supplier PO - {{ $grn->supplierOrder->po_no ?? 'N/A' }}
                     @endif
@@ -66,6 +72,24 @@
                     @else
                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
                             Pending
+                        </span>
+                    @endif
+                </div>
+            </div>
+            <div>
+                <label class="text-xs text-gray-500">Receiving Status</label>
+                <div class="font-medium">
+                    @if($grn->isFullyReceived())
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            Fully Received
+                        </span>
+                    @elseif($grn->hasPartialReceiving())
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                            Partial ({{ number_format($grn->getReceivingPercentage(), 1) }}%)
+                        </span>
+                    @else
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                            Not Received
                         </span>
                     @endif
                 </div>
@@ -91,10 +115,12 @@
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item Type</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Material Code</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Processed</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remaining</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expected</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Received</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pending</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Progress</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
@@ -103,15 +129,23 @@
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ ucfirst($item->item_type) }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $item->description }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $item->material_code }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $item->qty_received }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $item->qty_processed ?? 0 }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $item->qty_remaining ?? $item->qty_received }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $item->qty_expected ?? $item->qty_received }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $item->qty_received_partial ?? 0 }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $item->qty_pending ?? ($item->qty_expected ?? $item->qty_received) }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                    @if(($item->qty_processed ?? 0) >= $item->qty_received)
+                                    <div class="flex items-center">
+                                        <div class="w-16 bg-gray-200 rounded-full h-2 mr-2">
+                                            <div class="bg-blue-500 h-2 rounded-full" style="width: {{ $item->getReceivedPercentage() ?? 0 }}%"></div>
+                                        </div>
+                                        <span class="text-xs text-gray-600">{{ number_format($item->getReceivedPercentage() ?? 0, 1) }}%</span>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                    @if($item->is_fully_received ?? false)
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                            Completed
+                                            Fully Received
                                         </span>
-                                    @elseif(($item->qty_processed ?? 0) > 0)
+                                    @elseif(($item->qty_received_partial ?? 0) > 0)
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
                                             Partial
                                         </span>
@@ -119,6 +153,16 @@
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
                                             Pending
                                         </span>
+                                    @endif
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                    @if(!($item->is_fully_received ?? false))
+                                        <button wire:click="openPartialReceivingModal({{ $item->id }})" 
+                                                class="text-blue-600 hover:text-blue-900 text-xs font-medium">
+                                            Add Receipt
+                                        </button>
+                                    @else
+                                        <span class="text-gray-400 text-xs">Complete</span>
                                     @endif
                                 </td>
                             </tr>
@@ -162,14 +206,16 @@
                                 <div class="flex-1">
                                     <p class="text-sm font-medium">{{ $item->material_code }}</p>
                                     <p class="text-xs text-gray-500">{{ $item->description }}</p>
-                                    <p class="text-xs text-gray-500">Total: {{ $item->qty_received }} {{ $item->uom }}</p>
+                                    <p class="text-xs text-gray-500">Expected: {{ $item->qty_expected }} {{ $item->uom }}</p>
+                                    <p class="text-xs text-gray-500">Received: {{ $item->qty_received_partial }} {{ $item->uom }}</p>
+                                    <p class="text-xs text-gray-500">Pending: {{ $item->qty_pending }} {{ $item->uom }}</p>
                                 </div>
                                 <div class="ml-4">
                                     <input type="number" 
                                            wire:model="partialQuantities.{{ $item->id }}"
                                            wire:change="updatePartialQuantity({{ $item->id }}, $event.target.value)"
                                            min="0" 
-                                           max="{{ $item->qty_received }}"
+                                           max="{{ $item->qty_received_partial }}"
                                            step="0.01"
                                            class="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500">
                                 </div>
@@ -202,6 +248,62 @@
             </div>
         </div>
         @endif
+    @endif
+
+    <!-- Partial Receiving Modal -->
+    @if($showPartialReceivingModal)
+    <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <h3 class="text-lg font-medium text-gray-900 mb-4">Add Partial Receipt</h3>
+                
+                @if($selectedGRNItem)
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Item Details</label>
+                        <div class="text-sm text-gray-600">
+                            <div><strong>Description:</strong> {{ $selectedGRNItem->description }}</div>
+                            <div><strong>Expected:</strong> {{ $selectedGRNItem->qty_expected }} {{ $selectedGRNItem->uom }}</div>
+                            <div><strong>Already Received:</strong> {{ $selectedGRNItem->qty_received_partial }} {{ $selectedGRNItem->uom }}</div>
+                            <div><strong>Pending:</strong> {{ $selectedGRNItem->qty_pending }} {{ $selectedGRNItem->uom }}</div>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="partial_quantity" class="block text-sm font-medium text-gray-700 mb-2">Quantity to Receive</label>
+                        <input type="number" 
+                               wire:model="partialReceivingForm.quantity" 
+                               step="0.01" 
+                               min="0.01" 
+                               max="{{ $selectedGRNItem->qty_pending }}"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                               placeholder="Enter quantity to receive">
+                        @error('partialReceivingForm.quantity') 
+                            <p class="text-red-500 text-xs mt-1">{{ $message }}</p> 
+                        @enderror
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="partial_notes" class="block text-sm font-medium text-gray-700 mb-2">Notes (Optional)</label>
+                        <textarea wire:model="partialReceivingForm.notes" 
+                                  rows="3" 
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  placeholder="Add any notes about this partial receipt"></textarea>
+                    </div>
+
+                    <div class="flex justify-end space-x-3">
+                        <button wire:click="closePartialReceivingModal" 
+                                class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">
+                            Cancel
+                        </button>
+                        <button wire:click="addPartialReceiving" 
+                                class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700">
+                            Add Receipt
+                        </button>
+                    </div>
+                @endif
+            </div>
+        </div>
+    </div>
     @endif
 </div>
 

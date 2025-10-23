@@ -255,4 +255,9 @@ Route::get('/configuration-management', \App\Livewire\ConfigurationManagement::c
     ->middleware(['auth', 'role:admin'])
     ->name('configuration-management');
 
+// Purchase Order Creation
+Route::get('/create-purchase-order', \App\Livewire\CreatePurchaseOrder::class)
+    ->middleware(['auth', 'role:admin|planner'])
+    ->name('create-purchase-order');
+
 require __DIR__.'/auth.php';

@@ -13,6 +13,7 @@ class GRN extends Model
     protected $fillable = [
         'supplier_po_id',
         'production_order_id',
+        'purchase_order_id',
         'grn_no',
         'lot_code',
         'received_date',
@@ -43,12 +44,25 @@ class GRN extends Model
         return $this->belongsTo(ProductionOrder::class);
     }
 
+    public function purchaseOrder(): BelongsTo
+    {
+        return $this->belongsTo(PurchaseOrder::class);
+    }
+
     /**
      * Check if this GRN is from production order
      */
     public function isFromProductionOrder(): bool
     {
         return !is_null($this->production_order_id);
+    }
+
+    /**
+     * Check if this GRN is from purchase order
+     */
+    public function isFromPurchaseOrder(): bool
+    {
+        return !is_null($this->purchase_order_id);
     }
 
     /**
@@ -89,6 +103,66 @@ class GRN extends Model
     public function getTotalRemainingQuantity(): float
     {
         return $this->items()->sum('qty_remaining') ?? 0;
+    }
+
+    /**
+     * Get total expected quantity across all items
+     */
+    public function getTotalExpectedQuantity(): float
+    {
+        return $this->items()->sum('qty_expected') ?? 0;
+    }
+
+    /**
+     * Get total partially received quantity
+     */
+    public function getTotalPartiallyReceivedQuantity(): float
+    {
+        return $this->items()->sum('qty_received_partial') ?? 0;
+    }
+
+    /**
+     * Get total pending quantity to receive
+     */
+    public function getTotalPendingQuantity(): float
+    {
+        return $this->items()->sum('qty_pending') ?? 0;
+    }
+
+    /**
+     * Check if GRN is fully received (all items are fully received)
+     */
+    public function isFullyReceived(): bool
+    {
+        return $this->items()->where('is_fully_received', false)->count() === 0;
+    }
+
+    /**
+     * Check if GRN has any partial receiving
+     */
+    public function hasPartialReceiving(): bool
+    {
+        return $this->items()->where('qty_received_partial', '>', 0)->count() > 0;
+    }
+
+    /**
+     * Get overall receiving percentage
+     */
+    public function getReceivingPercentage(): float
+    {
+        $totalExpected = $this->getTotalExpectedQuantity();
+        if ($totalExpected <= 0) {
+            return 0;
+        }
+        return ($this->getTotalPartiallyReceivedQuantity() / $totalExpected) * 100;
+    }
+
+    /**
+     * Check if GRN can be closed (fully received)
+     */
+    public function canBeClosed(): bool
+    {
+        return $this->isFullyReceived();
     }
 
     /**

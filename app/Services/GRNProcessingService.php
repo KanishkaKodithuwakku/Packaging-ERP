@@ -131,35 +131,47 @@ class GRNProcessingService
     public function processGRNItemToStockPartial(GRNItem $grnItem, float $quantityToProcess, string $costingMethod = 'FIFO'): array
     {
         try {
-            // Determine item category based on production order item
+            // Check if this item has already been processed before
+            $existingTransaction = InventoryTransaction::where('related_doc_type', 'GRN')
+                ->where('related_doc_id', $grnItem->grn_id)
+                ->where('item_code', $grnItem->material_code)
+                ->first();
+
+            // Get required variables first
             $category = $this->determineItemCategory($grnItem);
-            
-            // Generate inventory lot code
             $lotCode = $this->generateInventoryLotCode($grnItem);
-            
-            // Calculate unit cost
             $unitCost = $this->calculateUnitCost($grnItem);
             
-            // Create inventory transaction
-            $transaction = $this->inventoryService->recordTransaction([
-                'lot_code' => $lotCode,
-                'item_code' => $grnItem->material_code,
-                'category' => $category,
-                'txn_type' => 'receipt',
-                'qty' => $quantityToProcess,
-                'unit_cost' => $unitCost,
-                'uom' => $grnItem->uom,
-                'warehouse' => $this->getWarehouseForCategory($category),
-                'related_doc_type' => 'GRN',
-                'related_doc_id' => $grnItem->grn_id,
-                'txn_date' => now()->toDateString(),
-                'remarks' => "GRN Item: {$grnItem->description} (Partial: {$quantityToProcess}/{$grnItem->qty_received})",
-            ], $costingMethod);
+            if ($existingTransaction) {
+                // Update existing transaction with cumulative quantity
+                $newTotalQuantity = $existingTransaction->qty + $quantityToProcess;
+                $existingTransaction->update([
+                    'qty' => $newTotalQuantity,
+                    'remarks' => "GRN Item: {$grnItem->description} (Total Processed: {$newTotalQuantity})",
+                ]);
+                $transaction = $existingTransaction;
+            } else {
+                // Create new transaction for first processing
+                $transaction = $this->inventoryService->recordTransaction([
+                    'lot_code' => $lotCode,
+                    'item_code' => $grnItem->material_code,
+                    'category' => $category,
+                    'txn_type' => 'receipt',
+                    'qty' => $quantityToProcess,
+                    'unit_cost' => $unitCost,
+                    'uom' => $grnItem->uom,
+                    'warehouse' => $this->getWarehouseForCategory($category),
+                    'related_doc_type' => 'GRN',
+                    'related_doc_id' => $grnItem->grn_id,
+                    'txn_date' => now()->toDateString(),
+                    'remarks' => "GRN Item: {$grnItem->description} (Total Processed: {$quantityToProcess})",
+                ], $costingMethod);
+            }
 
             // Update GRN item with partial processing details
             $currentProcessed = $grnItem->qty_processed ?? 0;
             $newProcessed = $currentProcessed + $quantityToProcess;
-            $remaining = $grnItem->qty_received - $newProcessed;
+            $remaining = $grnItem->qty_received_partial - $newProcessed;
             
             $grnItem->update([
                 'qty_processed' => $newProcessed,

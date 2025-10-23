@@ -38,6 +38,7 @@ class JobOrderBox extends Model
         'no_of_ups',
         'board_qty',
         'supplier_price',
+        'supplier_id',
     ];
 
     protected $casts = [
@@ -58,6 +59,14 @@ class JobOrderBox extends Model
     public function jobOrder(): BelongsTo
     {
         return $this->belongsTo(JobOrder::class, 'job_order_id');
+    }
+
+    /**
+     * Get the supplier for this box.
+     */
+    public function supplier(): BelongsTo
+    {
+        return $this->belongsTo(Supplier::class, 'supplier_id');
     }
 
     /**

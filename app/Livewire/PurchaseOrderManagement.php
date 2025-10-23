@@ -71,25 +71,11 @@ class PurchaseOrderManagement extends Component
 
     public function openCreateModal($jobOrderId = null)
     {
-        $this->resetForm();
-        
+        // Redirect to the new dedicated creation page
         if ($jobOrderId) {
-            $this->selectedJobOrderId = $jobOrderId;
-            $this->selectedJobOrder = JobOrder::with(['supplier', 'boxes', 'dividers'])->find($jobOrderId);
-            
-            if ($this->selectedJobOrder) {
-                // Only allow confirmed job orders
-                if ($this->selectedJobOrder->status === 'confirmed') {
-                    $this->form['job_order_id'] = $jobOrderId;
-                    $this->form['supplier_id'] = $this->selectedJobOrder->supplier_id;
-                } else {
-                    session()->flash('error', 'Only confirmed job orders can be converted to purchase orders.');
-                    return;
-                }
-            }
+            return redirect()->route('create-purchase-order', ['job_order' => $jobOrderId]);
         }
-        
-        $this->showCreateModal = true;
+        return redirect()->route('create-purchase-order');
     }
 
     public function closeCreateModal()
@@ -137,6 +123,107 @@ class PurchaseOrderManagement extends Component
         } else {
             session()->flash('error', 'Purchase order not found.');
         }
+    }
+
+    public function createGRNFromPurchaseOrder($id)
+    {
+        try {
+            $purchaseOrder = PurchaseOrder::with(['items', 'jobOrder'])->find($id);
+            
+            if (!$purchaseOrder) {
+                session()->flash('error', 'Purchase order not found.');
+                return;
+            }
+
+            if ($purchaseOrder->status !== 'confirmed') {
+                session()->flash('error', 'Only confirmed purchase orders can be used to create GRNs.');
+                return;
+            }
+
+            if ($purchaseOrder->items->isEmpty()) {
+                session()->flash('error', 'Purchase order has no items to create GRN from.');
+                return;
+            }
+
+            // Generate GRN number
+            $grnNumber = $this->generateGRNNumber();
+            
+            // Create GRN
+            $grn = \App\Models\GRN::create([
+                'purchase_order_id' => $purchaseOrder->id,
+                'grn_no' => $grnNumber,
+                'lot_code' => $this->generateLotCode($purchaseOrder),
+                'received_date' => now()->format('Y-m-d'),
+                'notes' => "GRN created from Purchase Order {$purchaseOrder->po_number}",
+                'status' => 'pending',
+            ]);
+
+            // Create GRN items from purchase order items
+            foreach ($purchaseOrder->items as $poItem) {
+                $grnItem = \App\Models\GRNItem::create([
+                    'grn_id' => $grn->id,
+                    'item_type' => $poItem->item_type,
+                    'item_id' => $poItem->item_id,
+                    'description' => $this->generateItemDescription($poItem),
+                    'material_code' => $this->generateMaterialCode($poItem),
+                    'qty_received' => $poItem->quantity,
+                    'qty_processed' => 0,
+                    'qty_remaining' => $poItem->quantity,
+                    'uom' => 'PCS',
+                    'unit_cost' => $poItem->unit_price,
+                    'total_cost' => $poItem->unit_price * $poItem->quantity,
+                ]);
+
+                // Initialize partial receiving fields
+                $grnItem->initializePartialReceiving();
+            }
+
+            session()->flash('success', "GRN {$grnNumber} has been created successfully from Purchase Order {$purchaseOrder->po_number}.");
+            Log::info('GRN created from purchase order', [
+                'grn_id' => $grn->id,
+                'grn_number' => $grnNumber,
+                'po_id' => $purchaseOrder->id,
+                'po_number' => $purchaseOrder->po_number
+            ]);
+
+        } catch (\Exception $e) {
+            session()->flash('error', 'Failed to create GRN: ' . $e->getMessage());
+            Log::error('Failed to create GRN from purchase order', [
+                'po_id' => $id,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    private function generateGRNNumber()
+    {
+        $lastGRN = \App\Models\GRN::orderBy('id', 'desc')->first();
+        $nextNumber = $lastGRN ? (intval(substr($lastGRN->grn_no, 4)) + 1) : 1;
+        return 'GRN-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
+    }
+
+    private function generateLotCode($purchaseOrder)
+    {
+        $date = now()->format('Ymd');
+        $poNumber = str_replace('PO-', '', $purchaseOrder->po_number);
+        return "LOT-{$date}-{$poNumber}";
+    }
+
+    private function generateItemDescription($poItem)
+    {
+        if ($poItem->item_type === 'box') {
+            $box = \App\Models\JobOrderBox::find($poItem->item_id);
+            return $box ? "Box - {$box->length}x{$box->width}x{$box->height} {$box->unit}" : "Box Item";
+        } else {
+            $divider = \App\Models\JobOrderDivider::find($poItem->item_id);
+            return $divider ? "Divider - {$divider->length}x{$divider->width}x{$divider->height} {$divider->unit}" : "Divider Item";
+        }
+    }
+
+    private function generateMaterialCode($poItem)
+    {
+        $itemType = strtoupper(substr($poItem->item_type, 0, 1));
+        return "MAT-{$itemType}-" . str_pad($poItem->item_id, 4, '0', STR_PAD_LEFT);
     }
 
 

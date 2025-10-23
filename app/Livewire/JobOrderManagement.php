@@ -551,6 +551,7 @@ class JobOrderManagement extends Component
                 'form.supplier_id' => 'required|exists:suppliers,id',
                 'form.customer_id' => 'required|exists:customers,id',
                 'form.customer_address' => 'required|string',
+                'form.status' => 'required|in:pending,draft,confirmed,in_production,completed,cancelled',
             ]);
 
             if ($this->editingJobOrder && $this->currentJobOrderId) {

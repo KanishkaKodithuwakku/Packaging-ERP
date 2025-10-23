@@ -379,7 +379,7 @@ class JobOrderDetail extends Component
                 'form.purchase_order_no' => 'nullable|string|max:255',
                 'form.po_date' => 'nullable|date',
                 'form.notes' => 'nullable|string',
-                'form.status' => 'required|in:draft,confirmed,in_production,completed,cancelled',
+                'form.status' => 'required|in:pending,draft,confirmed,in_production,completed,cancelled',
             ]);
 
             // Update job order details only (boxes and dividers are saved directly when added)

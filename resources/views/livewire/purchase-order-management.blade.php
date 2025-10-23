@@ -59,6 +59,8 @@
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Status</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            GRN Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Actions</th>
                     </tr>
                 </thead>
@@ -97,6 +99,57 @@
                                 class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $statusColors[$po->status] ?? 'bg-gray-100 text-gray-800' }}">
                                 {{ ucfirst($po->status) }}
                             </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            @php
+                            // Get GRN status for this purchase order
+                            $grn = \App\Models\GRN::where('purchase_order_id', $po->id)->first();
+                            if ($grn) {
+                            $totalExpected = $grn->getTotalExpectedQuantity();
+                            $totalReceived = $grn->getTotalPartiallyReceivedQuantity();
+                            $totalPending = $grn->getTotalPendingQuantity();
+                            $receivingPercentage = $totalExpected > 0 ? ($totalReceived / $totalExpected) * 100 : 0;
+
+                            if ($grn->isFullyReceived()) {
+                            $grnStatus = 'Fully Received';
+                            $grnColor = 'bg-green-100 text-green-800';
+                            $progressColor = 'bg-green-500';
+                            $progressWidth = 100;
+                            } elseif ($grn->hasPartialReceiving()) {
+                            $grnStatus = 'Partial (' . number_format($receivingPercentage, 1) . '%)';
+                            $grnColor = 'bg-yellow-100 text-yellow-800';
+                            $progressColor = 'bg-yellow-500';
+                            $progressWidth = $receivingPercentage;
+                            } else {
+                            $grnStatus = 'Not Received';
+                            $grnColor = 'bg-gray-100 text-gray-800';
+                            $progressColor = 'bg-gray-300';
+                            $progressWidth = 0;
+                            }
+                            } else {
+                            $grnStatus = 'No GRN';
+                            $grnColor = 'bg-gray-100 text-gray-800';
+                            $progressColor = 'bg-gray-300';
+                            $progressWidth = 0;
+                            }
+                            @endphp
+                            <div class="flex flex-col space-y-2">
+                                <span
+                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $grnColor }}">
+                                    {{ $grnStatus }}
+                                </span>
+                                @if($grn)
+                                <div class="flex items-center space-x-2">
+                                    <div class="flex-1 bg-gray-200 rounded-full h-2">
+                                        <div class="{{ $progressColor }} h-2 rounded-full transition-all duration-300"
+                                            style="width: {{ $progressWidth }}%"></div>
+                                    </div>
+                                    <span class="text-xs text-gray-600 min-w-0">
+                                        {{ number_format($totalReceived, 0) }}/{{ number_format($totalExpected, 0) }}
+                                    </span>
+                                </div>
+                                @endif
+                            </div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <div class="flex items-center space-x-2">
@@ -137,6 +190,18 @@
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                </button>
+                                @endif
+
+                                @if($po->status === 'confirmed')
+                                <button wire:click="createGRNFromPurchaseOrder({{ $po->id }})"
+                                    wire:confirm="Create GRN from this Purchase Order?"
+                                    class="text-orange-600 hover:text-orange-900" title="Create GRN">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                                        </path>
                                     </svg>
                                 </button>
                                 @endif

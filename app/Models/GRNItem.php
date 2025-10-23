@@ -18,6 +18,11 @@ class GRNItem extends Model
         'description',
         'material_code',
         'qty_received',
+        'qty_expected',
+        'qty_received_partial',
+        'qty_pending',
+        'is_fully_received',
+        'last_received_at',
         'qty_processed',
         'qty_remaining',
         'uom',
@@ -29,6 +34,11 @@ class GRNItem extends Model
 
     protected $casts = [
         'qty_received' => 'decimal:4',
+        'qty_expected' => 'decimal:4',
+        'qty_received_partial' => 'decimal:4',
+        'qty_pending' => 'decimal:4',
+        'is_fully_received' => 'boolean',
+        'last_received_at' => 'datetime',
         'qty_processed' => 'decimal:4',
         'qty_remaining' => 'decimal:4',
         'unit_cost' => 'decimal:4',
@@ -77,5 +87,82 @@ class GRNItem extends Model
         }
         
         return null;
+    }
+
+    /**
+     * Initialize partial receiving fields when GRN item is created
+     */
+    public function initializePartialReceiving()
+    {
+        $this->qty_expected = $this->qty_received;
+        $this->qty_received_partial = 0;
+        $this->qty_pending = $this->qty_received;
+        $this->is_fully_received = false;
+        $this->save();
+    }
+
+    /**
+     * Add partial quantity received
+     */
+    public function addPartialReceiving($quantity, $notes = null)
+    {
+        if ($quantity <= 0) {
+            throw new \Exception('Quantity must be greater than 0');
+        }
+
+        if ($this->qty_received_partial + $quantity > $this->qty_expected) {
+            throw new \Exception('Cannot receive more than expected quantity');
+        }
+
+        $this->qty_received_partial += $quantity;
+        $this->qty_pending = $this->qty_expected - $this->qty_received_partial;
+        $this->last_received_at = now();
+
+        // Check if fully received
+        if ($this->qty_received_partial >= $this->qty_expected) {
+            $this->is_fully_received = true;
+            $this->qty_pending = 0;
+        }
+
+        $this->save();
+
+        // Log the partial receiving
+        Log::info('Partial GRN receiving', [
+            'grn_item_id' => $this->id,
+            'quantity_received' => $quantity,
+            'total_received' => $this->qty_received_partial,
+            'remaining' => $this->qty_pending,
+            'is_fully_received' => $this->is_fully_received,
+            'notes' => $notes
+        ]);
+
+        return $this;
+    }
+
+    /**
+     * Check if item is fully received
+     */
+    public function isFullyReceived(): bool
+    {
+        return $this->is_fully_received;
+    }
+
+    /**
+     * Get remaining quantity to receive
+     */
+    public function getRemainingQuantity(): float
+    {
+        return $this->qty_pending;
+    }
+
+    /**
+     * Get received percentage
+     */
+    public function getReceivedPercentage(): float
+    {
+        if ($this->qty_expected <= 0) {
+            return 0;
+        }
+        return ($this->qty_received_partial / $this->qty_expected) * 100;
     }
 }
