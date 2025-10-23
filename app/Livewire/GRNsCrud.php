@@ -3,7 +3,7 @@
 namespace App\Livewire;
 
 use App\Models\SupplierOrder;
-use App\Models\GoodsReceipt;
+use App\Models\GRN;
 use App\Services\OrderService;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -95,7 +95,7 @@ class GRNsCrud extends Component
 
     public function edit($id)
     {
-        $grn = GoodsReceipt::findOrFail($id);
+        $grn = GRN::findOrFail($id);
         
         $this->grnId = $id;
         $this->supplier_po_id = $grn->supplier_po_id;
@@ -128,7 +128,7 @@ class GRNsCrud extends Component
         ];
 
         if ($this->editing) {
-            GoodsReceipt::findOrFail($this->grnId)->update($data);
+            GRN::findOrFail($this->grnId)->update($data);
             session()->flash('message', 'GRN updated successfully!');
         } else {
             app(OrderService::class)->processGoodsReceipt($data);
@@ -141,9 +141,10 @@ class GRNsCrud extends Component
 
     public function delete($id)
     {
-        GoodsReceipt::findOrFail($id)->delete();
+        GRN::findOrFail($id)->delete();
         session()->flash('message', 'GRN deleted successfully!');
     }
+
 
     public function closeModal()
     {
@@ -153,7 +154,7 @@ class GRNsCrud extends Component
 
     public function render()
     {
-        $grns = GoodsReceipt::with('supplierOrder.supplier')
+        $grns = GRN::with(['supplierOrder.supplier', 'productionOrder.supplier', 'items'])
             ->orderBy('created_at', 'desc')
             ->paginate(10);
 

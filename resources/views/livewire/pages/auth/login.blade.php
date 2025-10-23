@@ -24,8 +24,7 @@ new #[Layout('layouts.guest')] class extends Component
     }
 }; ?>
 
-<x-guest-layout>
-    <div class="flex  justify-center ">
+<div class="flex  justify-center ">
         <!-- Left Half - Form Section (50%) -->
         <div class=" bg-white w-full flex items-center justify-center " style="height: 100vh;">
             <div class="w-full max-w-md px-8">
@@ -50,7 +49,7 @@ new #[Layout('layouts.guest')] class extends Component
                     <div class="mt-4 space-y-2">
                         <label for="email" class="mb-1 block text-sm font-medium text-gray-700">{{ __('Email') }}</label>
                         <input wire:model="form.email" id="email" class="block w-full px-4 py-2 border rounded-md" type="email" name="email"
-                            :value="old('email')" required autofocus autocomplete="username" />
+                            value="{{ old('email') }}" required autofocus autocomplete="username" />
                         <x-input-error :messages="$errors->get('form.email')" class="mt-2" />
                     </div>
 
@@ -104,5 +103,4 @@ new #[Layout('layouts.guest')] class extends Component
             </div>
         </div>
     </div>
-</x-guest-layout>
 

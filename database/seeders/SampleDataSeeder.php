@@ -130,7 +130,7 @@ class SampleDataSeeder extends Seeder
                 'qty_available' => 500,
                 'uom' => 'KG',
                 'warehouse' => 'MAIN',
-                'source' => 'GoodsReceipt',
+                'source' => 'GRN',
                 'ref_doc' => '1',
             ],
             [
@@ -169,7 +169,7 @@ class SampleDataSeeder extends Seeder
                 'qty' => 500,
                 'uom' => 'KG',
                 'warehouse' => 'MAIN',
-                'related_doc_type' => 'GoodsReceipt',
+                'related_doc_type' => 'GRN',
                 'related_doc_id' => 1,
                 'txn_date' => now()->subDays(5)->toDateString(),
                 'remarks' => 'Raw materials received from supplier',

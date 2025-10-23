@@ -16,6 +16,7 @@ class CustomerOrdersCrud extends Component
     protected $layout = 'components.layouts.app';
 
     public $showModal = false;
+    public $showItemsModal = false;
     public $editing = false;
     public $customerOrderId;
     
@@ -33,6 +34,9 @@ class CustomerOrdersCrud extends Component
         'customer_id' => 'required|exists:customers,id',
         'order_no' => 'required|string|max:255|unique:customer_orders,order_no',
         'status' => 'required|in:pending,confirmed,in_production,completed,delivered',
+    ];
+
+    protected $itemRules = [
         'orderItems' => 'required|array|min:1',
         'orderItems.*.item_description' => 'required|string|max:255',
         'orderItems.*.length_mm' => 'required|integer|min:1',
@@ -84,7 +88,6 @@ class CustomerOrdersCrud extends Component
     public function create()
     {
         $this->resetForm();
-        $this->addItem();
         $this->showModal = true;
     }
 
@@ -175,45 +178,10 @@ class CustomerOrdersCrud extends Component
         if ($this->editing) {
             $customerOrder = CustomerOrder::findOrFail($this->customerOrderId);
             $customerOrder->update($orderData);
-            
-            // Delete existing items and create new ones
-            $customerOrder->orderItems()->delete();
-            
-            foreach ($this->orderItems as $itemData) {
-                $customerOrder->orderItems()->create([
-                    'item_description' => $itemData['item_description'],
-                    'length_mm' => $itemData['length_mm'],
-                    'width_mm' => $itemData['width_mm'],
-                    'height_mm' => $itemData['height_mm'],
-                    'ply' => $itemData['ply'],
-                    'flute_type' => $itemData['flute_type'],
-                    'gsm_layers' => $itemData['gsm_layers'],
-                    'qty_ordered' => $itemData['qty_ordered'],
-                    'unit_price' => $itemData['unit_price'],
-                    'notes' => $itemData['notes'],
-                ]);
-            }
-            
             session()->flash('message', 'Customer order updated successfully!');
         } else {
-            $customerOrder = app(OrderService::class)->createCustomerOrder($orderData);
-            
-            foreach ($this->orderItems as $itemData) {
-                $customerOrder->orderItems()->create([
-                    'item_description' => $itemData['item_description'],
-                    'length_mm' => $itemData['length_mm'],
-                    'width_mm' => $itemData['width_mm'],
-                    'height_mm' => $itemData['height_mm'],
-                    'ply' => $itemData['ply'],
-                    'flute_type' => $itemData['flute_type'],
-                    'gsm_layers' => $itemData['gsm_layers'],
-                    'qty_ordered' => $itemData['qty_ordered'],
-                    'unit_price' => $itemData['unit_price'],
-                    'notes' => $itemData['notes'],
-                ]);
-            }
-            
-            session()->flash('message', 'Customer order created successfully!');
+            $customerOrder = CustomerOrder::create($orderData);
+            session()->flash('message', 'Customer order created successfully! You can now add items to this order.');
         }
 
         $this->showModal = false;
@@ -229,6 +197,77 @@ class CustomerOrdersCrud extends Component
     public function closeModal()
     {
         $this->showModal = false;
+        $this->resetForm();
+    }
+
+    public function addItems($id)
+    {
+        $customerOrder = CustomerOrder::with('orderItems')->findOrFail($id);
+        
+        $this->customerOrderId = $id;
+        $this->customer_id = $customerOrder->customer_id;
+        $this->order_no = $customerOrder->order_no;
+        $this->status = $customerOrder->status;
+        $this->notes = $customerOrder->notes ?? '';
+        
+        // Load existing items
+        $this->orderItems = $customerOrder->orderItems->map(function ($item) {
+            return [
+                'id' => $item->id,
+                'item_description' => $item->item_description,
+                'length_mm' => $item->length_mm,
+                'width_mm' => $item->width_mm,
+                'height_mm' => $item->height_mm,
+                'ply' => $item->ply,
+                'flute_type' => $item->flute_type,
+                'gsm_layers' => $item->gsm_layers ?? [],
+                'qty_ordered' => $item->qty_ordered,
+                'unit_price' => $item->unit_price,
+                'total_price' => $item->total_price,
+                'notes' => $item->notes,
+            ];
+        })->toArray();
+        
+        // If no items exist, add one empty item
+        if (empty($this->orderItems)) {
+            $this->addItem();
+        }
+        
+        $this->showItemsModal = true;
+    }
+
+    public function saveItems()
+    {
+        $this->validate($this->itemRules);
+
+        $customerOrder = CustomerOrder::findOrFail($this->customerOrderId);
+        
+        // Delete existing items and create new ones
+        $customerOrder->orderItems()->delete();
+        
+        foreach ($this->orderItems as $itemData) {
+            $customerOrder->orderItems()->create([
+                'item_description' => $itemData['item_description'],
+                'length_mm' => $itemData['length_mm'],
+                'width_mm' => $itemData['width_mm'],
+                'height_mm' => $itemData['height_mm'],
+                'ply' => $itemData['ply'],
+                'flute_type' => $itemData['flute_type'],
+                'gsm_layers' => $itemData['gsm_layers'],
+                'qty_ordered' => $itemData['qty_ordered'],
+                'unit_price' => $itemData['unit_price'],
+                'notes' => $itemData['notes'],
+            ]);
+        }
+        
+        session()->flash('message', 'Order items updated successfully!');
+        $this->showItemsModal = false;
+        $this->resetForm();
+    }
+
+    public function closeItemsModal()
+    {
+        $this->showItemsModal = false;
         $this->resetForm();
     }
 

@@ -25,6 +25,10 @@ class DatabaseSeeder extends Seeder
             QuotationSeeder::class,
             SampleCustomerOrdersSeeder::class,
             UomSeeder::class,
+            CurrencySeeder::class,
+            AccountGroupSeeder::class,
+            EntryTypeSeeder::class,
+            AccountSettingSeeder::class,
         ]);
     }
 }

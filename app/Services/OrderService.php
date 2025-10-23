@@ -5,7 +5,7 @@ namespace App\Services;
 use App\Models\CustomerOrder;
 use App\Models\JobOrder;
 use App\Models\SupplierOrder;
-use App\Models\GoodsReceipt;
+use App\Models\GRN;
 use App\Models\DeliveryNote;
 use App\Models\MaterialRequest;
 use App\Services\InventoryService;
@@ -68,11 +68,11 @@ class OrderService
     /**
      * Process goods receipt and update inventory
      */
-    public function processGoodsReceipt(array $data): GoodsReceipt
+    public function processGoodsReceipt(array $data): GRN
     {
         return DB::transaction(function () use ($data) {
             // Create goods receipt
-            $goodsReceipt = GoodsReceipt::create($data);
+            $goodsReceipt = GRN::create($data);
 
             // Generate lot code
             $lotCode = $this->inventoryService->generateLotCode('GRN', $goodsReceipt->id);
@@ -89,7 +89,7 @@ class OrderService
                 'qty' => $data['qty_received'],
                 'uom' => $data['uom'],
                 'warehouse' => 'MAIN',
-                'related_doc_type' => 'GoodsReceipt',
+                'related_doc_type' => 'GRN',
                 'related_doc_id' => $goodsReceipt->id,
                 'txn_date' => $data['received_date'],
                 'remarks' => 'Raw materials received from supplier',
@@ -225,7 +225,7 @@ class OrderService
      */
     public function generateGRNNumber(): string
     {
-        $count = GoodsReceipt::count() + 1;
+        $count = GRN::count() + 1;
         return 'GRN' . str_pad($count, 4, '0', STR_PAD_LEFT);
     }
 

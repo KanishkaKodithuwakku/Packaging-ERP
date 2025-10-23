@@ -17,27 +17,117 @@
                         <tr>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">GRN No</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PO No</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lot Code</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Material Code</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Qty Received</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items & Quantities</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Receiving Progress</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Received Date</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
                         @foreach($grns as $grn)
-                            <tr>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $grn->grn_no }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $grn->supplierOrder->supplier->name }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $grn->supplierOrder->po_no }}</td>
+                            <tr class="hover:bg-gray-50 cursor-pointer" wire:key="grn-{{ $grn->id }}" wire:navigate href="{{ route('grn-detail', $grn->id) }}">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                    {{ $grn->grn_no }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    @if($grn->isFromProductionOrder())
+                                        <div class="flex items-center">
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 mr-2">
+                                                Production
+                                            </span>
+                                            {{ $grn->productionOrder->supplier->name ?? 'N/A' }}
+                                        </div>
+                                    @elseif($grn->isFromPurchaseOrder())
+                                        <div class="flex items-center">
+                                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mr-2">
+                                                Purchase
+                                            </span>
+                                            {{ $grn->purchaseOrder->supplier->name ?? 'N/A' }}
+                                        </div>
+                                    @else
+                                        {{ $grn->supplierOrder->supplier->name ?? 'N/A' }}
+                                    @endif
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    @if($grn->isFromProductionOrder())
+                                        <div class="text-sm text-gray-900">{{ $grn->productionOrder->production_order_number ?? 'N/A' }}</div>
+                                        <div class="text-xs text-gray-500">
+                                            @if($grn->item_type === 'multi')
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                                                    Multi-Item
+                                                </span>
+                                            @else
+                                                {{ ucfirst($grn->item_type ?? 'Item') }}
+                                            @endif
+                                        </div>
+                                    @elseif($grn->isFromPurchaseOrder())
+                                        <div class="text-sm text-gray-900">{{ $grn->purchaseOrder->po_number ?? 'N/A' }}</div>
+                                        <div class="text-xs text-gray-500">Purchase Order</div>
+                                    @else
+                                        {{ $grn->supplierOrder->po_no ?? 'N/A' }}
+                                    @endif
+                                </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">{{ $grn->lot_code }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $grn->material_code }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $grn->qty_received }} {{ $grn->uom }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    @if($grn->items->count() > 0)
+                                        <div class="text-sm font-medium text-gray-900">{{ $grn->getTotalQuantity() }} PCS ({{ $grn->getItemsCount() }} items)</div>
+                                        <div class="text-xs text-gray-500">
+                                            @foreach($grn->items->take(2) as $item)
+                                                {{ $item->description }} ({{ $item->qty_received }})<br>
+                                            @endforeach
+                                            @if($grn->items->count() > 2)
+                                                <span class="text-gray-400">+{{ $grn->items->count() - 2 }} more items</span>
+                                            @endif
+                                        </div>
+                                    @else
+                                        No items
+                                    @endif
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    @php
+                                        $totalExpected = $grn->getTotalExpectedQuantity();
+                                        $totalReceived = $grn->getTotalPartiallyReceivedQuantity();
+                                        $totalPending = $grn->getTotalPendingQuantity();
+                                        $receivingPercentage = $totalExpected > 0 ? ($totalReceived / $totalExpected) * 100 : 0;
+                                        
+                                        if ($grn->isFullyReceived()) {
+                                            $statusText = 'Fully Received';
+                                            $statusColor = 'bg-green-100 text-green-800';
+                                            $progressColor = 'bg-green-500';
+                                            $progressWidth = 100;
+                                        } elseif ($grn->hasPartialReceiving()) {
+                                            $statusText = 'Partial (' . number_format($receivingPercentage, 1) . '%)';
+                                            $statusColor = 'bg-yellow-100 text-yellow-800';
+                                            $progressColor = 'bg-yellow-500';
+                                            $progressWidth = $receivingPercentage;
+                                        } else {
+                                            $statusText = 'Not Received';
+                                            $statusColor = 'bg-gray-100 text-gray-800';
+                                            $progressColor = 'bg-gray-300';
+                                            $progressWidth = 0;
+                                        }
+                                    @endphp
+                                    <div class="flex flex-col space-y-2">
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $statusColor }}">
+                                            {{ $statusText }}
+                                        </span>
+                                        <div class="flex items-center space-x-2">
+                                            <div class="flex-1 bg-gray-200 rounded-full h-2">
+                                                <div class="{{ $progressColor }} h-2 rounded-full transition-all duration-300" 
+                                                     style="width: {{ $progressWidth }}%"></div>
+                                            </div>
+                                            <span class="text-xs text-gray-600 min-w-0">
+                                                {{ number_format($totalReceived, 0) }}/{{ number_format($totalExpected, 0) }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $grn->received_date->format('Y-m-d') }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                    <button wire:click="edit({{ $grn->id }})" class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</button>
-                                    <button wire:click="delete({{ $grn->id }})" class="text-red-600 hover:text-red-900" 
+                                    <button wire:click.stop="edit({{ $grn->id }})" class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</button>
+                                    <button wire:click.stop="delete({{ $grn->id }})" class="text-red-600 hover:text-red-900" 
                                             onclick="return confirm('Are you sure you want to delete this GRN?')">Delete</button>
                                 </td>
                             </tr>
