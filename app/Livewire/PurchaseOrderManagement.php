@@ -17,7 +17,10 @@ class PurchaseOrderManagement extends Component
     public $showViewModal = false;
     public $showPhoneConfirmModal = false;
     public $showPhoneConfirmConfirmModal = false;
+    public $showGRNConfirmModal = false;
+    public $showCancelConfirmModal = false;
     public $selectedPurchaseOrder = null;
+    public $cancellationReason = '';
     public $redirectToProductionOrder = null;
     public $selectedJobOrderId = null;
     public $selectedJobOrder = null;
@@ -52,7 +55,7 @@ class PurchaseOrderManagement extends Component
 
     public function loadPurchaseOrders()
     {
-        $this->purchaseOrders = PurchaseOrder::with(['supplier', 'jobOrder', 'items'])
+        $this->purchaseOrders = PurchaseOrder::with(['supplier', 'jobOrder', 'items', 'grn'])
             ->orderBy('created_at', 'desc')
             ->get();
     }
@@ -125,6 +128,65 @@ class PurchaseOrderManagement extends Component
         }
     }
 
+    public function openGRNConfirmModal($id)
+    {
+        $this->selectedPurchaseOrder = PurchaseOrder::with(['items', 'jobOrder'])->find($id);
+        
+        if (!$this->selectedPurchaseOrder) {
+            session()->flash('error', 'Purchase order not found.');
+            return;
+        }
+
+        if ($this->selectedPurchaseOrder->status !== 'confirmed') {
+            session()->flash('error', 'Only confirmed purchase orders can be used to create GRNs.');
+            return;
+        }
+
+        if ($this->selectedPurchaseOrder->items->isEmpty()) {
+            session()->flash('error', 'Purchase order has no items to create GRN from.');
+            return;
+        }
+
+        // Check if GRN already exists for this purchase order
+        $existingGRN = \App\Models\GRN::where('purchase_order_id', $this->selectedPurchaseOrder->id)->first();
+        if ($existingGRN) {
+            session()->flash('error', "A GRN ({$existingGRN->grn_no}) already exists for this Purchase Order. Cannot create multiple GRNs for the same Purchase Order.");
+            return;
+        }
+
+        $this->showGRNConfirmModal = true;
+    }
+
+    public function closeGRNConfirmModal()
+    {
+        $this->showGRNConfirmModal = false;
+        $this->selectedPurchaseOrder = null;
+    }
+
+    public function openCancelConfirmModal($id)
+    {
+        $this->selectedPurchaseOrder = PurchaseOrder::with(['grn', 'grn.items'])->find($id);
+        
+        if (!$this->selectedPurchaseOrder) {
+            session()->flash('error', 'Purchase order not found.');
+            return;
+        }
+
+        if ($this->selectedPurchaseOrder->status === 'cancelled') {
+            session()->flash('error', 'Purchase order is already cancelled.');
+            return;
+        }
+
+        $this->showCancelConfirmModal = true;
+    }
+
+    public function closeCancelConfirmModal()
+    {
+        $this->showCancelConfirmModal = false;
+        $this->selectedPurchaseOrder = null;
+        $this->cancellationReason = '';
+    }
+
     public function createGRNFromPurchaseOrder($id)
     {
         try {
@@ -142,6 +204,13 @@ class PurchaseOrderManagement extends Component
 
             if ($purchaseOrder->items->isEmpty()) {
                 session()->flash('error', 'Purchase order has no items to create GRN from.');
+                return;
+            }
+
+            // Check if GRN already exists for this purchase order
+            $existingGRN = \App\Models\GRN::where('purchase_order_id', $purchaseOrder->id)->first();
+            if ($existingGRN) {
+                session()->flash('error', "A GRN ({$existingGRN->grn_no}) already exists for this Purchase Order. Cannot create multiple GRNs for the same Purchase Order.");
                 return;
             }
 
@@ -186,11 +255,130 @@ class PurchaseOrderManagement extends Component
                 'po_number' => $purchaseOrder->po_number
             ]);
 
+            // Close modal and refresh data
+            $this->closeGRNConfirmModal();
+            $this->loadPurchaseOrders();
+
         } catch (\Exception $e) {
             session()->flash('error', 'Failed to create GRN: ' . $e->getMessage());
             Log::error('Failed to create GRN from purchase order', [
                 'po_id' => $id,
                 'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    public function cancelPurchaseOrder($id)
+    {
+        try {
+            $purchaseOrder = PurchaseOrder::with(['grn', 'grn.items', 'items'])->find($id);
+            
+            if (!$purchaseOrder) {
+                session()->flash('error', 'Purchase order not found.');
+                return;
+            }
+
+            if ($purchaseOrder->status === 'cancelled') {
+                session()->flash('error', 'Purchase order is already cancelled.');
+                return;
+            }
+
+            // Start database transaction
+            \DB::beginTransaction();
+
+            // If GRN exists, reverse the quantities from inventory
+            if ($purchaseOrder->grn->isNotEmpty()) {
+                $grn = $purchaseOrder->grn->first();
+                
+                Log::info('Cancelling Purchase Order with GRN', [
+                    'po_id' => $purchaseOrder->id,
+                    'po_number' => $purchaseOrder->po_number,
+                    'grn_id' => $grn->id,
+                    'grn_number' => $grn->grn_no
+                ]);
+
+                // Reverse inventory transactions for each GRN item
+                foreach ($grn->items as $grnItem) {
+                    if ($grnItem->qty_processed > 0) {
+                        // Create reverse inventory transaction
+                        \App\Models\InventoryTransaction::create([
+                            'item_type' => $grnItem->item_type,
+                            'item_id' => $grnItem->item_id,
+                            'transaction_type' => 'cancellation',
+                            'quantity' => -$grnItem->qty_processed, // Negative quantity to reverse
+                            'unit_cost' => $grnItem->unit_cost,
+                            'total_cost' => -($grnItem->unit_cost * $grnItem->qty_processed),
+                            'lot_code' => $grn->lot_code,
+                            'reference' => "PO Cancellation - {$purchaseOrder->po_number}",
+                            'notes' => "Reversed from cancelled GRN {$grn->grn_no}",
+                            'created_by' => auth()->id(),
+                        ]);
+
+                        Log::info('Reversed inventory for GRN item', [
+                            'grn_item_id' => $grnItem->id,
+                            'item_type' => $grnItem->item_type,
+                            'item_id' => $grnItem->item_id,
+                            'reversed_quantity' => $grnItem->qty_processed,
+                            'lot_code' => $grn->lot_code
+                        ]);
+                    }
+                }
+
+                // Update GRN status to cancelled
+                $grn->update([
+                    'status' => 'cancelled',
+                    'notes' => $grn->notes . " [CANCELLED - PO {$purchaseOrder->po_number} cancelled]"
+                ]);
+
+                Log::info('GRN cancelled', [
+                    'grn_id' => $grn->id,
+                    'grn_number' => $grn->grn_no
+                ]);
+            }
+
+            // Update purchase order status to cancelled
+            $purchaseOrder->update([
+                'status' => 'cancelled',
+                'cancellation_reason' => $this->cancellationReason ?: 'No reason provided',
+                'cancelled_at' => now(),
+                'cancelled_by' => auth()->id(),
+                'notes' => $purchaseOrder->notes . " [CANCELLED on " . now()->format('Y-m-d H:i:s') . "]"
+            ]);
+
+            // IMPORTANT: Do NOT delete purchase order items - this makes items available again
+            // The items will automatically become available because calculateRemainingQuantity 
+            // will see the cancelled PO and not count it against available quantities
+
+            // Commit transaction
+            \DB::commit();
+
+            // Close modal and refresh data
+            $this->closeCancelConfirmModal();
+            $this->loadPurchaseOrders();
+
+            $message = "Purchase Order {$purchaseOrder->po_number} has been cancelled successfully.";
+            if ($purchaseOrder->grn->isNotEmpty()) {
+                $message .= " All received quantities have been reversed from inventory.";
+            }
+            $message .= " Items are now available for new purchase orders.";
+
+            session()->flash('success', $message);
+
+            Log::info('Purchase Order cancelled successfully', [
+                'po_id' => $purchaseOrder->id,
+                'po_number' => $purchaseOrder->po_number,
+                'had_grn' => $purchaseOrder->grn->isNotEmpty()
+            ]);
+
+        } catch (\Exception $e) {
+            // Rollback transaction on error
+            \DB::rollback();
+            
+            session()->flash('error', 'Failed to cancel purchase order: ' . $e->getMessage());
+            Log::error('Failed to cancel purchase order', [
+                'po_id' => $id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
             ]);
         }
     }
@@ -240,18 +428,6 @@ class PurchaseOrderManagement extends Component
         }
     }
 
-    public function cancelPurchaseOrder($id)
-    {
-        $purchaseOrder = PurchaseOrder::find($id);
-        if ($purchaseOrder) {
-            $purchaseOrder->update(['status' => 'cancelled']);
-            session()->flash('success', "Purchase Order {$purchaseOrder->po_number} has been cancelled.");
-            $this->loadPurchaseOrders();
-            Log::info('Purchase Order cancelled', ['po_id' => $id, 'po_number' => $purchaseOrder->po_number]);
-        } else {
-            session()->flash('error', 'Purchase order not found.');
-        }
-    }
 
     public function openPhoneConfirmModal($id)
     {

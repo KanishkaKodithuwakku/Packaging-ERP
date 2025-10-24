@@ -11,7 +11,7 @@ class RolePermissionSeeder extends Seeder
 {
     public function run(): void
     {
-        // Create roles
+        // Create roles (only if they don't exist)
         $roles = [
             'admin',
             'sales',
@@ -22,7 +22,7 @@ class RolePermissionSeeder extends Seeder
         ];
 
         foreach ($roles as $role) {
-            Role::create(['name' => $role]);
+            Role::firstOrCreate(['name' => $role]);
         }
 
         // Create permissions for each module
@@ -77,10 +77,55 @@ class RolePermissionSeeder extends Seeder
             'create material requests',
             'edit material requests',
             'delete material requests',
+
+            // Purchase Order permissions
+            'view purchase orders',
+            'create purchase orders',
+            'edit purchase orders',
+            'delete purchase orders',
+            'confirm purchase orders',
+            'cancel purchase orders',
+
+            // Production Order permissions
+            'view production orders',
+            'create production orders',
+            'edit production orders',
+            'delete production orders',
+
+            // UOM Management permissions
+            'view uom management',
+            'create uom management',
+            'edit uom management',
+            'delete uom management',
+
+            // Configuration permissions
+            'view configuration',
+            'edit configuration',
+
+            // Accounting permissions
+            'view accounting',
+            'create accounting entries',
+            'edit accounting entries',
+            'delete accounting entries',
+            'view accounting reports',
+
+            // Role and Permission Management
+            'view role management',
+            'create roles',
+            'edit roles',
+            'delete roles',
+            'view permission management',
+            'create permissions',
+            'edit permissions',
+            'delete permissions',
+            'view user management',
+            'create users',
+            'edit users',
+            'delete users',
         ];
 
         foreach ($permissions as $permission) {
-            Permission::create(['name' => $permission]);
+            Permission::firstOrCreate(['name' => $permission]);
         }
 
         // Assign permissions to roles
@@ -108,6 +153,12 @@ class RolePermissionSeeder extends Seeder
             'create supplier orders',
             'edit supplier orders',
             'delete supplier orders',
+            'view purchase orders',
+            'create purchase orders',
+            'edit purchase orders',
+            'delete purchase orders',
+            'confirm purchase orders',
+            'cancel purchase orders',
         ]);
 
         $productionRole = Role::findByName('production');
@@ -120,6 +171,10 @@ class RolePermissionSeeder extends Seeder
             'create material requests',
             'edit material requests',
             'delete material requests',
+            'view production orders',
+            'create production orders',
+            'edit production orders',
+            'delete production orders',
         ]);
 
         $storeRole = Role::findByName('store');
@@ -140,49 +195,66 @@ class RolePermissionSeeder extends Seeder
             'edit delivery notes',
             'delete delivery notes',
             'print delivery notes',
+            'view accounting',
+            'create accounting entries',
+            'edit accounting entries',
+            'delete accounting entries',
+            'view accounting reports',
         ]);
 
-        // Create sample users
-        $admin = User::create([
-            'name' => 'Admin User',
-            'email' => 'admin@example.com',
-            'password' => bcrypt('password'),
-        ]);
+        // Create sample users (only if they don't exist)
+        $admin = User::firstOrCreate(
+            ['email' => 'admin@example.com'],
+            [
+                'name' => 'Admin User',
+                'password' => bcrypt('password'),
+            ]
+        );
         $admin->assignRole('admin');
 
-        $sales = User::create([
-            'name' => 'Sales User',
-            'email' => 'sales@example.com',
-            'password' => bcrypt('password'),
-        ]);
+        $sales = User::firstOrCreate(
+            ['email' => 'sales@example.com'],
+            [
+                'name' => 'Sales User',
+                'password' => bcrypt('password'),
+            ]
+        );
         $sales->assignRole('sales');
 
-        $purchase = User::create([
-            'name' => 'Purchase User',
-            'email' => 'purchase@example.com',
-            'password' => bcrypt('password'),
-        ]);
+        $purchase = User::firstOrCreate(
+            ['email' => 'purchase@example.com'],
+            [
+                'name' => 'Purchase User',
+                'password' => bcrypt('password'),
+            ]
+        );
         $purchase->assignRole('purchase');
 
-        $production = User::create([
-            'name' => 'Production User',
-            'email' => 'production@example.com',
-            'password' => bcrypt('password'),
-        ]);
+        $production = User::firstOrCreate(
+            ['email' => 'production@example.com'],
+            [
+                'name' => 'Production User',
+                'password' => bcrypt('password'),
+            ]
+        );
         $production->assignRole('production');
 
-        $store = User::create([
-            'name' => 'Store User',
-            'email' => 'store@example.com',
-            'password' => bcrypt('password'),
-        ]);
+        $store = User::firstOrCreate(
+            ['email' => 'store@example.com'],
+            [
+                'name' => 'Store User',
+                'password' => bcrypt('password'),
+            ]
+        );
         $store->assignRole('store');
 
-        $account = User::create([
-            'name' => 'Account User',
-            'email' => 'account@example.com',
-            'password' => bcrypt('password'),
-        ]);
+        $account = User::firstOrCreate(
+            ['email' => 'account@example.com'],
+            [
+                'name' => 'Account User',
+                'password' => bcrypt('password'),
+            ]
+        );
         $account->assignRole('account');
     }
 }

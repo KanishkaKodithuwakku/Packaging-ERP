@@ -36,6 +36,8 @@ class CreatePurchaseOrder extends Component
     public $showFinalReview = false;
     
     public $searchItem = '';
+    public $purchasedItemsDetails = [];
+    public $currentSupplierCurrency = 'USD'; // Default currency
 
     protected $rules = [
         'selectedJobOrderIds' => 'required|array|min:1',
@@ -161,6 +163,12 @@ class CreatePurchaseOrder extends Component
         
         foreach ($this->availableItems as $item) {
             if ($item['id'] === $itemId) {
+                // Validate that item has available quantity
+                if ($item['remaining_qty'] <= 0) {
+                    session()->flash('error', "Cannot add {$item['description']} - no available quantity remaining.");
+                    return;
+                }
+                
                 // Check if item already exists in selected items
                 $existingItemIndex = null;
                 foreach ($this->selectedItems as $index => $selectedItem) {
@@ -179,8 +187,13 @@ class CreatePurchaseOrder extends Component
                         // Increase by 1 or to max available
                         $newQty = min($currentQty + 1, $availableQty);
                         $this->selectedItems[$existingItemIndex]['selected_qty'] = $newQty;
+                        
+                        if ($newQty >= $availableQty) {
+                            session()->flash('info', "Maximum available quantity ({$availableQty}) selected for {$item['description']}.");
+                        }
+                    } else {
+                        session()->flash('warning', "Maximum available quantity ({$availableQty}) already selected for {$item['description']}.");
                     }
-                    // If already at max, do nothing (prevent over-quantity)
                 } else {
                     // Item doesn't exist, add it with full available quantity as default
                     $this->selectedItems[] = [
@@ -195,6 +208,8 @@ class CreatePurchaseOrder extends Component
                         'unit_cost' => $item['unit_cost'],
                         'original_number' => $item['original_number'], // Store the original item number
                     ];
+                    
+                    session()->flash('success', "Added {$item['description']} with full available quantity ({$item['remaining_qty']}).");
                 }
                 
                 Log::info('Item added successfully', [
@@ -217,8 +232,20 @@ class CreatePurchaseOrder extends Component
     {
         foreach ($this->selectedItems as &$item) {
             if ($item['id'] === $itemId) {
-                // Ensure quantity is between 1 and available quantity
-                $item['selected_qty'] = max(1, min($quantity, $item['available_qty']));
+                // Validate quantity input
+                if ($quantity < 1) {
+                    session()->flash('error', "Quantity must be at least 1 for {$item['description']}.");
+                    return;
+                }
+                
+                if ($quantity > $item['available_qty']) {
+                    session()->flash('error', "Cannot select {$quantity} items for {$item['description']}. Maximum available: {$item['available_qty']}.");
+                    return;
+                }
+                
+                // Update quantity if validation passes
+                $item['selected_qty'] = $quantity;
+                session()->flash('success', "Updated quantity for {$item['description']} to {$quantity}.");
                 break;
             }
         }
@@ -269,14 +296,23 @@ class CreatePurchaseOrder extends Component
 
     public function loadAvailableItems()
     {
-        $jobOrders = JobOrder::with(['boxes', 'dividers'])->whereIn('id', $this->selectedJobOrderIds)->get();
+        $jobOrders = JobOrder::with(['boxes', 'dividers', 'supplier'])->whereIn('id', $this->selectedJobOrderIds)->get();
         
         $this->availableItems = [];
         $itemCounter = 1; // Start numbering from 1
         
+        // Set the current supplier's currency
+        if ($jobOrders->isNotEmpty()) {
+            $firstJobOrder = $jobOrders->first();
+            if ($firstJobOrder->supplier) {
+                $this->currentSupplierCurrency = $firstJobOrder->supplier->currency ?? 'USD';
+            }
+        }
+        
         Log::info('Loading available items', [
             'selected_job_order_ids' => $this->selectedJobOrderIds,
-            'job_orders_count' => $jobOrders->count()
+            'job_orders_count' => $jobOrders->count(),
+            'current_supplier_currency' => $this->currentSupplierCurrency
         ]);
         
         foreach ($jobOrders as $jobOrder) {
@@ -347,18 +383,247 @@ class CreatePurchaseOrder extends Component
         }
         
         Log::info('Final available items count', ['count' => count($this->availableItems)]);
+        
+        // If no items available, provide detailed information about why
+        if (empty($this->availableItems)) {
+            $this->logUnavailableItems($jobOrders);
+            $this->loadPurchasedItemsDetails($jobOrders);
+        }
     }
 
     private function calculateRemainingQuantity($item)
     {
         // Calculate remaining quantity by subtracting already purchased quantities
+        // EXCLUDE cancelled purchase orders from the calculation
         $purchasedQty = PurchaseOrderItem::where('item_type', $item instanceof JobOrderBox ? 'box' : 'divider')
             ->where('item_id', $item->id)
+            ->whereHas('purchaseOrder', function($query) {
+                $query->where('status', '!=', 'cancelled');
+            })
             ->sum('quantity');
             
         // Use correct column name based on item type
         $originalQty = $item instanceof JobOrderBox ? $item->order_qty : $item->quantity;
         return max(0, $originalQty - $purchasedQty);
+    }
+
+    private function logUnavailableItems($jobOrders)
+    {
+        Log::info('No available items found. Analyzing job orders...');
+        
+        foreach ($jobOrders as $jobOrder) {
+            Log::info('Job Order Analysis', [
+                'job_order_id' => $jobOrder->id,
+                'job_order_number' => $jobOrder->job_order_number ?: $jobOrder->job_number,
+                'boxes_count' => $jobOrder->boxes->count(),
+                'dividers_count' => $jobOrder->dividers->count()
+            ]);
+            
+            // Check boxes
+            foreach ($jobOrder->boxes as $box) {
+                $purchasedQty = PurchaseOrderItem::where('item_type', 'box')
+                    ->where('item_id', $box->id)
+                    ->sum('quantity');
+                $remaining = max(0, $box->order_qty - $purchasedQty);
+                
+                // Get purchase order details for this box
+                $purchaseOrders = PurchaseOrderItem::with('purchaseOrder')
+                    ->where('item_type', 'box')
+                    ->where('item_id', $box->id)
+                    ->get();
+                
+                Log::info('Box Analysis', [
+                    'box_id' => $box->id,
+                    'order_qty' => $box->order_qty,
+                    'purchased_qty' => $purchasedQty,
+                    'remaining_qty' => $remaining,
+                    'status' => $remaining > 0 ? 'Available' : 'Fully Purchased',
+                    'purchase_orders' => $purchaseOrders->map(function($poItem) {
+                        return [
+                            'po_number' => $poItem->purchaseOrder->po_number,
+                            'quantity' => $poItem->quantity,
+                            'created_at' => $poItem->created_at
+                        ];
+                    })->toArray()
+                ]);
+            }
+            
+            // Check dividers
+            foreach ($jobOrder->dividers as $divider) {
+                $purchasedQty = PurchaseOrderItem::where('item_type', 'divider')
+                    ->where('item_id', $divider->id)
+                    ->sum('quantity');
+                $remaining = max(0, $divider->quantity - $purchasedQty);
+                
+                // Get purchase order details for this divider
+                $purchaseOrders = PurchaseOrderItem::with('purchaseOrder')
+                    ->where('item_type', 'divider')
+                    ->where('item_id', $divider->id)
+                    ->get();
+                
+                Log::info('Divider Analysis', [
+                    'divider_id' => $divider->id,
+                    'quantity' => $divider->quantity,
+                    'purchased_qty' => $purchasedQty,
+                    'remaining_qty' => $remaining,
+                    'status' => $remaining > 0 ? 'Available' : 'Fully Purchased',
+                    'purchase_orders' => $purchaseOrders->map(function($poItem) {
+                        return [
+                            'po_number' => $poItem->purchaseOrder->po_number,
+                            'quantity' => $poItem->quantity,
+                            'created_at' => $poItem->created_at
+                        ];
+                    })->toArray()
+                ]);
+            }
+        }
+    }
+
+    private function loadPurchasedItemsDetails($jobOrders)
+    {
+        $this->purchasedItemsDetails = [];
+        
+        foreach ($jobOrders as $jobOrder) {
+            $jobOrderDetails = [
+                'job_order_number' => $jobOrder->job_order_number ?: $jobOrder->job_number,
+                'items' => []
+            ];
+            
+            // Check boxes
+            foreach ($jobOrder->boxes as $box) {
+                $purchasedQty = PurchaseOrderItem::where('item_type', 'box')
+                    ->where('item_id', $box->id)
+                    ->whereHas('purchaseOrder', function($query) {
+                        $query->where('status', '!=', 'cancelled');
+                    })
+                    ->sum('quantity');
+                
+                if ($purchasedQty > 0) {
+                    $purchaseOrders = PurchaseOrderItem::with('purchaseOrder')
+                        ->where('item_type', 'box')
+                        ->where('item_id', $box->id)
+                        ->whereHas('purchaseOrder', function($query) {
+                            $query->where('status', '!=', 'cancelled');
+                        })
+                        ->get();
+                    
+                    $jobOrderDetails['items'][] = [
+                        'type' => 'BOX',
+                        'description' => "BOX - {$box->length} x {$box->width} x {$box->height} {$box->unit}",
+                        'order_qty' => $box->order_qty,
+                        'purchased_qty' => $purchasedQty,
+                        'remaining_qty' => max(0, $box->order_qty - $purchasedQty),
+                        'purchase_orders' => $purchaseOrders->map(function($poItem) {
+                            return [
+                                'po_number' => $poItem->purchaseOrder->po_number,
+                                'quantity' => $poItem->quantity,
+                                'created_at' => $poItem->created_at->format('Y-m-d H:i:s')
+                            ];
+                        })->toArray()
+                    ];
+                }
+            }
+            
+            // Check dividers
+            foreach ($jobOrder->dividers as $divider) {
+                $purchasedQty = PurchaseOrderItem::where('item_type', 'divider')
+                    ->where('item_id', $divider->id)
+                    ->whereHas('purchaseOrder', function($query) {
+                        $query->where('status', '!=', 'cancelled');
+                    })
+                    ->sum('quantity');
+                
+                if ($purchasedQty > 0) {
+                    $purchaseOrders = PurchaseOrderItem::with('purchaseOrder')
+                        ->where('item_type', 'divider')
+                        ->where('item_id', $divider->id)
+                        ->whereHas('purchaseOrder', function($query) {
+                            $query->where('status', '!=', 'cancelled');
+                        })
+                        ->get();
+                    
+                    $jobOrderDetails['items'][] = [
+                        'type' => 'DIVIDER',
+                        'description' => "DIVIDER - {$divider->combination_1} {$divider->unit}",
+                        'order_qty' => $divider->quantity,
+                        'purchased_qty' => $purchasedQty,
+                        'remaining_qty' => max(0, $divider->quantity - $purchasedQty),
+                        'purchase_orders' => $purchaseOrders->map(function($poItem) {
+                            return [
+                                'po_number' => $poItem->purchaseOrder->po_number,
+                                'quantity' => $poItem->quantity,
+                                'created_at' => $poItem->created_at->format('Y-m-d H:i:s')
+                            ];
+                        })->toArray()
+                    ];
+                }
+            }
+            
+            if (!empty($jobOrderDetails['items'])) {
+                $this->purchasedItemsDetails[] = $jobOrderDetails;
+            }
+        }
+    }
+
+    public function getCurrencySymbol()
+    {
+        return match($this->currentSupplierCurrency) {
+            'LKR' => 'Rs.',
+            'USD' => '$',
+            'EUR' => '€',
+            'GBP' => '£',
+            default => '$'
+        };
+    }
+    
+    public function validateQuantities()
+    {
+        $errors = [];
+        $warnings = [];
+        
+        foreach ($this->selectedItems as $item) {
+            if ($item['selected_qty'] > $item['available_qty']) {
+                $errors[] = "{$item['description']}: Selected quantity ({$item['selected_qty']}) exceeds available quantity ({$item['available_qty']}).";
+            }
+            if ($item['selected_qty'] < 1) {
+                $errors[] = "{$item['description']}: Selected quantity must be at least 1.";
+            }
+            if ($item['selected_qty'] == $item['available_qty'] && $item['available_qty'] > 0) {
+                $warnings[] = "{$item['description']}: All available quantity ({$item['available_qty']}) is selected.";
+            }
+        }
+        
+        return [
+            'errors' => $errors,
+            'warnings' => $warnings,
+            'is_valid' => empty($errors)
+        ];
+    }
+
+    public function resetPurchaseHistory()
+    {
+        try {
+            // Delete all purchase order items
+            PurchaseOrderItem::truncate();
+            
+            // Delete all purchase orders
+            PurchaseOrder::truncate();
+            
+            // Delete all GRNs and GRN items
+            DB::table('grn_items')->truncate();
+            DB::table('grns')->truncate();
+            
+            // Delete all inventory transactions
+            DB::table('inventory_transactions')->truncate();
+            
+            session()->flash('success', 'Purchase history has been reset. You can now create purchase orders for the same items.');
+            
+            // Reload available items
+            $this->loadAvailableItems();
+            
+        } catch (\Exception $e) {
+            session()->flash('error', 'Error resetting purchase history: ' . $e->getMessage());
+        }
     }
 
     public function toggleItemSelection($itemId)
@@ -513,6 +778,22 @@ class CreatePurchaseOrder extends Component
         
         if (empty($this->selectedItems)) {
             session()->flash('error', 'Please select at least one item.');
+            return;
+        }
+        
+        // Final validation: Check that all selected quantities are within available limits
+        $validationErrors = [];
+        foreach ($this->selectedItems as $item) {
+            if ($item['selected_qty'] > $item['available_qty']) {
+                $validationErrors[] = "{$item['description']}: Selected quantity ({$item['selected_qty']}) exceeds available quantity ({$item['available_qty']}).";
+            }
+            if ($item['selected_qty'] < 1) {
+                $validationErrors[] = "{$item['description']}: Selected quantity must be at least 1.";
+            }
+        }
+        
+        if (!empty($validationErrors)) {
+            session()->flash('error', 'Validation failed: ' . implode(' ', $validationErrors));
             return;
         }
         

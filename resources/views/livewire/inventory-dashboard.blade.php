@@ -81,14 +81,40 @@
                     <h3 class="text-lg font-semibold mb-4">Recent Transactions</h3>
                     <div class="space-y-3">
                         @forelse($recentTransactions as $transaction)
-                            <div class="flex justify-between items-center p-3 bg-gray-50 rounded">
-                                <div>
-                                    <p class="font-medium">{{ $transaction->lot_code }}</p>
-                                    <p class="text-sm text-gray-600">{{ ucfirst($transaction->txn_type) }}</p>
+                            <div class="flex justify-between items-center p-3 bg-gray-50 rounded hover:bg-gray-100 transition-colors">
+                                <div class="flex-1">
+                                    <div class="flex items-center space-x-2">
+                                        <p class="font-medium text-gray-900">{{ $transaction->lot_code }}</p>
+                                        @if($transaction->getJobOrder())
+                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                                📋 {{ $transaction->getJobOrder()->job_number }}
+                                            </span>
+                                        @endif
+                                    </div>
+                                    <p class="text-sm text-gray-600 mt-1">{{ ucfirst($transaction->txn_type) }}</p>
+                                    @if($transaction->getJobOrder())
+                                        <div class="mt-1 space-y-1">
+                                            <p class="text-xs text-blue-600 font-medium">
+                                                🏭 {{ $transaction->getJobOrder()->supplier->name ?? 'Unknown Supplier' }}
+                                            </p>
+                                            <p class="text-xs text-gray-500">
+                                                👤 {{ $transaction->getJobOrder()->customer->name ?? 'Unknown Customer' }}
+                                            </p>
+                                        </div>
+                                    @endif
                                 </div>
-                                <div class="text-right">
-                                    <span class="text-sm font-medium">{{ $transaction->qty }} {{ $transaction->uom }}</span>
-                                    <p class="text-xs text-gray-500">{{ $transaction->txn_date }}</p>
+                                <div class="text-right ml-4">
+                                    <span class="text-sm font-medium text-gray-900">{{ $transaction->qty }} {{ $transaction->uom }}</span>
+                                    <p class="text-xs text-gray-500 mt-1">{{ $transaction->txn_date }}</p>
+                                    @if($transaction->getJobOrder() && $transaction->txn_type === 'receipt')
+                                        <button wire:click="openProductionOrderModal({{ $transaction->id }})" 
+                                                class="mt-2 inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors">
+                                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                            </svg>
+                                            Start Production
+                                        </button>
+                                    @endif
                                 </div>
                             </div>
                         @empty
@@ -99,4 +125,121 @@
             </div>
         </div>
     </div>
+
+    <!-- Production Order Modal -->
+    @if($showProductionOrderModal)
+    <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" wire:click.self="closeProductionOrderModal">
+        <div class="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-medium text-gray-900">Start Production Order</h3>
+                    <button wire:click="closeProductionOrderModal" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                @if($selectedTransaction)
+                <div class="space-y-4">
+                    <!-- Transaction Details -->
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <h4 class="font-medium text-gray-900 mb-2">Transaction Details</h4>
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <span class="text-gray-600">Transaction ID:</span>
+                                <span class="font-medium">{{ $selectedTransaction->lot_code }}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-600">Quantity:</span>
+                                <span class="font-medium">{{ $selectedTransaction->qty }} {{ $selectedTransaction->uom }}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-600">Type:</span>
+                                <span class="font-medium">{{ ucfirst($selectedTransaction->txn_type) }}</span>
+                            </div>
+                            <div>
+                                <span class="text-gray-600">Date:</span>
+                                <span class="font-medium">{{ $selectedTransaction->txn_date }}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Job Order Details -->
+                    @if($selectedTransaction->getJobOrder())
+                    <div class="bg-blue-50 p-4 rounded-lg">
+                        <h4 class="font-medium text-blue-900 mb-2">Job Order Details</h4>
+                        <div class="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <span class="text-blue-600">Job Order:</span>
+                                <span class="font-medium text-blue-900">{{ $selectedTransaction->getJobOrder()->job_number }}</span>
+                            </div>
+                            <div>
+                                <span class="text-blue-600">Supplier:</span>
+                                <span class="font-medium text-blue-900">{{ $selectedTransaction->getJobOrder()->supplier->name ?? 'Unknown' }}</span>
+                            </div>
+                            <div>
+                                <span class="text-blue-600">Customer:</span>
+                                <span class="font-medium text-blue-900">{{ $selectedTransaction->getJobOrder()->customer->name ?? 'Unknown' }}</span>
+                            </div>
+                            <div>
+                                <span class="text-blue-600">Status:</span>
+                                <span class="font-medium text-blue-900">{{ ucfirst($selectedTransaction->getJobOrder()->status) }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    @endif
+
+                    <!-- Production Order Form -->
+                    <div class="space-y-4">
+                        <h4 class="font-medium text-gray-900">Production Order Details</h4>
+                        
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Production Order Number</label>
+                                <input type="text" wire:model="productionOrderForm.production_order_number" 
+                                       class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 sm:text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700">Start Date</label>
+                                <input type="date" wire:model="productionOrderForm.date" 
+                                       class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 sm:text-sm">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Production Quantity</label>
+                            <input type="number" wire:model="productionOrderForm.quantity" 
+                                   step="0.01" min="0" max="{{ $selectedTransaction->qty }}"
+                                   class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 sm:text-sm">
+                            <p class="mt-1 text-sm text-gray-500">Maximum: {{ $selectedTransaction->qty }} {{ $selectedTransaction->uom }}</p>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Notes</label>
+                            <textarea wire:model="productionOrderForm.notes" rows="3"
+                                      class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 sm:text-sm"></textarea>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex justify-end space-x-3 pt-4 border-t">
+                        <button wire:click="closeProductionOrderModal" 
+                                class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
+                            Cancel
+                        </button>
+                        <button wire:click="createProductionOrder" 
+                                class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                            <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                            </svg>
+                            Create Production Order
+                        </button>
+                    </div>
+                </div>
+                @endif
+            </div>
+        </div>
+    </div>
+    @endif
 </div>

@@ -29,150 +29,150 @@ Route::get('/dashboard', [App\Http\Controllers\DashboardController::class, 'inde
 
 // Quotations
 Route::get('/quotations', QuotationsCrud::class)
-    ->middleware(['auth'])
+    ->middleware(['auth', 'permission:view quotations'])
     ->name('quotations');
 
 // Customer Orders
 Route::get('/customer-orders', CustomerOrdersCrud::class)
-    ->middleware(['auth'])
+    ->middleware(['auth', 'permission:view customer orders'])
     ->name('customer-orders');
 
 // Job Orders
 Route::get('/job-orders', JobOrdersCrud::class)
-    ->middleware(['auth'])
+    ->middleware(['auth', 'permission:view job orders'])
     ->name('job-orders');
 
 // New Job Order Management
 Route::get('/job-order-management', \App\Livewire\JobOrderManagement::class)
-    ->middleware(['auth'])
+    ->middleware(['auth', 'permission:view job orders'])
     ->name('job-order-management');
 
 // Job Order Detail Page
 Route::get('/job-order-detail/{id}', \App\Livewire\JobOrderDetail::class)
-    ->middleware(['auth'])
+    ->middleware(['auth', 'permission:view job orders'])
     ->name('job-order-detail');
 
 // Purchase Order Management
 Route::get('/purchase-order-management', \App\Livewire\PurchaseOrderManagement::class)
-    ->middleware(['auth'])
+    ->middleware(['auth', 'permission:view purchase orders'])
     ->name('purchase-order-management');
 
 // Production Order Management
 Route::get('/production-order-management', \App\Livewire\ProductionOrderManagement::class)
-    ->middleware(['auth'])
+    ->middleware(['auth', 'permission:view production orders'])
     ->name('production-order-management');
 
 // Production Order Detail Page
 Route::get('/production-order-detail/{id}', \App\Livewire\ProductionOrderDetail::class)
-    ->middleware(['auth'])
+    ->middleware(['auth', 'permission:view production orders'])
     ->name('production-order-detail');
 
 // Supplier Orders
 Route::get('/supplier-orders', SupplierOrdersCrud::class)
-    ->middleware(['auth'])
+    ->middleware(['auth', 'permission:view supplier orders'])
     ->name('supplier-orders');
 
 // GRNs
 Route::get('/grns', GRNsCrud::class)
-    ->middleware(['auth'])
+    ->middleware(['auth', 'permission:view grns'])
     ->name('grns');
 
 // GRN Detail
 Route::get('/grns/{id}', GRNDetail::class)
-    ->middleware(['auth'])
+    ->middleware(['auth', 'permission:view grns'])
     ->name('grn-detail');
 
 // Test GRN
 Route::get('/test-grn/{id}', \App\Livewire\TestGRN::class)
-    ->middleware(['auth'])
+    ->middleware(['auth', 'permission:view grns'])
     ->name('test-grn');
 
 // Material Requests
 Route::get('/material-requests', MaterialRequestsCrud::class)
-    ->middleware(['auth'])
+    ->middleware(['auth', 'permission:view material requests'])
     ->name('material-requests');
 
 // Delivery Notes
 Route::get('/delivery-notes', DeliveryNotesCrud::class)
-    ->middleware(['auth'])
+    ->middleware(['auth', 'permission:view delivery notes'])
     ->name('delivery-notes');
 
 // Delivery Notes Print
 Route::get('/delivery-notes/{id}/print', function ($id) {
     $deliveryNote = \App\Models\DeliveryNote::with('customerOrder.customer')->findOrFail($id);
     return view('delivery-notes.print', compact('deliveryNote'));
-})->middleware(['auth'])->name('delivery-notes.print');
+})->middleware(['auth', 'permission:print delivery notes'])->name('delivery-notes.print');
 
 // Inventory Dashboard
 Route::get('/inventory-dashboard', InventoryDashboard::class)
-    ->middleware(['auth'])
+    ->middleware(['auth', 'permission:view inventory'])
     ->name('inventory-dashboard');
 
 // Inventory Transactions
 Route::get('/inventory-transactions', InventoryTransactionsHistory::class)
-    ->middleware(['auth'])
+    ->middleware(['auth', 'permission:view inventory transactions'])
     ->name('inventory-transactions');
 
 // Accounting Routes
 Route::get('/accounting/chart-of-accounts', ChartOfAccountsCrud::class)
-    ->middleware(['auth'])
+    ->middleware(['auth', 'permission:view accounting'])
     ->name('accounting.chart-of-accounts');
 
 Route::get('/accounting/journal-entries', JournalEntryCrud::class)
-    ->middleware(['auth'])
+    ->middleware(['auth', 'permission:view accounting'])
     ->name('accounting.journal-entries');
 
 Route::get('/accounting/entries', \App\Livewire\EntriesManagement::class)
-    ->middleware(['auth'])
+    ->middleware(['auth', 'permission:view accounting'])
     ->name('accounting.entries');
 
 Route::get('/accounting/search', \App\Livewire\EntrySearch::class)
-    ->middleware(['auth'])
+    ->middleware(['auth', 'permission:view accounting'])
     ->name('accounting.search');
 
 Route::get('/accounting/dashboard', \App\Livewire\AccountingDashboard::class)
-    ->middleware(['auth'])
+    ->middleware(['auth', 'permission:view accounting'])
     ->name('accounting.dashboard');
 
 Route::get('/accounting/currencies', CurrencyManagement::class)
-    ->middleware(['auth'])
+    ->middleware(['auth', 'permission:view accounting'])
     ->name('accounting.currencies');
 
 Route::get('/accounting/exchange-rates', ExchangeRateManagement::class)
-    ->middleware(['auth'])
+    ->middleware(['auth', 'permission:view accounting'])
     ->name('accounting.exchange-rates');
 
 // Reports Routes
 Route::get('/accounting/reports/balance-sheet', \App\Livewire\BalanceSheetReport::class)
-    ->middleware(['auth'])
+    ->middleware(['auth', 'permission:view accounting reports'])
     ->name('accounting.reports.balance-sheet');
 
 Route::get('/accounting/reports/profit-loss', \App\Livewire\ProfitLossReport::class)
-    ->middleware(['auth'])
+    ->middleware(['auth', 'permission:view accounting reports'])
     ->name('accounting.reports.profit-loss');
 
 Route::get('/accounting/reports/trial-balance', \App\Livewire\TrialBalanceReport::class)
-    ->middleware(['auth'])
+    ->middleware(['auth', 'permission:view accounting reports'])
     ->name('accounting.reports.trial-balance');
 
 Route::get('/accounting/reports/ledger-statement', \App\Livewire\LedgerStatementReport::class)
-    ->middleware(['auth'])
+    ->middleware(['auth', 'permission:view accounting reports'])
     ->name('accounting.reports.ledger-statement');
 
 Route::get('/accounting/reports/ledger-entries', \App\Livewire\LedgerEntriesReport::class)
-    ->middleware(['auth'])
+    ->middleware(['auth', 'permission:view accounting reports'])
     ->name('accounting.reports.ledger-entries');
 
 Route::get('/accounting/reports/reconciliation', \App\Livewire\ReconciliationReport::class)
-    ->middleware(['auth'])
+    ->middleware(['auth', 'permission:view accounting reports'])
     ->name('accounting.reports.reconciliation');
 
 Route::get('/accounting/reports/stock-movement', \App\Livewire\StockMovementReport::class)
-    ->middleware(['auth'])
+    ->middleware(['auth', 'permission:view accounting reports'])
     ->name('accounting.reports.stock-movement');
 
 Route::get('/accounting/entry-types', EntryTypeManagement::class)
-    ->middleware(['auth'])
+    ->middleware(['auth', 'permission:view accounting'])
     ->name('accounting.entry-types');
 
 // Debug modal test
@@ -215,49 +215,49 @@ Route::put('/account-settings', function () {
 // Role Management Routes
 Route::get('/role-management', function () {
     return view('role-management');
-})->middleware(['auth'])->name('role-management');
+})->middleware(['auth', 'permission:view role management'])->name('role-management');
 
 Route::get('/user-management', function () {
     return view('user-management');
-})->middleware(['auth'])->name('user-management');
+})->middleware(['auth', 'permission:view user management'])->name('user-management');
 
 Route::get('/permission-management', function () {
     return view('permission-management');
-})->middleware(['auth'])->name('permission-management');
+})->middleware(['auth', 'permission:view permission management'])->name('permission-management');
 
 // UOM Management Routes
 Route::get('/uom-management', App\Livewire\UomManagement::class)
-    ->middleware(['auth', 'role:admin|planner'])
+    ->middleware(['auth', 'permission:view uom management'])
     ->name('uom-management');
 
 Route::get('/uom-conversion-management', App\Livewire\UomConversionManagement::class)
-    ->middleware(['auth', 'role:admin|planner'])
+    ->middleware(['auth', 'permission:view uom management'])
     ->name('uom-conversion-management');
 
 Route::get('/uom-conversion-profile-management', App\Livewire\UomConversionProfileManagement::class)
-    ->middleware(['auth', 'role:admin|planner'])
+    ->middleware(['auth', 'permission:view uom management'])
     ->name('uom-conversion-profile-management');
 
 // UOM Dashboard
 Route::get('/uom-dashboard', function () {
     return view('uom-dashboard');
-})->middleware(['auth', 'role:admin|planner'])
+})->middleware(['auth', 'permission:view uom management'])
   ->name('uom-dashboard');
 
 // UOM Conversion Examples
 Route::get('/uom-conversion-examples', function () {
     return view('uom-conversion-example');
-})->middleware(['auth', 'role:admin|planner'])
+})->middleware(['auth', 'permission:view uom management'])
   ->name('uom-conversion-examples');
 
 // Configuration Management
 Route::get('/configuration-management', \App\Livewire\ConfigurationManagement::class)
-    ->middleware(['auth', 'role:admin'])
+    ->middleware(['auth', 'permission:view configuration'])
     ->name('configuration-management');
 
 // Purchase Order Creation
 Route::get('/create-purchase-order', \App\Livewire\CreatePurchaseOrder::class)
-    ->middleware(['auth', 'role:admin|planner'])
+    ->middleware(['auth', 'permission:create purchase orders'])
     ->name('create-purchase-order');
 
 require __DIR__.'/auth.php';
