@@ -15,10 +15,14 @@ class PurchaseOrder extends Model
         'job_order_id',
         'status',
         'notes',
+        'cancellation_reason',
+        'cancelled_at',
+        'cancelled_by',
     ];
 
     protected $casts = [
         'date' => 'date',
+        'cancelled_at' => 'datetime',
     ];
 
     /**
@@ -43,6 +47,22 @@ class PurchaseOrder extends Model
     public function items(): HasMany
     {
         return $this->hasMany(PurchaseOrderItem::class);
+    }
+
+    /**
+     * Get the GRN for this purchase order.
+     */
+    public function grn(): HasMany
+    {
+        return $this->hasMany(GRN::class);
+    }
+
+    /**
+     * Get the user who cancelled the purchase order.
+     */
+    public function cancelledBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'cancelled_by');
     }
 
     /**

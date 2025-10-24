@@ -30,4 +30,23 @@ class InventoryTransaction extends Model
     {
         return $this->belongsTo(Inventory::class, 'lot_code', 'lot_code');
     }
+
+    /**
+     * Get the related GRN if this transaction is from a GRN
+     */
+    public function grn(): BelongsTo
+    {
+        return $this->belongsTo(GRN::class, 'related_doc_id');
+    }
+
+    /**
+     * Get the job order through GRN -> Purchase Order -> Job Order
+     */
+    public function getJobOrder()
+    {
+        if ($this->related_doc_type === 'GRN' && $this->grn) {
+            return $this->grn->purchaseOrder?->jobOrder;
+        }
+        return null;
+    }
 }

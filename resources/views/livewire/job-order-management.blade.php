@@ -96,7 +96,7 @@
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Customer</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Items</th>
+                                Items & Progress</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                 Status</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -129,14 +129,19 @@
                                     @php
                                     $purchasedQty = \App\Models\PurchaseOrderItem::where('item_type', 'box')
                                     ->where('item_id', $box->id)
+                                    ->whereHas('purchaseOrder', function($query) {
+                                        $query->where('status', '!=', 'cancelled');
+                                    })
                                     ->sum('quantity');
                                     $progress = $box->order_qty > 0 ? min(100, ($purchasedQty / $box->order_qty) * 100)
                                     : 0;
 
-                                    // Get GRN received quantities
+                                    // Get GRN received quantities from Purchase Orders
                                     $grnReceivedQty = \App\Models\GRNItem::whereHas('grn', function($q) use ($jobOrder)
                                     {
-                                    $q->where('production_order_id', $jobOrder->id);
+                                        $q->whereHas('purchaseOrder', function($po) use ($jobOrder) {
+                                            $po->where('job_order_id', $jobOrder->id);
+                                        });
                                     })
                                     ->where('item_type', 'box')
                                     ->where('item_id', $box->id)
@@ -158,17 +163,21 @@
                                             <span class="text-xs text-gray-600">{{ $purchasedQty }}/{{ $box->order_qty
                                                 }}</span>
                                         </div>
-                                        @if($grnReceivedQty > 0)
                                         <div class="flex items-center space-x-2 ml-2">
                                             <span class="text-xs text-gray-500">GRN:</span>
                                             <div class="flex-1 bg-gray-200 rounded-full h-1.5 max-w-16">
                                                 <div class="bg-orange-500 h-1.5 rounded-full"
                                                     style="width: {{ $grnProgress }}%"></div>
                                             </div>
-                                            <span class="text-xs text-orange-600">{{ $grnReceivedQty }}/{{
-                                                $box->order_qty }}</span>
+                                            <span class="text-xs {{ $grnReceivedQty > 0 ? 'text-orange-600' : 'text-gray-400' }}">
+                                                {{ $grnReceivedQty }}/{{ $box->order_qty }}
+                                            </span>
+                                            @if($grnReceivedQty > 0)
+                                                <span class="text-xs text-orange-500 font-medium">{{ number_format($grnProgress, 1) }}%</span>
+                                            @else
+                                                <span class="text-xs text-gray-400">Not Received</span>
+                                            @endif
                                         </div>
-                                        @endif
                                     </div>
                                     @endforeach
                                     @endif
@@ -177,14 +186,19 @@
                                     @php
                                     $purchasedQty = \App\Models\PurchaseOrderItem::where('item_type', 'divider')
                                     ->where('item_id', $divider->id)
+                                    ->whereHas('purchaseOrder', function($query) {
+                                        $query->where('status', '!=', 'cancelled');
+                                    })
                                     ->sum('quantity');
                                     $progress = $divider->quantity > 0 ? min(100, ($purchasedQty / $divider->quantity) *
                                     100) : 0;
 
-                                    // Get GRN received quantities
+                                    // Get GRN received quantities from Purchase Orders
                                     $grnReceivedQty = \App\Models\GRNItem::whereHas('grn', function($q) use ($jobOrder)
                                     {
-                                    $q->where('production_order_id', $jobOrder->id);
+                                        $q->whereHas('purchaseOrder', function($po) use ($jobOrder) {
+                                            $po->where('job_order_id', $jobOrder->id);
+                                        });
                                     })
                                     ->where('item_type', 'divider')
                                     ->where('item_id', $divider->id)
@@ -206,22 +220,54 @@
                                             <span class="text-xs text-gray-600">{{ $purchasedQty }}/{{
                                                 $divider->quantity }}</span>
                                         </div>
-                                        @if($grnReceivedQty > 0)
                                         <div class="flex items-center space-x-2 ml-2">
                                             <span class="text-xs text-gray-500">GRN:</span>
                                             <div class="flex-1 bg-gray-200 rounded-full h-1.5 max-w-16">
                                                 <div class="bg-orange-500 h-1.5 rounded-full"
                                                     style="width: {{ $grnProgress }}%"></div>
                                             </div>
-                                            <span class="text-xs text-orange-600">{{ $grnReceivedQty }}/{{
-                                                $divider->quantity }}</span>
+                                            <span class="text-xs {{ $grnReceivedQty > 0 ? 'text-orange-600' : 'text-gray-400' }}">
+                                                {{ $grnReceivedQty }}/{{ $divider->quantity }}
+                                            </span>
+                                            @if($grnReceivedQty > 0)
+                                                <span class="text-xs text-orange-500 font-medium">{{ number_format($grnProgress, 1) }}%</span>
+                                            @else
+                                                <span class="text-xs text-gray-400">Not Received</span>
+                                            @endif
                                         </div>
-                                        @endif
                                     </div>
                                     @endforeach
                                     @endif
                                     @if($jobOrder->boxes->count() == 0 && $jobOrder->dividers->count() == 0)
                                     <span class="text-gray-400 text-xs">No items</span>
+                                    @endif
+                                    
+                                    @php
+                                    // Calculate overall GRN progress for this job order
+                                    $totalOrderedQty = $jobOrder->boxes->sum('order_qty') + $jobOrder->dividers->sum('quantity');
+                                    $totalGRNReceivedQty = \App\Models\GRNItem::whereHas('grn', function($q) use ($jobOrder) {
+                                        $q->whereHas('purchaseOrder', function($po) use ($jobOrder) {
+                                            $po->where('job_order_id', $jobOrder->id);
+                                        });
+                                    })->sum('qty_received_partial');
+                                    $overallGRNProgress = $totalOrderedQty > 0 ? min(100, ($totalGRNReceivedQty / $totalOrderedQty) * 100) : 0;
+                                    @endphp
+                                    
+                                    @if($totalOrderedQty > 0)
+                                    <div class="mt-2 pt-2 border-t border-gray-200">
+                                        <div class="flex items-center justify-between">
+                                            <span class="text-xs font-medium text-gray-700">Overall GRN Progress:</span>
+                                            <span class="text-xs {{ $totalGRNReceivedQty > 0 ? 'text-orange-600' : 'text-gray-400' }}">
+                                                {{ number_format($overallGRNProgress, 1) }}%
+                                            </span>
+                                        </div>
+                                        <div class="mt-1 bg-gray-200 rounded-full h-2">
+                                            <div class="bg-orange-500 h-2 rounded-full" style="width: {{ $overallGRNProgress }}%"></div>
+                                        </div>
+                                        <div class="text-xs text-gray-500 mt-1">
+                                            {{ number_format($totalGRNReceivedQty, 0) }}/{{ number_format($totalOrderedQty, 0) }} received
+                                        </div>
+                                    </div>
                                     @endif
                                 </div>
                             </td>

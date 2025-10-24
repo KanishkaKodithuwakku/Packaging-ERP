@@ -46,11 +46,12 @@ class GRNDetail extends Component
     {
         $this->showProcessingModal = true;
         
-        // Initialize partial quantities with received partial quantities
+        // Initialize partial quantities with ACTUALLY RECEIVED quantities only
         $this->partialQuantities = [];
         foreach ($this->grn->items as $item) {
-            // Use the received partial quantity if available, otherwise use full quantity
-            $this->partialQuantities[$item->id] = $item->qty_received_partial > 0 ? $item->qty_received_partial : $item->qty_received;
+            // Only allow processing of quantities that have been actually received
+            // Use qty_received_partial (the actually received amount) as the default
+            $this->partialQuantities[$item->id] = $item->qty_received_partial;
         }
     }
 
@@ -73,6 +74,28 @@ class GRNDetail extends Component
     public function processToStock()
     {
         try {
+            // Filter out items with 0 received quantities
+            $itemsToProcess = $this->partialQuantities;
+            foreach ($itemsToProcess as $itemId => $quantity) {
+                $grnItem = $this->grn->items->find($itemId);
+                if ($grnItem && $grnItem->qty_received_partial <= 0) {
+                    // Remove items with no received quantity from processing
+                    unset($itemsToProcess[$itemId]);
+                    continue;
+                }
+                
+                if ($grnItem && $quantity > $grnItem->qty_received_partial) {
+                    session()->flash('error', "Cannot process {$quantity} units for {$grnItem->description}. Only {$grnItem->qty_received_partial} units have been received.");
+                    return;
+                }
+            }
+            
+            // Check if there are any items to process
+            if (empty($itemsToProcess)) {
+                session()->flash('error', 'No items with received quantities to process.');
+                return;
+            }
+            
             $processingService = app(GRNProcessingService::class);
             
             // Get configuration values
@@ -86,8 +109,8 @@ class GRNDetail extends Component
             ]);
             
             if ($enablePartialProcessing) {
-                // Process with partial quantities
-                $result = $processingService->processGRNToStockPartial($this->grn, $this->partialQuantities, $costingMethod);
+                // Process with partial quantities (only items with received quantities)
+                $result = $processingService->processGRNToStockPartial($this->grn, $itemsToProcess, $costingMethod);
             } else {
                 // Process full quantities
                 $result = $processingService->processGRNToStock($this->grn, $costingMethod);
@@ -122,7 +145,16 @@ class GRNDetail extends Component
 
     public function updatePartialQuantity($itemId, $quantity)
     {
-        $this->partialQuantities[$itemId] = max(0, (float)$quantity);
+        // Find the GRN item to get the maximum allowed quantity
+        $grnItem = $this->grn->items->find($itemId);
+        
+        if ($grnItem) {
+            // Ensure quantity doesn't exceed what's actually received
+            $maxAllowed = $grnItem->qty_received_partial;
+            $this->partialQuantities[$itemId] = max(0, min((float)$quantity, $maxAllowed));
+        } else {
+            $this->partialQuantities[$itemId] = max(0, (float)$quantity);
+        }
     }
 
     // Partial receiving methods

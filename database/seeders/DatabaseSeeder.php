@@ -21,6 +21,12 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $this->call([
+            // Core system seeders (run first)
+            PermissionSeeder::class,
+            RoleSeeder::class,
+            UserSeeder::class,
+            
+            // Business data seeders
             SampleDataSeeder::class,
             QuotationSeeder::class,
             SampleCustomerOrdersSeeder::class,
