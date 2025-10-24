@@ -99,6 +99,11 @@
                                 class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $statusColors[$po->status] ?? 'bg-gray-100 text-gray-800' }}">
                                 {{ ucfirst($po->status) }}
                             </span>
+                            @if($po->status === 'cancelled' && $po->cancellation_reason)
+                                <div class="mt-1 text-xs text-gray-500">
+                                    Reason: {{ Str::limit($po->cancellation_reason, 50) }}
+                                </div>
+                            @endif
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             @php
@@ -154,66 +159,67 @@
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <div class="flex items-center space-x-2">
                                 <button wire:click="viewPurchaseOrder({{ $po->id }})"
-                                    class="text-blue-600 hover:text-blue-900" title="View Purchase Order">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z">
-                                        </path>
-                                    </svg>
+                                    class="text-gray-400 hover:text-gray-600" title="View Purchase Order">
+                                    <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                        <path stroke="currentColor" stroke-width="2" d="M21 12c0 1.2-4.03 6-9 6s-9-4.8-9-6c0-1.2 4.03-6 9-6s9 4.8 9 6Z"/>
+                                        <path stroke="currentColor" stroke-width="2" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
+                                      </svg>
+                                      
                                 </button>
 
                                 @if($po->status === 'draft')
-                                <button wire:click="confirmPurchaseOrder({{ $po->id }})"
-                                    wire:confirm="Confirm this Purchase Order? This will make it ready for production."
-                                    class="text-green-600 hover:text-green-900" title="Confirm Purchase Order">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M5 13l4 4L19 7"></path>
-                                    </svg>
-                                </button>
                                 <button wire:click="openPhoneConfirmModal({{ $po->id }})"
+                                    class="text-green-600 hover:text-green-900" title="Confirm Purchase Order">
+                                    <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 3v4a1 1 0 0 1-1 1H5m4 6 2 2 4-4m4-8v16a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7.914a1 1 0 0 1 .293-.707l3.914-3.914A1 1 0 0 1 9.914 3H18a1 1 0 0 1 1 1Z"/>
+                                      </svg>
+                                      
+                                </button>
+                                {{-- <button wire:click="openPhoneConfirmModal({{ $po->id }})"
                                     class="text-yellow-600 hover:text-yellow-900" title="Confirm (Update Prices)">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z">
                                         </path>
                                     </svg>
-                                </button>
+                                </button> --}}
                                 @endif
 
-                                @if($po->status === 'draft')
-                                <button wire:click="cancelPurchaseOrder({{ $po->id }})"
-                                    wire:confirm="Cancel this Purchase Order?" class="text-red-600 hover:text-red-900"
+                                {{-- @if($po->status === 'draft')
+                                <button wire:click="openCancelConfirmModal({{ $po->id }})"
+                                    class="text-red-600 hover:text-red-900"
                                     title="Cancel Purchase Order">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                             d="M6 18L18 6M6 6l12 12"></path>
                                     </svg>
                                 </button>
-                                @endif
+                                @endif --}}
 
                                 @if($po->status === 'confirmed')
-                                <button wire:click="createGRNFromPurchaseOrder({{ $po->id }})"
-                                    wire:confirm="Create GRN from this Purchase Order?"
-                                    class="text-orange-600 hover:text-orange-900" title="Create GRN">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
-                                        </path>
-                                    </svg>
+                                <button wire:click="openGRNConfirmModal({{ $po->id }})"
+                                    class="{{ $po->grn->isNotEmpty() ? 'text-gray-300 cursor-not-allowed' : 'text-gray-400 hover:text-gray-600' }}" 
+                                    title="{{ $po->grn->isNotEmpty() ? 'GRN Already Created' : 'Create GRN' }}"
+                                    {{ $po->grn->isNotEmpty() ? 'disabled' : '' }}>
+                                    <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M17 20v-5h2v6.988H3V15h1.98v5H17Z"/>
+                                        <path d="m6.84 14.522 8.73 1.825.369-1.755-8.73-1.825-.369 1.755Zm1.155-4.323 8.083 3.764.739-1.617-8.083-3.787-.739 1.64Zm3.372-5.481L10.235 6.08l6.859 5.704 1.132-1.362-6.859-5.704ZM15.57 17H6.655v2h8.915v-2ZM12.861 3.111l6.193 6.415 1.414-1.415-6.43-6.177-1.177 1.177Z"/>
+                                      </svg>
+                                      
                                 </button>
                                 @endif
 
-                                <button wire:click="downloadPurchaseOrder({{ $po->id }})"
-                                    class="text-purple-600 hover:text-purple-900" title="Download PDF">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
-                                        </path>
-                                    </svg>
+                                @if($po->status === 'confirmed' || $po->status === 'draft')
+                                <button wire:click="openCancelConfirmModal({{ $po->id }})"
+                                    class="text-red-600 hover:text-red-900" 
+                                    title="Cancel Purchase Order">
+                                    <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18 17.94 6M18 18 6.06 6"/>
+                                      </svg>
+                                      
                                 </button>
+                                @endif
+
                             </div>
                         </td>
                     </tr>
@@ -582,10 +588,10 @@
 
                     <!-- Notes -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Phone Confirmation Notes</label>
+                        <label class="block text-sm font-medium text-gray-700">Confirmation Notes</label>
                         <textarea wire:model="phoneConfirmForm.notes" rows="3"
                             class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="Any notes from the phone conversation..."></textarea>
+                            placeholder="Any notes from the conversation..."></textarea>
                     </div>
                 </div>
 
@@ -654,6 +660,104 @@
     </div>
     @endif
 
+
+    <!-- GRN Confirmation Modal -->
+    @if($showGRNConfirmModal)
+        <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                <div class="mt-3">
+                    <div class="flex items-center justify-center w-12 h-12 mx-auto bg-orange-100 rounded-full mb-4">
+                        <svg class="w-6 h-6 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                    </div>
+                    
+                    <h3 class="text-lg font-medium text-gray-900 text-center mb-2">
+                        Create GRN from Purchase Order
+                    </h3>
+                    
+                    <div class="text-center text-sm text-gray-600 mb-6">
+                        <p>Are you sure you want to create a GRN from:</p>
+                        <p class="font-semibold text-gray-900 mt-1">
+                            {{ $selectedPurchaseOrder->po_number ?? '' }}
+                        </p>
+                        <p class="text-xs text-gray-500 mt-2">
+                            This will create a Goods Received Note with {{ $selectedPurchaseOrder->items->count() ?? 0 }} items.
+                        </p>
+                    </div>
+                    
+                    <div class="flex space-x-3">
+                        <button wire:click="closeGRNConfirmModal" 
+                                class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-4 rounded-md transition-colors">
+                            Cancel
+                        </button>
+                        <button wire:click="createGRNFromPurchaseOrder({{ $selectedPurchaseOrder->id ?? '' }})" 
+                                class="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 px-4 rounded-md transition-colors">
+                            Create GRN
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    <!-- Cancel Purchase Order Confirmation Modal -->
+    @if($showCancelConfirmModal)
+        <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                <div class="mt-3">
+                    <div class="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full mb-4">
+                        <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                        </svg>
+                    </div>
+                    
+                    <h3 class="text-lg font-medium text-gray-900 text-center mb-2">
+                        Cancel Purchase Order
+                    </h3>
+                    
+                    <div class="text-center text-sm text-gray-600 mb-6">
+                        <p>Are you sure you want to cancel:</p>
+                        <p class="font-semibold text-gray-900 mt-1">
+                            {{ $selectedPurchaseOrder->po_number ?? '' }}
+                        </p>
+                        <div class="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                            <p class="text-xs text-yellow-800 font-medium">⚠️ Important:</p>
+                            <p class="text-xs text-yellow-700 mt-1">
+                                @if($selectedPurchaseOrder && $selectedPurchaseOrder->grn->isNotEmpty())
+                                    This will cancel the GRN and reverse all received quantities from inventory.
+                                @else
+                                    This will cancel the purchase order and cannot be undone.
+                                @endif
+                            </p>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <label for="cancellation_reason" class="block text-sm font-medium text-gray-700 mb-2">
+                                Cancellation Reason (Optional)
+                            </label>
+                            <textarea wire:model="cancellationReason" 
+                                    id="cancellation_reason"
+                                    rows="3"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                    placeholder="Enter reason for cancellation..."></textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="flex space-x-3">
+                        <button wire:click="closeCancelConfirmModal" 
+                                class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-4 rounded-md transition-colors">
+                            Keep Order
+                        </button>
+                        <button wire:click="cancelPurchaseOrder({{ $selectedPurchaseOrder->id ?? '' }})" 
+                                class="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-md transition-colors">
+                            Cancel Order
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
 
     @script
     <script>

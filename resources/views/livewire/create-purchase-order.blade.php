@@ -245,6 +245,60 @@
                                                         @else
                                                             <div class="text-orange-600 font-medium mb-2">No items available!</div>
                                                             <p>The selected job orders don't have any boxes or dividers with remaining quantities.</p>
+                                                            <div class="mt-4 text-xs text-gray-500 bg-yellow-50 p-3 rounded-md">
+                                                                <strong>Possible reasons:</strong><br>
+                                                                • All items have already been purchased<br>
+                                                                • Items have been fully allocated to existing purchase orders<br>
+                                                                • Job orders don't have any boxes or dividers<br><br>
+                                                                <strong>Solutions:</strong><br>
+                                                                • Select different job orders with available items<br>
+                                                                • Create new job orders for the same items<br>
+                                                                • Check existing purchase orders to see what's been purchased<br>
+                                                                • Modify existing job orders to add more quantities
+                                                            </div>
+                                                            
+                                                            @if(!empty($purchasedItemsDetails))
+                                                                <div class="mt-4 bg-blue-50 p-4 rounded-md">
+                                                                    <h4 class="text-sm font-medium text-blue-900 mb-2">📋 Purchased Items Details:</h4>
+                                                                    @foreach($purchasedItemsDetails as $jobOrderDetail)
+                                                                        <div class="mb-3">
+                                                                            <h5 class="text-xs font-semibold text-blue-800">Job Order: {{ $jobOrderDetail['job_order_number'] }}</h5>
+                                                                            @foreach($jobOrderDetail['items'] as $item)
+                                                                                <div class="ml-4 mt-2 text-xs text-blue-700">
+                                                                                    <div class="font-medium">{{ $item['description'] }}</div>
+                                                                                    <div class="text-gray-600">
+                                                                                        Ordered: {{ number_format($item['order_qty']) }} | 
+                                                                                        Purchased: {{ number_format($item['purchased_qty']) }} | 
+                                                                                        Remaining: {{ number_format($item['remaining_qty']) }}
+                                                                                    </div>
+                                                                                    @if(!empty($item['purchase_orders']))
+                                                                                        <div class="mt-1">
+                                                                                            <span class="text-gray-500">Purchased via:</span>
+                                                                                            @foreach($item['purchase_orders'] as $po)
+                                                                                                <span class="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs mr-1">
+                                                                                                    {{ $po['po_number'] }} ({{ number_format($po['quantity']) }})
+                                                                                                </span>
+                                                                                            @endforeach
+                                                                                        </div>
+                                                                                    @endif
+                                                                                </div>
+                                                                            @endforeach
+                                                                        </div>
+                                                                    @endforeach
+                                                                </div>
+                                                            @endif
+                                                            
+                                                            <!-- Development/Testing Only - Remove in Production -->
+                        {{-- <div class="mt-4 bg-red-50 p-3 rounded-md border border-red-200">
+                            <h4 class="text-sm font-medium text-red-900 mb-2">⚠️ Development Tools:</h4>
+                            <p class="text-xs text-red-700 mb-2">For testing purposes only - this will reset purchase history:</p>
+                            <p class="text-xs text-red-600 mb-2">Current Currency: {{ $currentSupplierCurrency }} ({{ $this->getCurrencySymbol() }})</p>
+                            <button wire:click="resetPurchaseHistory" 
+                                    class="bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1 rounded"
+                                    onclick="return confirm('⚠️ WARNING: This will delete all purchase order items and reset quantities. This is for testing only. Are you sure?')">
+                                Reset Purchase History
+                            </button>
+                        </div> --}}
                                                         @endif
                                                     </td>
                                                 </tr>
@@ -282,7 +336,10 @@
                                                            wire:change="updateSelectedQuantity('{{ $item['id'] }}', $event.target.value)"
                                                            min="1" 
                                                            max="{{ $item['available_qty'] }}"
-                                                           class="w-20 px-2 py-1 border border-gray-300 rounded text-sm">
+                                                           step="1"
+                                                           class="w-20 px-2 py-1 border border-gray-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500 {{ $item['selected_qty'] > $item['available_qty'] ? 'border-red-500 bg-red-50' : '' }}"
+                                                           title="Available: {{ $item['available_qty'] }}"
+                                                           oninput="if(this.value > {{ $item['available_qty'] }}) { this.value = {{ $item['available_qty'] }}; } if(this.value < 1) { this.value = 1; }">
                                                 </td>
                                                 <td class="px-4 py-2 text-sm">
                                                     <button wire:click="removeItem('{{ $item['id'] }}')"
@@ -354,7 +411,7 @@
                                         </div>
                                     </div>
                                     <div class="text-right">
-                                        <p class="text-sm font-medium text-gray-900">${{ number_format($totalValue, 2) }}</p>
+                                        <p class="text-sm font-medium text-gray-900">{{ $this->getCurrencySymbol() }}{{ number_format($totalValue, 2) }}</p>
                                         <p class="text-xs text-gray-500">Total Value</p>
                                     </div>
                                 </div>
@@ -439,10 +496,10 @@
                                     <div class="flex justify-between items-center text-sm border-b border-gray-100 pb-2">
                                         <div>
                                             <div class="font-medium">{{ $item['description'] }}</div>
-                                            <div class="text-gray-600">Qty: {{ $item['selected_qty'] }} | ${{ number_format($item['unit_cost'], 2) }} each</div>
+                                            <div class="text-gray-600">Qty: {{ $item['selected_qty'] }} | {{ $this->getCurrencySymbol() }}{{ number_format($item['unit_cost'], 2) }} each</div>
                                         </div>
                                         <div class="text-right">
-                                            <div class="font-medium">${{ number_format($item['selected_qty'] * $item['unit_cost'], 2) }}</div>
+                                            <div class="font-medium">{{ $this->getCurrencySymbol() }}{{ number_format($item['selected_qty'] * $item['unit_cost'], 2) }}</div>
                                         </div>
                                     </div>
                                 @endforeach
@@ -450,13 +507,40 @@
                         </div>
                     </div>
                     
+                    @php
+                        $validation = $this->validateQuantities();
+                    @endphp
+                    
+                    @if(!empty($validation['errors']))
+                        <div class="mt-4 bg-red-50 border border-red-200 rounded-md p-4">
+                            <h4 class="text-sm font-medium text-red-800 mb-2">⚠️ Validation Errors:</h4>
+                            <ul class="text-sm text-red-700 space-y-1">
+                                @foreach($validation['errors'] as $error)
+                                    <li>• {{ $error }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
+                    
+                    @if(!empty($validation['warnings']))
+                        <div class="mt-4 bg-yellow-50 border border-yellow-200 rounded-md p-4">
+                            <h4 class="text-sm font-medium text-yellow-800 mb-2">ℹ️ Information:</h4>
+                            <ul class="text-sm text-yellow-700 space-y-1">
+                                @foreach($validation['warnings'] as $warning)
+                                    <li>• {{ $warning }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
+                    
                     <div class="mt-6 flex justify-end space-x-4">
                         <button wire:click="goBack" 
                                 class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md">
                             Back
                         </button>
                         <button wire:click="createPurchaseOrder" 
-                                class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-md">
+                                class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-md {{ !$validation['is_valid'] ? 'opacity-50 cursor-not-allowed' : '' }}"
+                                {{ !$validation['is_valid'] ? 'disabled' : '' }}>
                             Create Purchase Order
                         </button>
                     </div>

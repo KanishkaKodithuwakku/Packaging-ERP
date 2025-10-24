@@ -13,6 +13,16 @@ class InventoryDashboard extends Component
     public $inventorySummary = [];
     public $selectedCategory = '';
     public $selectedWarehouse = '';
+    
+    // Production Order Modal
+    public $showProductionOrderModal = false;
+    public $selectedTransaction = null;
+    public $productionOrderForm = [
+        'production_order_number' => '',
+        'date' => '',
+        'quantity' => '',
+        'notes' => ''
+    ];
 
     public function mount()
     {
@@ -70,10 +80,122 @@ class InventoryDashboard extends Component
 
     public function getRecentTransactions()
     {
-        return \App\Models\InventoryTransaction::with('inventory')
+        return \App\Models\InventoryTransaction::with(['inventory', 'grn.purchaseOrder.jobOrder'])
             ->orderBy('created_at', 'desc')
             ->limit(10)
             ->get();
+    }
+
+    public function openProductionOrderModal($transactionId)
+    {
+        $this->selectedTransaction = \App\Models\InventoryTransaction::with(['grn.purchaseOrder.jobOrder.supplier', 'grn.purchaseOrder.jobOrder.customer'])
+            ->find($transactionId);
+        
+        if ($this->selectedTransaction) {
+            $this->productionOrderForm = [
+                'production_order_number' => \App\Models\ProductionOrder::generateProductionOrderNumber(),
+                'date' => now()->format('Y-m-d'),
+                'quantity' => $this->selectedTransaction->qty,
+                'notes' => "Production order created from inventory transaction: {$this->selectedTransaction->lot_code}"
+            ];
+            $this->showProductionOrderModal = true;
+        }
+    }
+
+    public function closeProductionOrderModal()
+    {
+        $this->showProductionOrderModal = false;
+        $this->selectedTransaction = null;
+        $this->productionOrderForm = [
+            'production_order_number' => '',
+            'date' => '',
+            'quantity' => '',
+            'notes' => ''
+        ];
+    }
+
+    public function createProductionOrder()
+    {
+        try {
+            if (!$this->selectedTransaction) {
+                session()->flash('error', 'No transaction selected.');
+                return;
+            }
+
+            $jobOrder = $this->selectedTransaction->getJobOrder();
+            if (!$jobOrder) {
+                session()->flash('error', 'No job order found for this transaction.');
+                return;
+            }
+
+            // Validate form
+            if (empty($this->productionOrderForm['production_order_number']) || empty($this->productionOrderForm['date'])) {
+                session()->flash('error', 'Please fill in all required fields.');
+                return;
+            }
+
+            if ($this->productionOrderForm['quantity'] > $this->selectedTransaction->qty) {
+                session()->flash('error', 'Production quantity cannot exceed available quantity.');
+                return;
+            }
+
+            // Create production order
+            $productionOrder = \App\Models\ProductionOrder::create([
+                'production_order_number' => $this->productionOrderForm['production_order_number'],
+                'job_order_id' => $jobOrder->id,
+                'supplier_id' => $jobOrder->supplier_id,
+                'date' => $this->productionOrderForm['date'],
+                'status' => 'pending',
+                'notes' => $this->productionOrderForm['notes'],
+            ]);
+
+            // Find the corresponding job order item for this inventory transaction
+            $jobOrderItem = null;
+            $itemType = 'box';
+            
+            // Try to find the job order item that matches this inventory transaction
+            if ($this->selectedTransaction->item_code) {
+                // Look for matching job order boxes or dividers
+                $jobOrderBox = $jobOrder->boxes()->where('id', $this->selectedTransaction->item_code)->first();
+                if ($jobOrderBox) {
+                    $jobOrderItem = $jobOrderBox;
+                    $itemType = 'box';
+                } else {
+                    $jobOrderDivider = $jobOrder->dividers()->where('id', $this->selectedTransaction->item_code)->first();
+                    if ($jobOrderDivider) {
+                        $jobOrderItem = $jobOrderDivider;
+                        $itemType = 'divider';
+                    }
+                }
+            }
+            
+            // If no specific item found, use the first available item from the job order
+            if (!$jobOrderItem) {
+                $jobOrderItem = $jobOrder->boxes()->first();
+                if (!$jobOrderItem) {
+                    $jobOrderItem = $jobOrder->dividers()->first();
+                    $itemType = 'divider';
+                }
+            }
+            
+            if ($jobOrderItem) {
+                // Create production order item
+                \App\Models\ProductionOrderItem::create([
+                    'production_order_id' => $productionOrder->id,
+                    'item_type' => $itemType,
+                    'item_id' => $jobOrderItem->id,
+                    'quantity' => $this->productionOrderForm['quantity'],
+                    'completed_quantity' => 0,
+                    'status' => 'pending',
+                ]);
+            }
+
+            session()->flash('success', "Production order {$productionOrder->production_order_number} created successfully!");
+            $this->closeProductionOrderModal();
+
+        } catch (\Exception $e) {
+            session()->flash('error', 'Error creating production order: ' . $e->getMessage());
+        }
     }
 
     public function render()

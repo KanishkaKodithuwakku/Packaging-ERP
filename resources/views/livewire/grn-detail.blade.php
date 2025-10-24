@@ -179,7 +179,7 @@
             <!-- Processing Modal -->
             @if($showProcessingModal)
             <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-                <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                <div class="relative top-20 mx-auto p-5 border w-full max-w-4xl shadow-lg rounded-md bg-white">
                 <div class="mt-3">
                     <h3 class="text-lg font-medium text-gray-900 mb-4">Process GRN to Stock</h3>
                     
@@ -188,38 +188,124 @@
                         $costingMethod = \App\Models\SystemConfiguration::getValue('grn_default_costing_method', 'FIFO');
                     @endphp
                     
-                    <div class="mb-4">
-                        <h4 class="text-sm font-medium text-gray-700 mb-2">Processing Configuration</h4>
-                        <div class="text-sm text-gray-600 bg-gray-50 p-3 rounded">
-                            <p><strong>Costing Method:</strong> {{ $costingMethod }}</p>
-                            <p><strong>Partial Processing:</strong> {{ $enablePartialProcessing ? 'Enabled' : 'Disabled' }}</p>
-                            <p class="text-xs text-gray-500 mt-1">These settings are configured in the master configuration. <a href="{{ route('configuration-management') }}" class="text-blue-600 hover:text-blue-800">Change settings</a></p>
+                    <div class="mb-6">
+                        <h4 class="text-sm font-medium text-gray-700 mb-3">Processing Configuration</h4>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="bg-gray-50 p-4 rounded-lg border">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-900">Costing Method</p>
+                                        <p class="text-lg font-semibold text-blue-600">{{ $costingMethod }}</p>
+                                    </div>
+                                    <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                        <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="bg-gray-50 p-4 rounded-lg border">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <p class="text-sm font-medium text-gray-900">Partial Processing</p>
+                                        <p class="text-lg font-semibold {{ $enablePartialProcessing ? 'text-green-600' : 'text-red-600' }}">
+                                            {{ $enablePartialProcessing ? 'Enabled' : 'Disabled' }}
+                                        </p>
+                                    </div>
+                                    <div class="w-8 h-8 {{ $enablePartialProcessing ? 'bg-green-100' : 'bg-red-100' }} rounded-full flex items-center justify-center">
+                                        <svg class="w-4 h-4 {{ $enablePartialProcessing ? 'text-green-600' : 'text-red-600' }}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
+                        <p class="text-xs text-gray-500 mt-3 text-center">These settings are configured in the master configuration. <a href="{{ route('configuration-management') }}" class="text-blue-600 hover:text-blue-800 underline">Change settings</a></p>
                     </div>
 
                     @if($enablePartialProcessing)
                     <div class="mb-4">
-                        <h4 class="text-sm font-medium text-gray-700 mb-2">Partial Quantities</h4>
-                        <div class="space-y-2 max-h-40 overflow-y-auto">
-                            @foreach($grn->items as $item)
-                            <div class="flex items-center justify-between p-2 bg-gray-50 rounded">
-                                <div class="flex-1">
-                                    <p class="text-sm font-medium">{{ $item->material_code }}</p>
-                                    <p class="text-xs text-gray-500">{{ $item->description }}</p>
-                                    <p class="text-xs text-gray-500">Expected: {{ $item->qty_expected }} {{ $item->uom }}</p>
-                                    <p class="text-xs text-gray-500">Received: {{ $item->qty_received_partial }} {{ $item->uom }}</p>
-                                    <p class="text-xs text-gray-500">Pending: {{ $item->qty_pending }} {{ $item->uom }}</p>
-                                </div>
-                                <div class="ml-4">
-                                    <input type="number" 
-                                           wire:model="partialQuantities.{{ $item->id }}"
-                                           wire:change="updatePartialQuantity({{ $item->id }}, $event.target.value)"
-                                           min="0" 
-                                           max="{{ $item->qty_received_partial }}"
-                                           step="0.01"
-                                           class="w-20 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500">
-                                </div>
+                        <div class="flex justify-between items-center mb-2">
+                            <h4 class="text-sm font-medium text-gray-700">Partial Quantities</h4>
+                            <div class="text-xs text-gray-500">
+                                @php
+                                    $receivedItems = $grn->items->where('qty_received_partial', '>', 0);
+                                    $notReceivedItems = $grn->items->where('qty_received_partial', '=', 0);
+                                @endphp
+                                <span class="text-green-600">{{ $receivedItems->count() }} received</span>
+                                @if($notReceivedItems->count() > 0)
+                                    <span class="text-gray-400">• {{ $notReceivedItems->count() }} not received</span>
+                                @endif
                             </div>
+                        </div>
+                        <div class="space-y-3 max-h-60 overflow-y-auto">
+                            @foreach($grn->items as $item)
+                                @if($item->qty_received_partial > 0)
+                                <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg border">
+                                    <div class="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                        <div>
+                                            <p class="text-sm font-medium text-gray-900">{{ $item->material_code }}</p>
+                                            <p class="text-xs text-gray-600 mt-1">{{ $item->description }}</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-xs text-gray-500">Expected</p>
+                                            <p class="text-sm font-medium">{{ number_format($item->qty_expected, 4) }} {{ $item->uom }}</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-xs text-gray-500">Received</p>
+                                            <p class="text-sm font-medium text-green-600">{{ number_format($item->qty_received_partial, 4) }} {{ $item->uom }}</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-xs text-gray-500">Pending</p>
+                                            <p class="text-sm font-medium text-orange-600">{{ number_format($item->qty_pending, 4) }} {{ $item->uom }}</p>
+                                        </div>
+                                    </div>
+                                    <div class="ml-6 flex items-center space-x-2">
+                                        <label class="text-sm font-medium text-gray-700">Process:</label>
+                                        <input type="number" 
+                                               wire:model="partialQuantities.{{ $item->id }}"
+                                               wire:change="updatePartialQuantity({{ $item->id }}, $event.target.value)"
+                                               min="0" 
+                                               max="{{ $item->qty_received_partial }}"
+                                               step="0.01"
+                                               class="w-24 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 {{ $partialQuantities[$item->id] > $item->qty_received_partial ? 'border-red-500 bg-red-50' : '' }}"
+                                               title="Max: {{ $item->qty_received_partial }} {{ $item->uom }} (actually received)"
+                                               oninput="if(this.value > {{ $item->qty_received_partial }}) { this.value = {{ $item->qty_received_partial }}; }">
+                                        <span class="text-xs text-gray-500">{{ $item->uom }}</span>
+                                    </div>
+                                </div>
+                                @else
+                                <div class="flex items-center justify-between p-4 bg-gray-100 rounded-lg border border-gray-300 opacity-60">
+                                    <div class="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                        <div>
+                                            <p class="text-sm font-medium text-gray-500">{{ $item->material_code }}</p>
+                                            <p class="text-xs text-gray-400 mt-1">{{ $item->description }}</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-xs text-gray-400">Expected</p>
+                                            <p class="text-sm font-medium text-gray-500">{{ number_format($item->qty_expected, 4) }} {{ $item->uom }}</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-xs text-gray-400">Received</p>
+                                            <p class="text-sm font-medium text-gray-500">{{ number_format($item->qty_received_partial, 4) }} {{ $item->uom }}</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-xs text-gray-400">Pending</p>
+                                            <p class="text-sm font-medium text-gray-500">{{ number_format($item->qty_pending, 4) }} {{ $item->uom }}</p>
+                                        </div>
+                                    </div>
+                                    <div class="ml-6 flex items-center space-x-2">
+                                        <label class="text-sm font-medium text-gray-500">Process:</label>
+                                        <input type="number" 
+                                               value="0"
+                                               disabled
+                                               class="w-24 px-3 py-2 text-sm border border-gray-300 rounded-md bg-gray-200 text-gray-500 cursor-not-allowed"
+                                               title="No quantity received - cannot process">
+                                        <span class="text-xs text-gray-400">{{ $item->uom }}</span>
+                                        <span class="text-xs text-red-500 font-medium">Not Received</span>
+                                    </div>
+                                </div>
+                                @endif
                             @endforeach
                         </div>
                     </div>
@@ -234,15 +320,26 @@
                     </div>
                     @endif
 
-                    <div class="flex justify-end space-x-3">
-                        <button wire:click="closeProcessingModal" 
-                                class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400">
-                            Cancel
-                        </button>
-                        <button wire:click="processToStock" 
-                                class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
-                            Process to Stock
-                        </button>
+                    <div class="flex justify-between items-center pt-4 border-t border-gray-200">
+                        <div class="text-sm text-gray-500">
+                            <span class="font-medium">{{ $grn->items->where('qty_received_partial', '>', 0)->count() }}</span> items to process
+                            @if($grn->items->where('qty_received_partial', '=', 0)->count() > 0)
+                                <span class="text-gray-400">({{ $grn->items->where('qty_received_partial', '=', 0)->count() }} not received)</span>
+                            @endif
+                        </div>
+                        <div class="flex space-x-3">
+                            <button wire:click="closeProcessingModal" 
+                                    class="px-6 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors">
+                                Cancel
+                            </button>
+                            <button wire:click="processToStock" 
+                                    class="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                Process to Stock
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -253,7 +350,7 @@
     <!-- Partial Receiving Modal -->
     @if($showPartialReceivingModal)
     <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+        <div class="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
             <div class="mt-3">
                 <h3 class="text-lg font-medium text-gray-900 mb-4">Add Partial Receipt</h3>
                 
