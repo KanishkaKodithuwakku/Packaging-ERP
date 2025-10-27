@@ -107,13 +107,32 @@
                                     <span class="text-sm font-medium text-gray-900">{{ $transaction->qty }} {{ $transaction->uom }}</span>
                                     <p class="text-xs text-gray-500 mt-1">{{ $transaction->txn_date }}</p>
                                     @if($transaction->getJobOrder() && $transaction->txn_type === 'receipt')
-                                        <button wire:click="openProductionOrderModal({{ $transaction->id }})" 
-                                                class="mt-2 inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors">
-                                            <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                                            </svg>
-                                            Start Production
-                                        </button>
+                                        @php
+                                            // Check if a production order already exists for this transaction (by lot code in notes)
+                                            $existingProductionOrder = \App\Models\ProductionOrder::where('job_order_id', $transaction->getJobOrder()->id)
+                                                ->where('notes', 'like', '%' . $transaction->lot_code . '%')
+                                                ->first();
+                                            $hasProductionOrder = $existingProductionOrder !== null;
+                                        @endphp
+                                        
+                                        @if(!$hasProductionOrder)
+                                            <button wire:click="openProductionOrderModal({{ $transaction->id }})" 
+                                                    class="mt-2 inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors">
+                                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                                </svg>
+                                                Start Production
+                                            </button>
+                                        @else
+                                            <a href="{{ route('production-order-detail', $existingProductionOrder->id) }}" 
+                                               wire:navigate
+                                               class="mt-2 inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md text-blue-600 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                </svg>
+                                                In Production
+                                            </a>
+                                        @endif
                                     @endif
                                 </div>
                             </div>

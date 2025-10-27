@@ -576,10 +576,10 @@ class JobOrderDetail extends Component
             // Update job order status to confirmed
             $this->jobOrder->update(['status' => 'confirmed']);
             
-            // Reload the job order to get updated data
-            $this->loadJobOrder();
-            
             session()->flash('success', 'Job order has been confirmed successfully!');
+            
+            // Redirect to job order list using Livewire's navigation
+            return $this->redirect(route('job-order-management'), navigate: true);
             
         } catch (\Exception $e) {
             \Log::error('Error confirming job order: ' . $e->getMessage());

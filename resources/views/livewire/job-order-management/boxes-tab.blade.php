@@ -153,8 +153,7 @@
                             class="w-full px-3 py-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-white">
                         <option value="">Select...</option>
                         <option value="WHITE">WHITE</option>
-                        <option value="KRAFT">KRAFT</option>
-                        <option value="TEST">TEST</option>
+                        <option value="BROWN">BROWN</option>
                     </select>
                     @error('boxForm.top_liner') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                 </div>
@@ -175,11 +174,9 @@
                     <select wire:model="boxForm.flute" 
                             class="w-full px-3 py-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 bg-white">
                         <option value="">Select...</option>
-                        <option value="B">B</option>
-                        <option value="C">C</option>
-                        <option value="E">E</option>
-                        <option value="BC">BC</option>
-                        <option value="EB">EB</option>
+                        <option value="B">B FLUTE</option>
+                        <option value="C">C FLUTE</option>
+                        <option value="E">B/C FLUTE</option>
                     </select>
                     @error('boxForm.flute') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
                 </div>

@@ -5,6 +5,7 @@ namespace App\Livewire;
 use App\Models\Inventory;
 use App\Services\InventoryService;
 use Livewire\Component;
+use Illuminate\Support\Facades\DB;
 
 class InventoryDashboard extends Component
 {
@@ -136,6 +137,17 @@ class InventoryDashboard extends Component
 
             if ($this->productionOrderForm['quantity'] > $this->selectedTransaction->qty) {
                 session()->flash('error', 'Production quantity cannot exceed available quantity.');
+                return;
+            }
+
+            // Check if a production order already exists for this transaction (by lot code)
+            // Check if any production order has the same lot code in its notes
+            $existingProductionOrder = \App\Models\ProductionOrder::where('job_order_id', $jobOrder->id)
+                ->where('notes', 'like', '%' . $this->selectedTransaction->lot_code . '%')
+                ->exists();
+            
+            if ($existingProductionOrder) {
+                session()->flash('error', 'A production order already exists for this inventory transaction (Lot: ' . $this->selectedTransaction->lot_code . '). Cannot create duplicate production orders.');
                 return;
             }
 

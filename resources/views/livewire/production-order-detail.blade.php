@@ -68,26 +68,9 @@
                     </svg>
                     Save Changes
                 </button>
-                
-                <!-- GRN Generation Button - Also visible in edit mode -->
-                <button wire:click="openGRNModal"
-                    class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                    </svg>
-                    Generate GRN
-                </button>
                 @else
                 <!-- Status action buttons -->
-                @if($productionOrder->status === 'pending')
-                <button wire:click="startProduction" @disabled(!$hasAnyGRN)
-                    class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                    Start Production
-                </button>
-                @elseif($productionOrder->status === 'in_production')
+                @if($productionOrder->status === 'in_production')
                 <button wire:click="completeProduction"
                     class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -105,16 +88,6 @@
                         </path>
                     </svg>
                     Edit Production Order
-                </button>
-                
-                <!-- GRN Generation Button - Always visible -->
-                <button wire:click="openGRNModal"
-                    class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700"
-                    title="Generate GRN from Production Order">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                    </svg>
-                    Generate GRN
                 </button>
                 
                 <button wire:click="showPrintPreview"

@@ -26,6 +26,7 @@ class PurchaseOrderManagement extends Component
     public $selectedJobOrder = null;
     public $form = [];
     public $phoneConfirmForm = [];
+    public $displayFormat = 'reel_cuts';
 
     protected $rules = [
         'form.supplier_id' => 'required',
