@@ -101,7 +101,7 @@
             </div>
             <div>
                 <label class="text-xs text-gray-500">Total Value</label>
-                <div class="font-medium">${{ number_format($grn->total_value ?? 0, 2) }}</div>
+                <div class="font-medium">{{ number_format($grn->total_value ?? 0, 2) }}</div>
             </div>
             @endif
         </div>
@@ -261,17 +261,26 @@
                                         </div>
                                     </div>
                                     <div class="ml-6 flex items-center space-x-2">
+                                        @php
+                                            $availableForProcessing = $item->qty_received_partial - ($item->qty_processed ?? 0);
+                                        @endphp
                                         <label class="text-sm font-medium text-gray-700">Process:</label>
                                         <input type="number" 
                                                wire:model="partialQuantities.{{ $item->id }}"
                                                wire:change="updatePartialQuantity({{ $item->id }}, $event.target.value)"
                                                min="0" 
-                                               max="{{ $item->qty_received_partial }}"
+                                               max="{{ $availableForProcessing }}"
                                                step="0.01"
-                                               class="w-24 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 {{ $partialQuantities[$item->id] > $item->qty_received_partial ? 'border-red-500 bg-red-50' : '' }}"
-                                               title="Max: {{ $item->qty_received_partial }} {{ $item->uom }} (actually received)"
-                                               oninput="if(this.value > {{ $item->qty_received_partial }}) { this.value = {{ $item->qty_received_partial }}; }">
+                                               class="w-24 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 {{ $partialQuantities[$item->id] > $availableForProcessing ? 'border-red-500 bg-red-50' : '' }}"
+                                               title="Max: {{ $availableForProcessing }} {{ $item->uom }} (available for processing)"
+                                               oninput="if(this.value > {{ $availableForProcessing }}) { this.value = {{ $availableForProcessing }}; }">
                                         <span class="text-xs text-gray-500">{{ $item->uom }}</span>
+                                        <div class="text-xs text-gray-600">
+                                            @if(($item->qty_processed ?? 0) > 0)
+                                                <div class="text-blue-600 font-medium">({{ $item->qty_processed }} processed)</div>
+                                            @endif
+                                            <div class="text-green-600 font-medium">({{ $availableForProcessing }} available)</div>
+                                        </div>
                                     </div>
                                 </div>
                                 @else

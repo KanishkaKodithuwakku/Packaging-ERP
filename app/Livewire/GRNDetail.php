@@ -46,12 +46,13 @@ class GRNDetail extends Component
     {
         $this->showProcessingModal = true;
         
-        // Initialize partial quantities with ACTUALLY RECEIVED quantities only
+        // Initialize partial quantities with available quantities for processing
         $this->partialQuantities = [];
         foreach ($this->grn->items as $item) {
-            // Only allow processing of quantities that have been actually received
-            // Use qty_received_partial (the actually received amount) as the default
-            $this->partialQuantities[$item->id] = $item->qty_received_partial;
+            // Only allow processing of quantities that are available for processing
+            // Available = Received - Already Processed
+            $availableForProcessing = $item->qty_received_partial - ($item->qty_processed ?? 0);
+            $this->partialQuantities[$item->id] = max(0, $availableForProcessing);
         }
     }
 
@@ -84,8 +85,10 @@ class GRNDetail extends Component
                     continue;
                 }
                 
-                if ($grnItem && $quantity > $grnItem->qty_received_partial) {
-                    session()->flash('error', "Cannot process {$quantity} units for {$grnItem->description}. Only {$grnItem->qty_received_partial} units have been received.");
+                // Check against remaining available quantity (received - processed)
+                $availableForProcessing = $grnItem->qty_received_partial - ($grnItem->qty_processed ?? 0);
+                if ($grnItem && $quantity > $availableForProcessing) {
+                    session()->flash('error', "Cannot process {$quantity} units for {$grnItem->description}. Only {$availableForProcessing} units are available for processing (Received: {$grnItem->qty_received_partial}, Already Processed: " . ($grnItem->qty_processed ?? 0) . ").");
                     return;
                 }
             }
@@ -149,8 +152,9 @@ class GRNDetail extends Component
         $grnItem = $this->grn->items->find($itemId);
         
         if ($grnItem) {
-            // Ensure quantity doesn't exceed what's actually received
-            $maxAllowed = $grnItem->qty_received_partial;
+            // Ensure quantity doesn't exceed what's available for processing (received - processed)
+            $availableForProcessing = $grnItem->qty_received_partial - ($grnItem->qty_processed ?? 0);
+            $maxAllowed = max(0, $availableForProcessing);
             $this->partialQuantities[$itemId] = max(0, min((float)$quantity, $maxAllowed));
         } else {
             $this->partialQuantities[$itemId] = max(0, (float)$quantity);
