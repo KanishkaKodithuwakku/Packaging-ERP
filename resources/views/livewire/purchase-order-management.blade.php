@@ -357,6 +357,26 @@
                     </button>
                 </div>
 
+                <!-- Display Format Selection -->
+                <div class="mt-6">
+                    <h4 class="text-md font-medium text-gray-900 mb-4">Choose Display Format:</h4>
+                    <div class="flex space-x-4 mb-4">
+                        <label class="flex items-center cursor-pointer">
+                            <input type="radio" wire:model.live="displayFormat" value="reel_cuts" class="mr-2">
+                            <span class="text-sm text-gray-700">Reel and Cuts</span>
+                        </label>
+                        <label class="flex items-center cursor-pointer">
+                            <input type="radio" wire:model.live="displayFormat" value="dimensions" class="mr-2">
+                            <span class="text-sm text-gray-700">Dimensions</span>
+                        </label>
+                    </div>
+                    
+                    <!-- Format indicator -->
+                    <div class="mb-4 p-2 bg-blue-50 border border-blue-200 rounded text-sm text-blue-700">
+                        <strong>Current Format:</strong> {{ $displayFormat === 'reel_cuts' ? 'Reel and Cuts' : 'Dimensions' }}
+                    </div>
+                </div>
+
                 <!-- Modal Body -->
                 <div class="mt-6 space-y-6">
                     <!-- PO Header Information -->
@@ -425,12 +445,24 @@
                                         <th
                                             class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                             Description</th>
+                                        @if($displayFormat === 'reel_cuts')
                                         <th
                                             class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                             Reel Size</th>
                                         <th
                                             class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                             Cut Size</th>
+                                        @else
+                                        <th
+                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Length</th>
+                                        <th
+                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Width</th>
+                                        <th
+                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Height</th>
+                                        @endif
                                         <th
                                             class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                             Quantity</th>
@@ -452,12 +484,49 @@
                                             </span>
                                         </td>
                                         <td class="px-6 py-4 text-sm text-gray-900">{{ $item->description }}</td>
+                                        @if($displayFormat === 'reel_cuts')
+                                        @php
+                                            // Get reel_size and cut_size from item
+                                            $reelSize = $item->reel_size;
+                                            $cutSize = $item->cut_size;
+                                            
+                                            // If values are not stored, try to calculate from the related box
+                                            if (($reelSize === null || $cutSize === null || $reelSize == 0 || $cutSize == 0) && $item->item_type === 'box' && $selectedPurchaseOrder->jobOrder) {
+                                                $box = $selectedPurchaseOrder->jobOrder->boxes->firstWhere('id', $item->item_id);
+                                                if ($box) {
+                                                    // Use the calculated values from the box
+                                                    $reelSize = $box['reel_size'] ?? 0;
+                                                    $cutSize = $box['cut_size'] ?? 0;
+                                                }
+                                            }
+                                        @endphp
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {{ $item->reel_size ? $item->reel_size . '"' : '-' }}
+                                            {{ $reelSize && $reelSize > 0 ? number_format($reelSize, 2) . '"' : '-' }}
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {{ $item->cut_size ? $item->cut_size . '"' : '-' }}
+                                            {{ $cutSize && $cutSize > 0 ? number_format($cutSize, 2) . '"' : '-' }}
                                         </td>
+                                        @else
+                                        @php
+                                            // Try to extract dimensions from description for boxes
+                                            $length = '-';
+                                            $width = '-';
+                                            $height = '-';
+                                            
+                                            if ($item->item_type === 'box' && $selectedPurchaseOrder->jobOrder) {
+                                                // Try to find the box in job order
+                                                $box = $selectedPurchaseOrder->jobOrder->boxes->firstWhere('id', $item->item_id);
+                                                if ($box) {
+                                                    $length = number_format($box['length'], 2) . ' ' . ($box['unit'] ?? 'CM');
+                                                    $width = number_format($box['width'], 2) . ' ' . ($box['unit'] ?? 'CM');
+                                                    $height = number_format($box['height'], 2) . ' ' . ($box['unit'] ?? 'CM');
+                                                }
+                                            }
+                                        @endphp
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $length }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $width }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $height }}</td>
+                                        @endif
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $item->quantity
                                             }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Rs. {{
@@ -467,7 +536,7 @@
                                     </tr>
                                     @empty
                                     <tr>
-                                        <td colspan="7" class="px-6 py-12 text-center text-gray-500">
+                                        <td colspan="{{ $displayFormat === 'reel_cuts' ? 7 : 9 }}" class="px-6 py-12 text-center text-gray-500">
                                             No items found
                                         </td>
                                     </tr>
