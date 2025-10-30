@@ -4,24 +4,37 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class DeliveryNote extends Model
 {
     protected $fillable = [
-        'customer_order_id',
-        'dn_no',
-        'fg_code',
-        'qty_delivered',
-        'delivery_date',
+        'dn_number',
+        'job_order_id',
+        'dispatch_date',
+        'status',
+        'delivery_address',
+        'notes',
     ];
 
     protected $casts = [
-        'qty_delivered' => 'decimal:2',
-        'delivery_date' => 'date',
+        'dispatch_date' => 'date',
     ];
 
-    public function customerOrder(): BelongsTo
+    public static function generateDnNumber(): string
     {
-        return $this->belongsTo(CustomerOrder::class);
+        $lastDN = self::orderBy('id', 'desc')->first();
+        $nextNumber = $lastDN ? (intval(substr($lastDN->dn_number, 3)) + 1) : 1;
+        return 'DN-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
+    }
+
+    public function jobOrder(): BelongsTo
+    {
+        return $this->belongsTo(JobOrder::class);
+    }
+
+    public function items(): HasMany
+    {
+        return $this->hasMany(DeliveryNoteItem::class);
     }
 }

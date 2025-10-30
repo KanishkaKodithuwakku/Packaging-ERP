@@ -71,8 +71,9 @@
                 @else
                 <!-- Status action buttons -->
                 @if($productionOrder->status === 'in_production')
-                <button wire:click="completeProduction"
-                    class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700">
+                <button wire:click="completeProduction" @disabled(!$canComplete)
+                    class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 {{ !$canComplete ? 'opacity-50 cursor-not-allowed' : '' }}"
+                    title="{{ !$canComplete ? 'Complete all production items to enable this action' : '' }}">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                     </svg>
@@ -98,6 +99,14 @@
                         </path>
                     </svg>
                     Print Production Order
+                </button>
+
+                <button wire:click="generateFGGRNFromCompleted"
+                    class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                    </svg>
+                    Generate FG GRN
                 </button>
                 @endif
             </div>
@@ -228,6 +237,31 @@
         </div>
     </div>
 
+    <!-- Related Job Order -->
+    @if($productionOrder->jobOrder)
+    <div class="bg-white rounded-lg shadow-sm border p-6 mb-6">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-medium text-gray-900">Related Job Order</h3>
+            <a wire:navigate href="{{ route('job-order-detail', $productionOrder->jobOrder->id) }}"
+               class="text-blue-600 hover:text-blue-800 text-sm">View Job Order</a>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div>
+                <label class="text-xs text-gray-500">Job Order Number</label>
+                <div class="font-medium text-gray-900">{{ $productionOrder->jobOrder->job_number ?? 'N/A' }}</div>
+            </div>
+            <div>
+                <label class="text-xs text-gray-500">Customer</label>
+                <div class="font-medium text-gray-900">{{ $productionOrder->jobOrder->customer->name ?? 'N/A' }}</div>
+            </div>
+            <div>
+                <label class="text-xs text-gray-500">Supplier PO</label>
+                <div class="font-medium text-gray-900">{{ $productionOrder->jobOrder->supplier_po_number ?? 'N/A' }}</div>
+            </div>
+        </div>
+    </div>
+    @endif
+
     <!-- Items Table -->
     <div class="bg-white rounded-lg shadow-sm border">
         <div class="px-6 py-4 border-b border-gray-200">
@@ -245,6 +279,7 @@
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Completed</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                     </tr>
                 </thead>
@@ -262,6 +297,24 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {{ number_format($item->completed_quantity) }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            @php $remaining = $item->quantity - $item->completed_quantity; @endphp
+                            @if($remaining > 0)
+                                <div class="flex items-center space-x-2">
+                                    <input type="number" min="1" max="{{ $remaining }}" step="1"
+                                           wire:model.defer="completeQty.{{ $item->id }}"
+                                           class="w-24 px-2 py-1 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                                           placeholder="Qty">
+                                    <button wire:click="completeItemQuantity({{ $item->id }})"
+                                            class="inline-flex items-center px-3 py-1 border border-transparent rounded-md text-xs font-medium text-white bg-green-600 hover:bg-green-700">
+                                        Complete
+                                    </button>
+                                </div>
+                                <div class="text-xs text-gray-500 mt-1">Remaining: {{ number_format($remaining) }}</div>
+                            @else
+                                <span class="text-xs text-green-700">Fully completed</span>
+                            @endif
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium

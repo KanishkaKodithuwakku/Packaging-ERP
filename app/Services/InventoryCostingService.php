@@ -30,7 +30,7 @@ class InventoryCostingService
             $this->createInventoryLayer($data, $costingMethod);
 
             // Update inventory balance
-            $this->updateInventoryBalance($data['lot_code'], $data['qty'], $data['unit_cost'] ?? 0);
+            $this->updateInventoryBalance($data);
 
             return $transaction;
         });
@@ -123,8 +123,12 @@ class InventoryCostingService
     /**
      * Update inventory balance with weighted average
      */
-    private function updateInventoryBalance(string $lotCode, float $qty, float $unitCost): void
+    private function updateInventoryBalance(array $data): void
     {
+        $lotCode = $data['lot_code'];
+        $qty = $data['qty'];
+        $unitCost = $data['unit_cost'] ?? 0;
+
         $inventory = Inventory::where('lot_code', $lotCode)->first();
         
         if ($inventory) {

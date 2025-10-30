@@ -32,6 +32,9 @@ class ProductionOrderDetail extends Component
     
     // Form data
     public $form = [];
+    // Per-item partial completion quantities
+    public array $completeQty = [];
+    public bool $canComplete = false;
     
     public function mount($id, $edit = false)
     {
@@ -46,7 +49,7 @@ class ProductionOrderDetail extends Component
 
     public function loadProductionOrder()
     {
-        $this->productionOrder = ProductionOrder::with(['supplier', 'jobOrder', 'items'])
+        $this->productionOrder = ProductionOrder::with(['supplier', 'jobOrder.customer', 'items'])
             ->findOrFail($this->productionOrderId);
         
         $this->form = $this->productionOrder->toArray();
@@ -59,6 +62,11 @@ class ProductionOrderDetail extends Component
             return $grn->getBalanceQuantity();
         });
         
+        // Determine if all items are completed (for enabling Complete button)
+        $this->canComplete = $this->productionOrder->items->every(function ($item) {
+            return method_exists($item, 'getRemainingQuantity') ? $item->getRemainingQuantity() <= 0 : (($item->quantity - $item->completed_quantity) <= 0);
+        });
+
         // Load available quantities for GRN generation
         $this->loadAvailableQuantities();
     }
@@ -137,6 +145,42 @@ class ProductionOrderDetail extends Component
 
             // Update production order status to completed
             $this->productionOrder->update(['status' => 'completed']);
+
+            // Auto-generate GRN for completed quantities (Finished Goods) if none exists yet
+            $existingGrns = GRN::where('production_order_id', $this->productionOrder->id)->count();
+            if ($existingGrns === 0) {
+                $grnNumber = (new \App\Services\ProductionGRNService())->generateGRNNumberForExternalUse ? null : null;
+                // Fallback simple number if service method is private; compute here
+                $lastGRN = \App\Models\GRN::orderBy('id', 'desc')->first();
+                $nextNumber = $lastGRN ? $lastGRN->id + 1 : 1;
+                $grnNo = 'GRN-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
+
+                $grn = GRN::create([
+                    'production_order_id' => $this->productionOrder->id,
+                    'grn_no' => $grnNo,
+                    'lot_code' => 'AUTO-LOT-' . now()->format('Ymd') . '-' . $this->productionOrder->id,
+                    'received_date' => now()->format('Y-m-d'),
+                    'notes' => 'Auto GRN from production completion',
+                ]);
+
+                foreach ($this->productionOrder->items as $item) {
+                    if (($item->completed_quantity ?? 0) <= 0) continue;
+                    \App\Models\GRNItem::create([
+                        'grn_id' => $grn->id,
+                        'production_order_item_id' => $item->id,
+                        'item_type' => $item->item_type,
+                        'item_id' => $item->item_id,
+                        'description' => ucfirst($item->item_type) . ' finished goods',
+                        'material_code' => 'FG-' . ($item->item_id),
+                        'qty_received' => (int) $item->completed_quantity,
+                        'uom' => 'PCS',
+                    ]);
+                }
+
+                // Process GRN to stock as FG
+                $processingService = app(\App\Services\GRNProcessingService::class);
+                $processingService->processGRNToStock($grn, 'FIFO');
+            }
             
             // Reload the production order to get updated data
             $this->loadProductionOrder();
@@ -146,6 +190,63 @@ class ProductionOrderDetail extends Component
         } catch (\Exception $e) {
             Log::error('Error completing production: ' . $e->getMessage());
             session()->flash('error', 'Error completing production: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Partially complete quantity for a production item
+     */
+    public function completeItemQuantity(int $itemId): void
+    {
+        try {
+            $item = $this->productionOrder->items()->findOrFail($itemId);
+            $qty = (int)($this->completeQty[$itemId] ?? 0);
+
+            if ($qty <= 0) {
+                session()->flash('error', 'Enter a quantity greater than 0.');
+                return;
+            }
+
+            $remaining = $item->getRemainingQuantity();
+            if ($qty > $remaining) {
+                session()->flash('error', "Quantity exceeds remaining amount ({$remaining}).");
+                return;
+            }
+
+            // Increment completed quantity
+            $item->increment('completed_quantity', $qty);
+
+            // Update item status
+            $item->refresh();
+            if ($item->getRemainingQuantity() <= 0) {
+                $item->update(['status' => 'completed']);
+            } else {
+                $item->update(['status' => 'in_production']);
+            }
+
+            // Ensure order status reflects progress
+            if ($this->productionOrder->status === 'pending') {
+                $this->productionOrder->update(['status' => 'in_production']);
+            }
+
+            // If all items completed, mark order completed
+            $this->productionOrder->refresh();
+            $allCompleted = $this->productionOrder->items->every(function ($i) {
+                return $i->getRemainingQuantity() <= 0;
+            });
+            if ($allCompleted) {
+                $this->productionOrder->update(['status' => 'completed']);
+            }
+
+            // Reload view data
+            $this->loadProductionOrder();
+            // Clear input for item
+            $this->completeQty[$itemId] = 0;
+
+            session()->flash('success', "Recorded completion of {$qty} units for the selected item.");
+        } catch (\Exception $e) {
+            Log::error('Error completing production item: ' . $e->getMessage());
+            session()->flash('error', 'Error completing production item: ' . $e->getMessage());
         }
     }
 
@@ -165,6 +266,83 @@ class ProductionOrderDetail extends Component
         
         // Dispatch event to trigger JavaScript print function
         $this->js('window.printProductionOrder();');
+    }
+
+    /**
+     * Generate a GRN from the completed quantities as Finished Goods and process to stock
+     */
+    public function generateFGGRNFromCompleted(): void
+    {
+        try {
+            if (!$this->productionOrder) {
+                session()->flash('error', 'Production order not found.');
+                return;
+            }
+
+            // Build item -> remaining-to-GRN map based on completed qty minus already GRN qty
+            $itemQuantities = [];
+            foreach ($this->productionOrder->items as $item) {
+                $completed = (int) ($item->completed_quantity ?? 0);
+                if ($completed <= 0) continue;
+                $alreadyGRN = \App\Models\GRNItem::where('production_order_item_id', $item->id)->sum('qty_received');
+                $remaining = max(0, $completed - (int) $alreadyGRN);
+                if ($remaining > 0) {
+                    $itemQuantities[$item->id] = $remaining;
+                }
+            }
+
+            if (empty($itemQuantities)) {
+                session()->flash('error', 'No completed quantities available to GRN.');
+                return;
+            }
+
+            // Create GRN manually (we already have completed qty; bypass service validations)
+            $lastGRN = \App\Models\GRN::orderBy('id', 'desc')->first();
+            $nextNumber = $lastGRN ? $lastGRN->id + 1 : 1;
+            $grnNo = 'GRN-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
+
+            $grn = \App\Models\GRN::create([
+                'production_order_id' => $this->productionOrder->id,
+                'grn_no' => $grnNo,
+                'lot_code' => 'LOT-' . now()->format('Ymd') . '-' . $this->productionOrder->production_order_number,
+                'received_date' => now()->format('Y-m-d'),
+                'notes' => 'Finished goods from completed quantities',
+            ]);
+
+            foreach ($this->productionOrder->items as $item) {
+                $completed = (int) ($item->completed_quantity ?? 0);
+                $alreadyGRN = \App\Models\GRNItem::where('production_order_item_id', $item->id)->sum('qty_received');
+                $qty = max(0, $completed - (int) $alreadyGRN);
+                if ($qty <= 0) continue;
+
+                $grnItem = \App\Models\GRNItem::create([
+                    'grn_id' => $grn->id,
+                    'production_order_item_id' => $item->id,
+                    'item_type' => $item->item_type,
+                    'item_id' => $item->item_id,
+                    'description' => ucfirst($item->item_type) . ' finished goods',
+                    'material_code' => $item->getItemCode(),
+                    'qty_received' => $qty,
+                    'qty_expected' => $qty,
+                    'qty_received_partial' => $qty,
+                    'qty_pending' => $qty,
+                    'is_fully_received' => false,
+                    'uom' => 'PCS',
+                ]);
+            }
+
+            // Immediately process to stock (Finished Goods)
+            $processingService = app(\App\Services\GRNProcessingService::class);
+            $processingService->processGRNToStock($grn, 'FIFO');
+
+            // Reload order to reflect changes
+            $this->loadProductionOrder();
+
+            session()->flash('success', "GRN {$grn->grn_no} generated from completed quantities and processed to stock.");
+        } catch (\Exception $e) {
+            \Log::error('Error generating FG GRN from completed qty: ' . $e->getMessage());
+            session()->flash('error', 'Error generating GRN: ' . $e->getMessage());
+        }
     }
 
     public function loadAvailableQuantities()

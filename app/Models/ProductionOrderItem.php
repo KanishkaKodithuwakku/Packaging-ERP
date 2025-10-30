@@ -72,4 +72,21 @@ class ProductionOrderItem extends Model
     {
         return $this->quantity - $this->completed_quantity;
     }
+
+    /**
+     * Get a stable material/item code used for FG stock lookups.
+     */
+    public function getItemCode(): string
+    {
+        $item = $this->getItem();
+        if ($this->item_type === 'box' && $item) {
+            $ply = $item->ply ?? 'N/A';
+            return "BOX-{$item->id}-{$ply}PLY";
+        }
+        if ($this->item_type === 'divider' && $item) {
+            $ply = $item->ply ?? 'N/A';
+            return "DIV-{$item->id}-{$ply}PLY";
+        }
+        return "ITEM-{$this->item_id}";
+    }
 }

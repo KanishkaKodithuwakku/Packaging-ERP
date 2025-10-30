@@ -5,6 +5,7 @@ namespace App\Livewire;
 use App\Models\Inventory;
 use App\Services\InventoryService;
 use Livewire\Component;
+use Illuminate\Support\Facades\DB as FacadesDB;
 use Illuminate\Support\Facades\DB;
 
 class InventoryDashboard extends Component
@@ -77,6 +78,25 @@ class InventoryDashboard extends Component
         return Inventory::where('qty_available', '<', 10)
             ->orderBy('qty_available')
             ->get();
+    }
+
+    public function getWorkInProgressQuantity()
+    {
+        // Calculate WIP as sum of (quantity - completed_quantity) from all in-progress production order items
+        $inProgressItems = \App\Models\ProductionOrderItem::whereHas('productionOrder', function($query) {
+                $query->whereIn('status', ['pending', 'in_production', 'ready_for_production']);
+            })
+            ->get();
+        
+        $wipQuantity = 0;
+        foreach ($inProgressItems as $item) {
+            $remaining = $item->quantity - ($item->completed_quantity ?? 0);
+            if ($remaining > 0) {
+                $wipQuantity += $remaining;
+            }
+        }
+        
+        return $wipQuantity;
     }
 
     public function getRecentTransactions()
@@ -217,6 +237,55 @@ class InventoryDashboard extends Component
             'inventoryByWarehouse' => $this->getInventoryByWarehouse(),
             'lowStockItems' => $this->getLowStockItems(),
             'recentTransactions' => $this->getRecentTransactions(),
+            'workInProgressQuantity' => $this->getWorkInProgressQuantity(),
         ]);
+    }
+
+    /**
+     * Danger zone: Reset transactional data for testing (local env only)
+     */
+    public function resetTestData(): void
+    {
+        if (!app()->environment('local')) {
+            session()->flash('error', 'Reset is only allowed in local environment.');
+            return;
+        }
+
+        try {
+            FacadesDB::transaction(function () {
+                // Temporarily disable FK checks to avoid constraint errors
+                FacadesDB::statement('SET FOREIGN_KEY_CHECKS=0');
+                // Inventory
+                \App\Models\InventoryTransaction::query()->delete();
+                \App\Models\InventoryLayer::query()->delete();
+                \App\Models\Inventory::query()->delete();
+
+                // GRNs
+                \App\Models\GRNItem::query()->delete();
+                \App\Models\GRN::query()->delete();
+
+                // Production Orders
+                \App\Models\ProductionOrderItem::query()->delete();
+                \App\Models\ProductionOrder::query()->delete();
+
+                // Purchase Orders
+                \App\Models\PurchaseOrderItem::query()->delete();
+                \App\Models\PurchaseOrder::query()->delete();
+
+                // Job Orders (keep masters but remove orders and their items)
+                \App\Models\JobOrderBox::query()->delete();
+                \App\Models\JobOrderDivider::query()->delete();
+                \App\Models\JobOrder::query()->delete();
+
+                // Re-enable FK checks
+                FacadesDB::statement('SET FOREIGN_KEY_CHECKS=1');
+            });
+
+            session()->flash('success', 'All transactional data has been reset.');
+            // Reload dashboard widgets
+            $this->loadInventorySummary();
+        } catch (\Throwable $e) {
+            session()->flash('error', 'Reset failed: ' . $e->getMessage());
+        }
     }
 }

@@ -13,6 +13,14 @@
                         </button>
                     </div>
 
+                    @php
+                        $adminId = \Spatie\Permission\Models\Role::where('name','admin')->value('id');
+                        $salesId = \Spatie\Permission\Models\Role::where('name','sales')->value('id');
+                        $purchaseId = \Spatie\Permission\Models\Role::where('name','purchase')->value('id');
+                        $productionId = \Spatie\Permission\Models\Role::where('name','production')->value('id');
+                        $storeId = \Spatie\Permission\Models\Role::where('name','store')->value('id');
+                        $accountId = \Spatie\Permission\Models\Role::where('name','account')->value('id');
+                    @endphp
                     <!-- Roles Table -->
                     <div class="mb-8">
                         <h2 class="text-lg font-semibold mb-4">System Roles</h2>
@@ -39,7 +47,7 @@
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">1 user</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">All permissions</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                            <button onclick="openModal('editRole', 'admin')" class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</button>
+                                            <a wire:navigate href="{{ $adminId ? route('role-permissions.edit', $adminId) : '#' }}" class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</a>
                                             <button onclick="openModal('assignUsers', 'admin')" class="text-green-600 hover:text-green-900">Assign Users</button>
                                         </td>
                                     </tr>
@@ -54,7 +62,7 @@
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">0 users</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Quotations, Customer Orders</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                            <button onclick="openModal('editRole', 'sales')" class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</button>
+                                            <a wire:navigate href="{{ $salesId ? route('role-permissions.edit', $salesId) : '#' }}" class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</a>
                                             <button onclick="openModal('assignUsers', 'sales')" class="text-green-600 hover:text-green-900">Assign Users</button>
                                         </td>
                                     </tr>
@@ -69,7 +77,7 @@
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">0 users</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Supplier Orders</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                            <button onclick="openModal('editRole', 'purchase')" class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</button>
+                                            <a wire:navigate href="{{ $purchaseId ? route('role-permissions.edit', $purchaseId) : '#' }}" class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</a>
                                             <button onclick="openModal('assignUsers', 'purchase')" class="text-green-600 hover:text-green-900">Assign Users</button>
                                         </td>
                                     </tr>
@@ -84,7 +92,7 @@
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">0 users</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Job Orders, Material Requests</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                            <button onclick="openModal('editRole', 'production')" class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</button>
+                                            <a wire:navigate href="{{ $productionId ? route('role-permissions.edit', $productionId) : '#' }}" class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</a>
                                             <button onclick="openModal('assignUsers', 'production')" class="text-green-600 hover:text-green-900">Assign Users</button>
                                         </td>
                                     </tr>
@@ -99,7 +107,7 @@
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">0 users</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">GRNs, Inventory</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                            <button onclick="openModal('editRole', 'store')" class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</button>
+                                            <a wire:navigate href="{{ $storeId ? route('role-permissions.edit', $storeId) : '#' }}" class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</a>
                                             <button onclick="openModal('assignUsers', 'store')" class="text-green-600 hover:text-green-900">Assign Users</button>
                                         </td>
                                     </tr>
@@ -114,7 +122,7 @@
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">0 users</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">Delivery Notes, Invoices</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                            <button onclick="openModal('editRole', 'account')" class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</button>
+                                            <a wire:navigate href="{{ $accountId ? route('role-permissions.edit', $accountId) : '#' }}" class="text-indigo-600 hover:text-indigo-900 mr-3">Edit</a>
                                             <button onclick="openModal('assignUsers', 'account')" class="text-green-600 hover:text-green-900">Assign Users</button>
                                         </td>
                                     </tr>

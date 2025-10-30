@@ -25,6 +25,15 @@ class JobOrderDetail extends Component
     public $form = [];
     public $boxes = [];
     public $dividers = [];
+    public float $productionPercent = 0;
+    public int $productionCompleted = 0;
+    public int $productionTotal = 0;
+    public string $productionStatusText = 'Not started';
+    public int $poCount = 0;
+    public int $poProcessedCount = 0;
+    public string $poStatusText = 'None';
+    public int $grnCount = 0;
+    public int $grnProcessedCount = 0;
     
     // Box form
     public $boxForm = [
@@ -107,6 +116,61 @@ class JobOrderDetail extends Component
         
         // Check if a purchase order already exists for this job order
         $this->hasPurchaseOrder = \App\Models\PurchaseOrder::where('job_order_id', $this->jobOrderId)->exists();
+
+        // Compute overall production status for the JOB ORDER
+        // Total required = sum of job order item quantities (boxes + dividers)
+        $total = 0;
+        foreach ($this->jobOrder->boxes as $box) {
+            $total += (int) ($box->order_qty ?? 0);
+        }
+        foreach ($this->jobOrder->dividers as $divider) {
+            $total += (int) ($divider->quantity ?? 0);
+        }
+
+        // Completed = sum of completed quantities across all production orders for this job order
+        $productionOrders = \App\Models\ProductionOrder::where('job_order_id', $this->jobOrderId)
+            ->with('items')
+            ->get();
+
+        $completed = 0;
+        foreach ($productionOrders as $po) {
+            foreach ($po->items as $item) {
+                $completed += (int) ($item->completed_quantity ?? 0);
+            }
+        }
+        $this->productionTotal = $total;
+        $this->productionCompleted = $completed;
+        $this->productionPercent = $total > 0 ? round(($completed / $total) * 100, 1) : 0;
+        if ($total === 0) {
+            $this->productionStatusText = 'Not started';
+        } elseif ($completed >= $total) {
+            $this->productionStatusText = 'Completed';
+        } else {
+            $this->productionStatusText = 'In production';
+        }
+
+        // Purchase Orders status summary
+        $purchaseOrders = \App\Models\PurchaseOrder::where('job_order_id', $this->jobOrderId)->get();
+        $this->poCount = $purchaseOrders->count();
+        $this->poProcessedCount = $purchaseOrders->where('status', 'processed')->count();
+        if ($this->poCount === 0) {
+            $this->poStatusText = 'No purchase orders';
+        } else {
+            $this->poStatusText = $this->poProcessedCount . ' / ' . $this->poCount . ' processed';
+        }
+
+        // GRN status summary (from POs and Production Orders linked to this Job Order)
+        $poIds = $purchaseOrders->pluck('id')->all();
+        $poIds2 = $productionOrders->pluck('id')->all();
+        $grns = \App\Models\GRN::when(count($poIds) > 0, function($q) use ($poIds) {
+                $q->whereIn('purchase_order_id', $poIds);
+            })
+            ->when(count($poIds2) > 0, function($q) use ($poIds2) {
+                $q->orWhereIn('production_order_id', $poIds2);
+            })
+            ->get();
+        $this->grnCount = $grns->count();
+        $this->grnProcessedCount = $grns->where('status', 'processed')->count();
     }
 
     public function toggleEditMode()

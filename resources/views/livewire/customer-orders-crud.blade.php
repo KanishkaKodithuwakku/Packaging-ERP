@@ -81,7 +81,7 @@
                                     @endif
                                     @if($order->status != 'delivered')
                                         <a href="{{ route('job-orders') }}?create_from={{ $order->id }}" class="text-green-600 hover:text-green-900 mr-3">Create Job Order</a>
-                                        <a href="{{ route('delivery-notes') }}?create_from={{ $order->id }}" class="text-purple-600 hover:text-purple-900 mr-3">Create Delivery Note</a>
+                                        <a href="{{ route('create-delivery-note') }}" class="text-purple-600 hover:text-purple-900 mr-3">Create Delivery Note</a>
                                     @endif
                                     <button wire:click="delete({{ $order->id }})" class="text-red-600 hover:text-red-900" 
                                             onclick="return confirm('Are you sure you want to delete this order?')">Delete</button>
