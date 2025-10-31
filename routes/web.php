@@ -16,6 +16,9 @@ use App\Livewire\CurrencyManagement;
 use App\Livewire\ExchangeRateManagement;
 use App\Livewire\EntryTypeManagement;
 use App\Livewire\JournalEntryCrud;
+use App\Livewire\SuppliersManagement;
+use App\Livewire\SupplierDetail;
+use App\Livewire\RolePermissionEditor;
 
 // Redirect root to dashboard (protected)
 Route::get('/', [App\Http\Controllers\DashboardController::class, 'index'])
@@ -93,15 +96,17 @@ Route::get('/material-requests', MaterialRequestsCrud::class)
     ->name('material-requests');
 
 // Delivery Notes
-Route::get('/delivery-notes', DeliveryNotesCrud::class)
-    ->middleware(['auth', 'permission:view delivery notes'])
-    ->name('delivery-notes');
+Route::get('/delivery-notes', \App\Livewire\DeliveryNotesManagement::class)
+    ->middleware(['auth'])
+    ->name('delivery-notes-management');
 
-// Delivery Notes Print
-Route::get('/delivery-notes/{id}/print', function ($id) {
-    $deliveryNote = \App\Models\DeliveryNote::with('customerOrder.customer')->findOrFail($id);
-    return view('delivery-notes.print', compact('deliveryNote'));
-})->middleware(['auth', 'permission:print delivery notes'])->name('delivery-notes.print');
+Route::get('/delivery-notes/create', \App\Livewire\CreateDeliveryNote::class)
+    ->middleware(['auth'])
+    ->name('create-delivery-note');
+
+Route::get('/delivery-notes/{id}', \App\Livewire\DeliveryNoteDetail::class)
+    ->middleware(['auth'])
+    ->name('delivery-note-detail');
 
 // Inventory Dashboard
 Route::get('/inventory-dashboard', InventoryDashboard::class)
@@ -260,4 +265,18 @@ Route::get('/create-purchase-order', \App\Livewire\CreatePurchaseOrder::class)
     ->middleware(['auth', 'permission:create purchase orders'])
     ->name('create-purchase-order');
 
+// Suppliers Management
+Route::get('/suppliers', SuppliersManagement::class)
+    ->middleware(['auth', 'permission:view suppliers'])
+    ->name('suppliers');
+
+Route::get('/suppliers/{id}', SupplierDetail::class)
+    ->middleware(['auth', 'permission:view suppliers'])
+    ->name('supplier-detail');
+
 require __DIR__.'/auth.php';
+
+// Role Permission Editor
+Route::get('/role-management/{role}/permissions', RolePermissionEditor::class)
+    ->middleware(['auth','role:admin'])
+    ->name('role-permissions.edit');

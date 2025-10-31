@@ -270,13 +270,28 @@
                         Material Requests
                     </a>
 
-                    <a wire:navigate href="{{ route('delivery-notes') }}"
-                        class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-colors duration-200 {{ request()->routeIs('delivery-notes') ? 'bg-gray-200 text-gray-900' : '' }}">
+                    <a wire:navigate href="{{ route('delivery-notes-management') }}"
+                        class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-colors duration-200 {{ request()->routeIs('delivery-notes-management') ? 'bg-gray-200 text-gray-900' : '' }}">
                         <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
                         </svg>
                         Delivery Notes
+                    </a>
+
+                    <div class="border-t border-gray-700 my-4"></div>
+                    <!-- Master Data Section -->
+                    <div class="px-3 mb-2">
+                        <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Master Data</h3>
+                    </div>
+
+                    <a wire:navigate href="{{ route('suppliers') }}"
+                        class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-colors duration-200 {{ request()->routeIs('suppliers') ? 'bg-gray-200 text-gray-900' : '' }}">
+                        <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M17 20h5v-2a3 3 0 00-5.356-1.857M9 20H4v-2a3 3 0 015.356-1.857M15 11a4 4 0 10-6 0 4 4 0 006 0z" />
+                        </svg>
+                        Suppliers
                     </a>
 
                     <div class="border-t border-gray-700 my-4"></div>
@@ -644,8 +659,8 @@
                             </path>
                         </svg>
                     </a>
-                    <a wire:navigate href="{{ route('delivery-notes') }}"
-                        class="group flex items-center justify-center px-2 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-colors duration-200 {{ request()->routeIs('delivery-notes') ? 'bg-gray-200 text-gray-900' : '' }}"
+                    <a wire:navigate href="{{ route('delivery-notes-management') }}"
+                        class="group flex items-center justify-center px-2 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-colors duration-200 {{ request()->routeIs('delivery-notes-management') ? 'bg-gray-200 text-gray-900' : '' }}"
                         title="Delivery Notes">
                         <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -863,7 +878,7 @@
                                 Goods Receipt Notes
                             @elseif(request()->routeIs('material-requests'))
                                 Material Requests
-                            @elseif(request()->routeIs('delivery-notes'))
+                            @elseif(request()->routeIs('delivery-notes-management'))
                                 Delivery Notes
                             @elseif(request()->routeIs('inventory-dashboard'))
                                 Inventory Dashboard

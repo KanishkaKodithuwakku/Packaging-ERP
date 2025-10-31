@@ -503,53 +503,23 @@ class PurchaseOrderManagement extends Component
                 }
             }
 
-            // Update PO status to confirmed
+            // Update PO status to confirmed only (do not auto-create production order)
             $this->selectedPurchaseOrder->update(['status' => 'confirmed']);
-
-            // Create production order from the confirmed purchase order
-            $productionOrder = ProductionOrder::create([
-                'production_order_number' => ProductionOrder::generateProductionOrderNumber(),
-                'date' => now()->toDateString(),
-                'job_order_id' => $this->selectedPurchaseOrder->job_order_id,
-                'supplier_id' => $this->selectedPurchaseOrder->supplier_id,
-                'status' => 'pending',
-                'notes' => "Generated from Purchase Order: {$this->selectedPurchaseOrder->po_number}",
-            ]);
-
-            // Create production order items from purchase order items
-            foreach ($this->selectedPurchaseOrder->items as $item) {
-                ProductionOrderItem::create([
-                    'production_order_id' => $productionOrder->id,
-                    'item_type' => $item->item_type,
-                    'item_id' => $item->item_id,
-                    'quantity' => $item->quantity,
-                    'completed_quantity' => 0,
-                    'status' => 'pending',
-                ]);
-            }
 
             // Store purchase order data before closing modals
             $poNumber = $this->selectedPurchaseOrder->po_number;
-            
-            Log::info('Purchase Order confirmed and Production Order created', [
+
+            Log::info('Purchase Order confirmed (no auto production order)', [
                 'po_id' => $this->selectedPurchaseOrder->id,
                 'po_number' => $poNumber,
-                'production_order_id' => $productionOrder->id,
-                'production_order_number' => $productionOrder->production_order_number,
                 'updated_prices' => $this->phoneConfirmForm
             ]);
 
             $this->closePhoneConfirmConfirmModal();
             $this->closePhoneConfirmModal();
             $this->loadPurchaseOrders();
-            
-            session()->flash('success', "Purchase Order {$poNumber} has been confirmed and Production Order {$productionOrder->production_order_number} has been created. <a href='" . route('production-order-management', ['production_order' => $productionOrder->id]) . "' class='underline hover:no-underline'>View Production Order</a>");
-            
-            // Set redirect URL for JavaScript to handle
-            $this->redirectToProductionOrder = route('production-order-management', ['production_order' => $productionOrder->id]);
-            
-            // Emit event for JavaScript redirect
-            $this->dispatch('redirectToProductionOrder', $this->redirectToProductionOrder);
+
+            session()->flash('success', "Purchase Order {$poNumber} has been confirmed. Start production from the Inventory Dashboard when materials are received.");
             
         } catch (\Exception $e) {
             Log::error('Failed to confirm Purchase Order', [

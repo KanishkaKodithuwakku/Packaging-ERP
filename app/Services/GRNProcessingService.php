@@ -107,9 +107,6 @@ class GRNProcessingService
                 'total_value' => $totalValue
             ]);
 
-            // Check if production order can be released
-            $this->checkProductionOrderRelease($grn->productionOrder);
-
             Log::info('GRN processed successfully', [
                 'grn_id' => $grn->id,
                 'items_processed' => count($processedItems),
@@ -331,52 +328,6 @@ class GRNProcessingService
         };
     }
 
-    /**
-     * Check if production order can be released
-     */
-    private function checkProductionOrderRelease(?ProductionOrder $productionOrder): void
-    {
-        if (!$productionOrder) return;
-
-        // Check if all required items are in stock
-        $allItemsInStock = $this->areAllProductionItemsInStock($productionOrder);
-        
-        if ($allItemsInStock) {
-            // Update production order status to ready for production
-            $productionOrder->update(['status' => 'ready_for_production']);
-            
-            Log::info('Production order released for production', [
-                'production_order_id' => $productionOrder->id,
-                'production_order_number' => $productionOrder->production_order_number
-            ]);
-        }
-    }
-
-    /**
-     * Check if all production order items are in stock
-     */
-    private function areAllProductionItemsInStock(ProductionOrder $productionOrder): bool
-    {
-        foreach ($productionOrder->items as $item) {
-            $availableQty = $this->getAvailableStockForItem($item);
-            if ($availableQty < $item->quantity) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    /**
-     * Get available stock for production order item
-     */
-    private function getAvailableStockForItem(ProductionOrderItem $item): float
-    {
-        // This would check inventory layers for the specific item
-        // For now, return a placeholder
-        return InventoryLayer::where('item_code', $item->getItemCode())
-            ->where('category', 'FG')
-            ->sum('qty_available');
-    }
 
     /**
      * Get GRN processing status
@@ -417,7 +368,11 @@ class GRNProcessingService
         $stockStatus = [];
         
         foreach ($productionOrder->items as $item) {
-            $availableQty = $this->getAvailableStockForItem($item);
+            // Check inventory layers for the specific item
+            $availableQty = InventoryLayer::where('item_code', $item->getItemCode())
+                ->where('category', 'RAW')
+                ->sum('qty_available');
+            
             $requiredQty = $item->quantity;
             
             $stockStatus[] = [

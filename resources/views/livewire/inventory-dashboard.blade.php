@@ -1,7 +1,14 @@
 <div>
     <div class="bg-white shadow-sm rounded-lg">
-        <div class="px-6 py-4 border-b border-gray-200">
+        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
             <h2 class="text-xl font-semibold text-gray-800">Inventory Dashboard</h2>
+            <div class="space-x-2">
+                <button wire:click="resetTestData"
+                        class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700"
+                        title="Reset all transactional data (local env only)">
+                    Reset Test Data
+                </button>
+            </div>
         </div>
 
         <div class="p-6">
@@ -17,7 +24,7 @@
                 <div class="bg-yellow-50 p-6 rounded-lg">
                     <h3 class="text-lg font-semibold text-yellow-800">Work in Progress</h3>
                     <p class="text-3xl font-bold text-yellow-600">
-                        {{ $inventoryByCategory->where('category', 'WIP')->sum('total_qty') }}
+                        {{ $workInProgressQuantity }}
                     </p>
                 </div>
                 

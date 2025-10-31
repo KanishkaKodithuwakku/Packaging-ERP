@@ -129,9 +129,9 @@
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ ucfirst($item->item_type) }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $item->description }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $item->material_code }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $item->qty_expected ?? $item->qty_received }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $item->qty_received_partial ?? 0 }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $item->qty_pending ?? ($item->qty_expected ?? $item->qty_received) }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ number_format($item->qty_expected ?? $item->qty_received, 2) }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ number_format($item->qty_received_partial ?? 0, 2) }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ number_format($item->qty_pending ?? ($item->qty_expected ?? $item->qty_received), 2) }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm">
                                     <div class="flex items-center">
                                         <div class="w-16 bg-gray-200 rounded-full h-2 mr-2">
@@ -249,15 +249,15 @@
                                         </div>
                                         <div>
                                             <p class="text-xs text-gray-500">Expected</p>
-                                            <p class="text-sm font-medium">{{ number_format($item->qty_expected, 4) }} {{ $item->uom }}</p>
+                                            <p class="text-sm font-medium">{{ number_format($item->qty_expected, 2) }} {{ $item->uom }}</p>
                                         </div>
                                         <div>
                                             <p class="text-xs text-gray-500">Received</p>
-                                            <p class="text-sm font-medium text-green-600">{{ number_format($item->qty_received_partial, 4) }} {{ $item->uom }}</p>
+                                            <p class="text-sm font-medium text-green-600">{{ number_format($item->qty_received_partial, 2) }} {{ $item->uom }}</p>
                                         </div>
                                         <div>
                                             <p class="text-xs text-gray-500">Pending</p>
-                                            <p class="text-sm font-medium text-orange-600">{{ number_format($item->qty_pending, 4) }} {{ $item->uom }}</p>
+                                            <p class="text-sm font-medium text-orange-600">{{ number_format($item->qty_pending, 2) }} {{ $item->uom }}</p>
                                         </div>
                                     </div>
                                     <div class="ml-6 flex items-center space-x-2">
@@ -292,15 +292,15 @@
                                         </div>
                                         <div>
                                             <p class="text-xs text-gray-400">Expected</p>
-                                            <p class="text-sm font-medium text-gray-500">{{ number_format($item->qty_expected, 4) }} {{ $item->uom }}</p>
+                                            <p class="text-sm font-medium text-gray-500">{{ number_format($item->qty_expected, 2) }} {{ $item->uom }}</p>
                                         </div>
                                         <div>
                                             <p class="text-xs text-gray-400">Received</p>
-                                            <p class="text-sm font-medium text-gray-500">{{ number_format($item->qty_received_partial, 4) }} {{ $item->uom }}</p>
+                                            <p class="text-sm font-medium text-gray-500">{{ number_format($item->qty_received_partial, 2) }} {{ $item->uom }}</p>
                                         </div>
                                         <div>
                                             <p class="text-xs text-gray-400">Pending</p>
-                                            <p class="text-sm font-medium text-gray-500">{{ number_format($item->qty_pending, 4) }} {{ $item->uom }}</p>
+                                            <p class="text-sm font-medium text-gray-500">{{ number_format($item->qty_pending, 2) }} {{ $item->uom }}</p>
                                         </div>
                                     </div>
                                     <div class="ml-6 flex items-center space-x-2">
@@ -368,9 +368,9 @@
                         <label class="block text-sm font-medium text-gray-700 mb-2">Item Details</label>
                         <div class="text-sm text-gray-600">
                             <div><strong>Description:</strong> {{ $selectedGRNItem->description }}</div>
-                            <div><strong>Expected:</strong> {{ $selectedGRNItem->qty_expected }} {{ $selectedGRNItem->uom }}</div>
-                            <div><strong>Already Received:</strong> {{ $selectedGRNItem->qty_received_partial }} {{ $selectedGRNItem->uom }}</div>
-                            <div><strong>Pending:</strong> {{ $selectedGRNItem->qty_pending }} {{ $selectedGRNItem->uom }}</div>
+                            <div><strong>Expected:</strong> {{ number_format($selectedGRNItem->qty_expected, 2) }} {{ $selectedGRNItem->uom }}</div>
+                            <div><strong>Already Received:</strong> {{ number_format($selectedGRNItem->qty_received_partial, 2) }} {{ $selectedGRNItem->uom }}</div>
+                            <div><strong>Pending:</strong> {{ number_format($selectedGRNItem->qty_pending, 2) }} {{ $selectedGRNItem->uom }}</div>
                         </div>
                     </div>
 
