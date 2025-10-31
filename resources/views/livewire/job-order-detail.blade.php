@@ -307,6 +307,16 @@
                 </div>
 
                 <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Dispatched Quantity</label>
+                    <div class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
+                        <div class="flex items-center justify-between text-sm">
+                            <span>{{ number_format($dispatchedQuantity, 2) }} units</span>
+                            <span class="text-xs text-gray-500">{{ $deliveryCount }} DN(s)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Updated At</label>
                     <div class="w-full px-3 py-1 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
                         {{ $jobOrder->updated_at->format('M d, Y H:i') }}
