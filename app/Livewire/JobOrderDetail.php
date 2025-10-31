@@ -34,6 +34,8 @@ class JobOrderDetail extends Component
     public string $poStatusText = 'None';
     public int $grnCount = 0;
     public int $grnProcessedCount = 0;
+    public int $deliveryCount = 0;
+    public float $dispatchedQuantity = 0;
     
     // Box form
     public $boxForm = [
@@ -171,6 +173,13 @@ class JobOrderDetail extends Component
             ->get();
         $this->grnCount = $grns->count();
         $this->grnProcessedCount = $grns->where('status', 'processed')->count();
+
+        // Delivery Note status summary
+        $deliveryNotes = \App\Models\DeliveryNote::where('job_order_id', $this->jobOrderId)->with('items')->get();
+        $this->deliveryCount = $deliveryNotes->count();
+        $this->dispatchedQuantity = $deliveryNotes->sum(function($dn) {
+            return $dn->items->sum('dispatched_qty');
+        });
     }
 
     public function toggleEditMode()
