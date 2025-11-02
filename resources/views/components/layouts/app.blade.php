@@ -240,14 +240,14 @@
                         Production Orders
                     </a>
 
-                    <a wire:navigate href="{{ route('supplier-orders') }}"
+                    {{-- <a wire:navigate href="{{ route('supplier-orders') }}"
                         class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-colors duration-200 {{ request()->routeIs('supplier-orders') ? 'bg-gray-200 text-gray-900' : '' }}">
                         <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
                         </svg>
                         Supplier Orders
-                    </a>
+                    </a> --}}
 
                     <a wire:navigate href="{{ route('grns') }}"
                         class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-colors duration-200 {{ request()->routeIs('grns') ? 'bg-gray-200 text-gray-900' : '' }}">
@@ -260,7 +260,7 @@
                     </a>
 
 
-                    <a wire:navigate href="{{ route('material-requests') }}"
+                    {{-- <a wire:navigate href="{{ route('material-requests') }}"
                         class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-colors duration-200 {{ request()->routeIs('material-requests') ? 'bg-gray-200 text-gray-900' : '' }}">
                         <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -268,7 +268,7 @@
                             </path>
                         </svg>
                         Material Requests
-                    </a>
+                    </a> --}}
 
                     <a wire:navigate href="{{ route('delivery-notes-management') }}"
                         class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-colors duration-200 {{ request()->routeIs('delivery-notes-management') ? 'bg-gray-200 text-gray-900' : '' }}">
@@ -277,6 +277,27 @@
                                 d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"></path>
                         </svg>
                         Delivery Notes
+                    </a>
+
+                    <div class="border-t border-gray-700 my-4"></div>
+
+                    <a wire:navigate href="{{ route('inventory-dashboard') }}"
+                        class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-colors duration-200 {{ request()->routeIs('inventory-dashboard') ? 'bg-gray-200 text-gray-900' : '' }}">
+                        <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                        </svg>
+                        Inventory Dashboard
+                    </a>
+
+                    <a wire:navigate href="{{ route('inventory-transactions') }}"
+                        class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-colors duration-200 {{ request()->routeIs('inventory-transactions') ? 'bg-gray-200 text-gray-900' : '' }}">
+                        <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4">
+                            </path>
+                        </svg>
+                        Inventory Transactions
                     </a>
 
                     <div class="border-t border-gray-700 my-4"></div>
@@ -552,26 +573,7 @@
                         Conversion Examples
                     </a>
 
-                    <div class="border-t border-gray-700 my-4"></div>
-
-                    <a wire:navigate href="{{ route('inventory-dashboard') }}"
-                        class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-colors duration-200 {{ request()->routeIs('inventory-dashboard') ? 'bg-gray-200 text-gray-900' : '' }}">
-                        <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
-                        </svg>
-                        Inventory Dashboard
-                    </a>
-
-                    <a wire:navigate href="{{ route('inventory-transactions') }}"
-                        class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-colors duration-200 {{ request()->routeIs('inventory-transactions') ? 'bg-gray-200 text-gray-900' : '' }}">
-                        <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4">
-                            </path>
-                        </svg>
-                        Inventory Transactions
-                    </a>
+                    
 
                 </div>
             </nav>

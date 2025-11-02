@@ -92,6 +92,19 @@
                                 <div class="flex-1">
                                     <div class="flex items-center space-x-2">
                                         <p class="font-medium text-gray-900">{{ $transaction->lot_code }}</p>
+                                        @if($transaction->category)
+                                            @php
+                                                $categoryColors = [
+                                                    'FG' => 'bg-green-100 text-green-800',
+                                                    'RAW' => 'bg-blue-100 text-blue-800',
+                                                    'WIP' => 'bg-yellow-100 text-yellow-800',
+                                                ];
+                                                $categoryColor = $categoryColors[$transaction->category] ?? 'bg-gray-100 text-gray-800';
+                                            @endphp
+                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {{ $categoryColor }}">
+                                                {{ $transaction->category }}
+                                            </span>
+                                        @endif
                                         @if($transaction->getJobOrder())
                                             <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                                                 📋 {{ $transaction->getJobOrder()->job_number }}
