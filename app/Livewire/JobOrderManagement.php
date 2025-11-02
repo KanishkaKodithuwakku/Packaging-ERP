@@ -482,10 +482,8 @@ class JobOrderManagement extends Component
         
         \Log::info('Box added successfully', ['total_boxes' => count($this->boxes)]);
         
-        // If we're in the box/divider modal, close it after adding
-        if ($this->showBoxDividerModal) {
-            $this->closeBoxDividerModal();
-        }
+        // Modal stays open to allow adding more boxes/dividers
+        
     }
 
     public function addDivider()
@@ -516,10 +514,8 @@ class JobOrderManagement extends Component
         $this->resetDividerForm();
         $this->activeTab = 'dividers';
         
-        // If we're in the box/divider modal, close it after adding
-        if ($this->showBoxDividerModal) {
-            $this->closeBoxDividerModal();
-        }
+        // Modal stays open to allow adding more boxes/dividers
+        
     }
 
     public function removeBox($index)

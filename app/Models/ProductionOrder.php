@@ -46,6 +46,14 @@ class ProductionOrder extends Model
     }
 
     /**
+     * Get the GRNs for the production order.
+     */
+    public function grns(): HasMany
+    {
+        return $this->hasMany(GRN::class);
+    }
+
+    /**
      * Calculate total quantity
      */
     public function getTotalQuantity(): int

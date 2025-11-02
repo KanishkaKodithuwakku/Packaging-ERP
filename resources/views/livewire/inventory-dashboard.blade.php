@@ -17,8 +17,15 @@
                 <div class="bg-blue-50 p-6 rounded-lg">
                     <h3 class="text-lg font-semibold text-blue-800">Raw Materials</h3>
                     <p class="text-3xl font-bold text-blue-600">
-                        {{ $inventoryByCategory->where('category', 'RAW')->sum('total_qty') }}
+                        {{ number_format($balanceRawMaterialsQuantity, 2) }}
                     </p>
+                    <div class="mt-3 pt-3 border-t border-blue-200 space-y-1">
+                        <p class="text-xs text-blue-600">Total Received: <span class="font-semibold">{{ number_format($totalRawMaterialsReceived, 2) }}</span></p>
+                        @if($totalRawMaterialsConsumed > 0)
+                        <p class="text-xs text-blue-600">Consumed: <span class="font-semibold">{{ number_format($totalRawMaterialsConsumed, 2) }}</span></p>
+                        @endif
+                        <p class="text-sm text-blue-700 font-medium">Balance Available: <span class="text-base font-bold">{{ number_format($balanceRawMaterialsQuantity, 2) }}</span></p>
+                    </div>
                 </div>
                 
                 <div class="bg-yellow-50 p-6 rounded-lg">
@@ -128,9 +135,11 @@
                                     <p class="text-xs text-gray-500 mt-1">{{ $transaction->txn_date }}</p>
                                     @if($transaction->getJobOrder() && $transaction->txn_type === 'receipt')
                                         @php
-                                            // Check if a production order already exists for this transaction (by lot code in notes)
+                                            // Check if a production order already exists for THIS SPECIFIC transaction (by transaction ID in notes)
+                                            // Each transaction is tracked separately, even if they share the same item code
+                                            $transactionIdMarker = "Transaction ID: {$transaction->id}";
                                             $existingProductionOrder = \App\Models\ProductionOrder::where('job_order_id', $transaction->getJobOrder()->id)
-                                                ->where('notes', 'like', '%' . $transaction->lot_code . '%')
+                                                ->where('notes', 'like', '%' . $transactionIdMarker . '%')
                                                 ->first();
                                             $hasProductionOrder = $existingProductionOrder !== null;
                                         @endphp

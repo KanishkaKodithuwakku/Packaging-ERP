@@ -166,6 +166,30 @@ class GRN extends Model
     }
 
     /**
+     * Check if GRN has items that can still be processed (not fully processed)
+     */
+    public function hasUnprocessedItems(): bool
+    {
+        foreach ($this->items as $item) {
+            $qtyReceived = $item->qty_received_partial ?? $item->qty_received ?? 0;
+            $qtyProcessed = $item->qty_processed ?? 0;
+            $remaining = $qtyReceived - $qtyProcessed;
+            if ($remaining > 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Check if GRN is fully processed (all received items have been processed)
+     */
+    public function isFullyProcessed(): bool
+    {
+        return !$this->hasUnprocessedItems();
+    }
+
+    /**
      * Get balance quantity (remaining to be processed)
      */
     public function getBalanceQuantity(): float

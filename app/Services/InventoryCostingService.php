@@ -46,6 +46,7 @@ class InventoryCostingService
             $remainingQty = $qty;
             $totalCost = 0;
             $consumedLayers = [];
+            $lotCodes = [];
 
             foreach ($layers as $layer) {
                 if ($remainingQty <= 0) break;
@@ -65,6 +66,11 @@ class InventoryCostingService
                     'total_cost' => $layerCost,
                 ];
 
+                // Track lot codes for inventory table updates
+                if (!in_array($layer->lot_code, $lotCodes)) {
+                    $lotCodes[] = $layer->lot_code;
+                }
+
                 $remainingQty -= $consumeQty;
                 $totalCost += $layerCost;
 
@@ -77,6 +83,10 @@ class InventoryCostingService
             if ($remainingQty > 0) {
                 throw new \Exception("Insufficient inventory. Required: {$qty}, Available: " . ($qty - $remainingQty));
             }
+
+            // Update inventory table for consumed lot codes
+            // Need to recalculate from all remaining layers for this item/category/warehouse combination
+            $this->syncInventoryBalanceForItem($itemCode, $category, $warehouse);
 
             return [
                 'total_cost' => $totalCost,
@@ -118,6 +128,77 @@ class InventoryCostingService
             'source_doc_type' => $data['related_doc_type'],
             'source_doc_id' => $data['related_doc_id'],
         ]);
+    }
+
+    /**
+     * Sync inventory balance after consumption for all lot codes of an item
+     */
+    private function syncInventoryBalanceForItem(string $itemCode, string $category, string $warehouse): void
+    {
+        // Get all remaining layers for this item/category/warehouse
+        $remainingLayers = InventoryLayer::where('item_code', $itemCode)
+            ->where('category', $category)
+            ->where('warehouse', $warehouse)
+            ->where('qty_available', '>', 0)
+            ->get();
+        
+        // Group by lot_code
+        $layersByLotCode = $remainingLayers->groupBy('lot_code');
+        
+        foreach ($layersByLotCode as $lotCode => $layers) {
+            $totalQty = $layers->sum('qty_available');
+            $totalCost = $layers->sum('total_cost');
+            $firstLayer = $layers->first();
+            
+            $inventory = Inventory::where('lot_code', $lotCode)->first();
+            
+            if ($inventory) {
+                $inventory->update([
+                    'qty_available' => $totalQty,
+                    'total_value' => $totalCost,
+                    'unit_cost' => $totalQty > 0 ? $totalCost / $totalQty : 0,
+                    'last_movement_date' => now()->toDateString(),
+                ]);
+                
+                // Delete inventory record if fully consumed
+                if ($totalQty <= 0) {
+                    $inventory->delete();
+                }
+            } else if ($totalQty > 0) {
+                // Create inventory record if it doesn't exist but we have remaining layers
+                Inventory::create([
+                    'lot_code' => $lotCode,
+                    'item_code' => $itemCode,
+                    'category' => $category,
+                    'qty_available' => $totalQty,
+                    'unit_cost' => $totalQty > 0 ? $totalCost / $totalQty : 0,
+                    'total_value' => $totalCost,
+                    'uom' => 'PCS', // Default
+                    'warehouse' => $warehouse,
+                    'source' => $firstLayer->source_doc_type ?? '',
+                    'ref_doc' => $firstLayer->source_doc_id ?? null,
+                    'first_receipt_date' => $firstLayer->receipt_date ?? now()->toDateString(),
+                    'last_movement_date' => now()->toDateString(),
+                    'costing_method' => 'FIFO',
+                ]);
+            }
+        }
+        
+        // Delete inventory records for lot codes that no longer have any layers
+        $existingInventory = Inventory::where('item_code', $itemCode)
+            ->where('category', $category)
+            ->where('warehouse', $warehouse)
+            ->get();
+        
+        foreach ($existingInventory as $inv) {
+            $hasLayers = InventoryLayer::where('lot_code', $inv->lot_code)
+                ->where('qty_available', '>', 0)
+                ->exists();
+            
+            if (!$hasLayers) {
+                $inv->delete();
+            }
+        }
     }
 
     /**

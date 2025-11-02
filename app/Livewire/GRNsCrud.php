@@ -130,13 +130,17 @@ class GRNsCrud extends Component
         if ($this->editing) {
             GRN::findOrFail($this->grnId)->update($data);
             session()->flash('message', 'GRN updated successfully!');
+            $this->showModal = false;
+            $this->resetForm();
         } else {
             app(OrderService::class)->processGoodsReceipt($data);
             session()->flash('message', 'GRN created and inventory updated successfully!');
+            $this->showModal = false;
+            $this->resetForm();
+            
+            // Redirect to GRNs page after creation
+            return $this->redirect(route('grns'), navigate: true);
         }
-
-        $this->showModal = false;
-        $this->resetForm();
     }
 
     public function delete($id)

@@ -16,7 +16,6 @@ class PurchaseOrderManagement extends Component
     public $showCreateModal = false;
     public $showViewModal = false;
     public $showPhoneConfirmModal = false;
-    public $showPhoneConfirmConfirmModal = false;
     public $showGRNConfirmModal = false;
     public $showCancelConfirmModal = false;
     public $selectedPurchaseOrder = null;
@@ -27,6 +26,7 @@ class PurchaseOrderManagement extends Component
     public $form = [];
     public $phoneConfirmForm = [];
     public $displayFormat = 'reel_cuts';
+    public $itemQuantities = [];
 
     protected $rules = [
         'form.supplier_id' => 'required',
@@ -92,6 +92,11 @@ class PurchaseOrderManagement extends Component
     {
         $this->selectedPurchaseOrder = PurchaseOrder::with(['supplier', 'jobOrder', 'items'])->find($id);
         if ($this->selectedPurchaseOrder) {
+            // Initialize item quantities for editing
+            $this->itemQuantities = [];
+            foreach ($this->selectedPurchaseOrder->items as $item) {
+                $this->itemQuantities[$item->id] = $item->quantity;
+            }
             $this->showViewModal = true;
         } else {
             session()->flash('error', 'Purchase order not found.');
@@ -102,6 +107,102 @@ class PurchaseOrderManagement extends Component
     {
         $this->showViewModal = false;
         $this->selectedPurchaseOrder = null;
+        $this->itemQuantities = [];
+    }
+
+    public function updateItemQuantity($itemId)
+    {
+        try {
+            if (!$this->selectedPurchaseOrder || $this->selectedPurchaseOrder->status !== 'draft') {
+                session()->flash('error', 'Only draft purchase orders can be edited.');
+                return;
+            }
+
+            $item = \App\Models\PurchaseOrderItem::find($itemId);
+            if (!$item) {
+                session()->flash('error', 'Item not found.');
+                return;
+            }
+
+            $newQuantity = isset($this->itemQuantities[$itemId]) ? (int)$this->itemQuantities[$itemId] : $item->quantity;
+            
+            if ($newQuantity < 1) {
+                session()->flash('error', 'Quantity must be at least 1.');
+                $this->itemQuantities[$itemId] = $item->quantity;
+                return;
+            }
+
+            // Update quantity and recalculate total price
+            $item->update([
+                'quantity' => $newQuantity,
+                'total_price' => $item->unit_price * $newQuantity
+            ]);
+
+            // Reload the purchase order to refresh totals
+            $this->selectedPurchaseOrder->refresh();
+            $this->selectedPurchaseOrder->load('items');
+
+            session()->flash('success', 'Item quantity updated successfully.');
+            Log::info('Purchase order item quantity updated', [
+                'item_id' => $itemId,
+                'new_quantity' => $newQuantity,
+                'po_id' => $this->selectedPurchaseOrder->id
+            ]);
+
+        } catch (\Exception $e) {
+            session()->flash('error', 'Failed to update item quantity: ' . $e->getMessage());
+            Log::error('Failed to update purchase order item quantity', [
+                'item_id' => $itemId,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    public function deletePurchaseOrderItem($itemId)
+    {
+        try {
+            if (!$this->selectedPurchaseOrder || $this->selectedPurchaseOrder->status !== 'draft') {
+                session()->flash('error', 'Only draft purchase orders can be edited.');
+                return;
+            }
+
+            $item = \App\Models\PurchaseOrderItem::find($itemId);
+            if (!$item) {
+                session()->flash('error', 'Item not found.');
+                return;
+            }
+
+            // Check if this is the last item
+            if ($this->selectedPurchaseOrder->items->count() <= 1) {
+                session()->flash('error', 'Cannot delete the last item. Purchase orders must have at least one item.');
+                return;
+            }
+
+            // Delete the item
+            $item->delete();
+
+            // Remove from quantities array
+            if (isset($this->itemQuantities[$itemId])) {
+                unset($this->itemQuantities[$itemId]);
+            }
+
+            // Reload the purchase order
+            $this->selectedPurchaseOrder->refresh();
+            $this->selectedPurchaseOrder->load('items');
+
+            session()->flash('success', 'Item deleted successfully.');
+            Log::info('Purchase order item deleted', [
+                'item_id' => $itemId,
+                'po_id' => $this->selectedPurchaseOrder->id
+            ]);
+
+        } catch (\Exception $e) {
+            session()->flash('error', 'Failed to delete item: ' . $e->getMessage());
+            Log::error('Failed to delete purchase order item', [
+                'item_id' => $itemId,
+                'error' => $e->getMessage()
+            ]);
+        }
     }
 
     public function editPurchaseOrder($id)
@@ -117,15 +218,57 @@ class PurchaseOrderManagement extends Component
         }
     }
 
-    public function downloadPurchaseOrder($id)
+    public function printPurchaseOrder()
     {
-        // For now, just show a message - PDF generation can be implemented later
-        $purchaseOrder = PurchaseOrder::find($id);
-        if ($purchaseOrder) {
-            session()->flash('info', 'PDF download functionality will be implemented in the next phase.');
-            Log::info('Download purchase order requested', ['po_id' => $id, 'po_number' => $purchaseOrder->po_number]);
-        } else {
-            session()->flash('error', 'Purchase order not found.');
+        // Dispatch JavaScript event to trigger print
+        $this->js('window.printPurchaseOrder();');
+    }
+
+    public function savePurchaseOrder()
+    {
+        try {
+            if (!$this->selectedPurchaseOrder) {
+                session()->flash('error', 'Purchase order not found.');
+                return;
+            }
+
+            // Ensure all pending quantity updates are saved
+            // This is mainly a safety measure since quantities are auto-saved on change
+            foreach ($this->itemQuantities as $itemId => $quantity) {
+                $item = \App\Models\PurchaseOrderItem::find($itemId);
+                if ($item && $item->purchase_order_id === $this->selectedPurchaseOrder->id) {
+                    if ((int)$quantity >= 1 && $item->quantity != $quantity) {
+                        $item->update([
+                            'quantity' => (int)$quantity,
+                            'total_price' => $item->unit_price * (int)$quantity
+                        ]);
+                    }
+                }
+            }
+
+            // Reload purchase orders to refresh the list
+            $this->loadPurchaseOrders();
+
+            // Reload the selected purchase order to show updated totals
+            $this->selectedPurchaseOrder->refresh();
+            $this->selectedPurchaseOrder->load('items');
+
+            session()->flash('success', "Purchase Order {$this->selectedPurchaseOrder->po_number} has been saved successfully.");
+            
+            Log::info('Purchase order saved', [
+                'po_id' => $this->selectedPurchaseOrder->id,
+                'po_number' => $this->selectedPurchaseOrder->po_number
+            ]);
+
+            // Close the modal after successful save
+            $this->closeViewModal();
+
+        } catch (\Exception $e) {
+            session()->flash('error', 'Failed to save purchase order: ' . $e->getMessage());
+            Log::error('Failed to save purchase order', [
+                'po_id' => $this->selectedPurchaseOrder ? $this->selectedPurchaseOrder->id : 'unknown',
+                'error' => $e->getMessage()
+            ]);
         }
     }
 
@@ -256,9 +399,10 @@ class PurchaseOrderManagement extends Component
                 'po_number' => $purchaseOrder->po_number
             ]);
 
-            // Close modal and refresh data
             $this->closeGRNConfirmModal();
-            $this->loadPurchaseOrders();
+            
+            // Redirect to GRNs page
+            return $this->redirect(route('grns'), navigate: true);
 
         } catch (\Exception $e) {
             session()->flash('error', 'Failed to create GRN: ' . $e->getMessage());
@@ -452,23 +596,6 @@ class PurchaseOrderManagement extends Component
         $this->phoneConfirmForm = [];
     }
 
-    public function showPhoneConfirmConfirmModal()
-    {
-        $this->showPhoneConfirmConfirmModal = true;
-    }
-
-    public function closePhoneConfirmConfirmModal()
-    {
-        $this->showPhoneConfirmConfirmModal = false;
-    }
-
-    public function testModal()
-    {
-        Log::info('Confirm Over button clicked - showing confirmation modal');
-        $this->showPhoneConfirmConfirmModal = true;
-        Log::info('Confirmation modal set to true');
-    }
-
     public function confirmPurchaseOrderOverPhoneFinal()
     {
         Log::info('confirmPurchaseOrderOverPhoneFinal called');
@@ -515,7 +642,6 @@ class PurchaseOrderManagement extends Component
                 'updated_prices' => $this->phoneConfirmForm
             ]);
 
-            $this->closePhoneConfirmConfirmModal();
             $this->closePhoneConfirmModal();
             $this->loadPurchaseOrders();
 

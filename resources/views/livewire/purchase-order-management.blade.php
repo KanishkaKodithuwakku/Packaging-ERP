@@ -377,6 +377,102 @@
                     </div>
                 </div>
 
+                <!-- Print Content (Hidden, shown only when printing) -->
+                <div id="purchaseOrderPrintContent" class="hidden print:block print:p-6" style="display: none;">
+                    <!-- Print Header -->
+                    <div class="text-center mb-6 border-b-2 border-gray-800 pb-4">
+                        <h2 class="text-3xl font-bold text-gray-900">PURCHASE ORDER</h2>
+                        <p class="text-lg text-gray-700 mt-2">PO Number: {{ $selectedPurchaseOrder->po_number }}</p>
+                        <p class="text-sm text-gray-600">Date: {{ $selectedPurchaseOrder->date->format('M d, Y') }}</p>
+                    </div>
+
+                    <!-- Print Details -->
+                    <div class="grid grid-cols-2 gap-6 mb-6">
+                        <div>
+                            <h4 class="font-semibold text-gray-900 mb-2">Supplier Information</h4>
+                            <p class="text-sm text-gray-700"><strong>Supplier:</strong> {{ $selectedPurchaseOrder->supplier->name ?? 'N/A' }} ({{ $selectedPurchaseOrder->supplier->code ?? 'N/A' }})</p>
+                            <p class="text-sm text-gray-700"><strong>Status:</strong> {{ ucfirst($selectedPurchaseOrder->status) }}</p>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-gray-900 mb-2">Order Information</h4>
+                            <p class="text-sm text-gray-700"><strong>Job Order:</strong> {{ $selectedPurchaseOrder->jobOrder->supplier_po_number ?? 'N/A' }}</p>
+                            <p class="text-sm text-gray-700"><strong>Total Amount:</strong> Rs. {{ number_format($selectedPurchaseOrder->getTotalAmount(), 2) }}</p>
+                        </div>
+                    </div>
+
+                    <!-- Print Items Table -->
+                    <div class="mb-6">
+                        <h4 class="text-lg font-semibold text-gray-900 mb-3">Purchase Order Items</h4>
+                        <table class="min-w-full border border-gray-300" style="border-collapse: collapse;">
+                            <thead>
+                                <tr class="bg-gray-100">
+                                    <th class="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">Item Type</th>
+                                    <th class="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">Description</th>
+                                    @if($displayFormat === 'reel_cuts')
+                                    <th class="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">Reel Size</th>
+                                    <th class="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">Cut Size</th>
+                                    @else
+                                    <th class="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">Dimensions</th>
+                                    @endif
+                                    <th class="border border-gray-300 px-4 py-2 text-right text-xs font-medium text-gray-700 uppercase">Quantity</th>
+                                    <th class="border border-gray-300 px-4 py-2 text-right text-xs font-medium text-gray-700 uppercase">Unit Price</th>
+                                    <th class="border border-gray-300 px-4 py-2 text-right text-xs font-medium text-gray-700 uppercase">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($selectedPurchaseOrder->items as $item)
+                                <tr>
+                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">{{ ucfirst($item->item_type) }}</td>
+                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">{{ $item->description }}</td>
+                                    @if($displayFormat === 'reel_cuts')
+                                    @php
+                                        $reelSize = $item->reel_size;
+                                        $cutSize = $item->cut_size;
+                                        if (($reelSize === null || $cutSize === null || $reelSize == 0 || $cutSize == 0) && $item->item_type === 'box' && $selectedPurchaseOrder->jobOrder) {
+                                            $box = $selectedPurchaseOrder->jobOrder->boxes->firstWhere('id', $item->item_id);
+                                            if ($box) {
+                                                $reelSize = $box['reel_size'] ?? 0;
+                                                $cutSize = $box['cut_size'] ?? 0;
+                                            }
+                                        }
+                                    @endphp
+                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">{{ $reelSize && $reelSize > 0 ? number_format($reelSize, 2) . '"' : '-' }}</td>
+                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">{{ $cutSize && $cutSize > 0 ? number_format($cutSize, 2) . '"' : '-' }}</td>
+                                    @else
+                                    @php
+                                        $dimensions = '-';
+                                        if ($item->item_type === 'box' && $selectedPurchaseOrder->jobOrder) {
+                                            $box = $selectedPurchaseOrder->jobOrder->boxes->firstWhere('id', $item->item_id);
+                                            if ($box) {
+                                                $dimensions = number_format($box['length'], 2) . ' x ' . number_format($box['width'], 2) . ' x ' . number_format($box['height'], 2) . ' ' . ($box['unit'] ?? 'CM');
+                                            }
+                                        }
+                                    @endphp
+                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">{{ $dimensions }}</td>
+                                    @endif
+                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900 text-right">{{ number_format($item->quantity) }}</td>
+                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900 text-right">Rs. {{ number_format($item->unit_price, 2) }}</td>
+                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900 text-right">Rs. {{ number_format($item->total_price, 2) }}</td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="{{ $displayFormat === 'reel_cuts' ? 6 : 5 }}" class="border border-gray-300 px-4 py-2 text-right font-semibold text-gray-900">Total Amount:</td>
+                                    <td class="border border-gray-300 px-4 py-2 text-right font-semibold text-gray-900">Rs. {{ number_format($selectedPurchaseOrder->getTotalAmount(), 2) }}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    @if($selectedPurchaseOrder->notes)
+                    <div class="mt-6">
+                        <h4 class="font-semibold text-gray-900 mb-2">Notes:</h4>
+                        <p class="text-sm text-gray-700">{{ $selectedPurchaseOrder->notes }}</p>
+                    </div>
+                    @endif
+                </div>
+
                 <!-- Modal Body -->
                 <div class="mt-6 space-y-6">
                     <!-- PO Header Information -->
@@ -472,6 +568,11 @@
                                         <th
                                             class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                             Total</th>
+                                        @if($selectedPurchaseOrder && $selectedPurchaseOrder->status === 'draft')
+                                        <th
+                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Actions</th>
+                                        @endif
                                     </tr>
                                 </thead>
                                 <tbody class="bg-white divide-y divide-gray-200">
@@ -527,16 +628,39 @@
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $width }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $height }}</td>
                                         @endif
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $item->quantity
-                                            }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            @if($selectedPurchaseOrder->status === 'draft')
+                                                <input type="number" 
+                                                       wire:model.live="itemQuantities.{{ $item->id }}"
+                                                       wire:change="updateItemQuantity({{ $item->id }})"
+                                                       min="1"
+                                                       class="w-24 px-2 py-1 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500">
+                                            @else
+                                                {{ $item->quantity }}
+                                            @endif
+                                        </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Rs. {{
                                             number_format($item->unit_price, 2) }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Rs. {{
                                             number_format($item->total_price, 2) }}</td>
+                                        @if($selectedPurchaseOrder->status === 'draft')
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                            <button wire:click="deletePurchaseOrderItem({{ $item->id }})"
+                                                    class="text-red-600 hover:text-red-900"
+                                                    title="Delete Item"
+                                                    onclick="return confirm('Are you sure you want to delete this item?')">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+                                                    </path>
+                                                </svg>
+                                            </button>
+                                        </td>
+                                        @endif
                                     </tr>
                                     @empty
                                     <tr>
-                                        <td colspan="{{ $displayFormat === 'reel_cuts' ? 7 : 9 }}" class="px-6 py-12 text-center text-gray-500">
+                                        <td colspan="{{ ($displayFormat === 'reel_cuts' ? 7 : 9) + ($selectedPurchaseOrder && $selectedPurchaseOrder->status === 'draft' ? 1 : 0) }}" class="px-6 py-12 text-center text-gray-500">
                                             No items found
                                         </td>
                                     </tr>
@@ -562,10 +686,19 @@
                         class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-md transition-colors">
                         Close
                     </button>
-                    <button wire:click="downloadPurchaseOrder({{ $selectedPurchaseOrder->id }})"
-                        class="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors">
-                        Download PDF
+                    <button wire:click="printPurchaseOrder"
+                        class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors flex items-center">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+                        </svg>
+                        Print
                     </button>
+                    @if($selectedPurchaseOrder && $selectedPurchaseOrder->status === 'draft')
+                    <button wire:click="savePurchaseOrder"
+                        class="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-md transition-colors">
+                        Save
+                    </button>
+                    @endif
                 </div>
             </div>
         </div>
@@ -670,55 +803,6 @@
                         class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-md transition-colors">
                         Cancel
                     </button>
-                    <button wire:click="testModal"
-                        class="px-4 py-2 text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700 rounded-md transition-colors">
-                        Confirm
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-    @endif
-
-    <!-- Phone Confirmation Confirmation Modal -->
-    @if($showPhoneConfirmConfirmModal)
-    <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-        <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-1/2 lg:w-1/3 shadow-lg rounded-md bg-white">
-            <div class="mt-3">
-                <!-- Modal Header -->
-                <div class="flex items-center justify-between pb-4 border-b">
-                    <h3 class="text-lg font-medium text-gray-900">Confirm Purchase Order</h3>
-                    <button wire:click="closePhoneConfirmConfirmModal" class="text-gray-400 hover:text-gray-600">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M6 18L18 6M6 6l12 12"></path>
-                        </svg>
-                    </button>
-                </div>
-
-                <!-- Modal Body -->
-                <div class="mt-6">
-                    <div class="flex items-center justify-center w-12 h-12 mx-auto bg-yellow-100 rounded-full">
-                        <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z">
-                            </path>
-                        </svg>
-                    </div>
-                    <div class="mt-4 text-center">
-                        <h4 class="text-lg font-medium text-gray-900">Confirm Purchase Order</h4>
-                        <p class="mt-2 text-sm text-gray-600">
-                            Confirm this Purchase Order? This will make it ready for production.
-                        </p>
-                    </div>
-                </div>
-
-                <!-- Modal Footer -->
-                <div class="flex items-center justify-end space-x-3 pt-6 border-t mt-6">
-                    <button wire:click="closePhoneConfirmConfirmModal"
-                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-md transition-colors">
-                        Cancel
-                    </button>
                     <button wire:click="confirmPurchaseOrderOverPhoneFinal"
                         class="px-4 py-2 text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-700 rounded-md transition-colors">
                         Confirm
@@ -728,6 +812,7 @@
         </div>
     </div>
     @endif
+
 
 
     <!-- GRN Confirmation Modal -->
@@ -840,6 +925,50 @@
                 window.location.href = '{{ $redirectToProductionOrder }}';
             }, 1000);
         @endif
+
+        // Print Purchase Order functionality
+        window.printPurchaseOrder = function() {
+            var printContent = document.getElementById('purchaseOrderPrintContent');
+            if (!printContent) {
+                console.error('Print content not found');
+                return;
+            }
+            
+            // Show print content and hide modal
+            printContent.style.display = 'block';
+            
+            // Create a new window for printing
+            var printWindow = window.open('', '_blank', 'width=800,height=600');
+            printWindow.document.write('<html><head><title>Purchase Order - {{ $selectedPurchaseOrder->po_number ?? "" }}</title>');
+            printWindow.document.write('<style>');
+            printWindow.document.write('body{font-family:Arial,sans-serif;margin:20px;padding:20px;}');
+            printWindow.document.write('table{border-collapse:collapse;width:100%;margin-top:20px;}');
+            printWindow.document.write('th,td{border:1px solid #000;padding:8px;text-align:left;}');
+            printWindow.document.write('th{background-color:#f3f4f6;font-weight:bold;}');
+            printWindow.document.write('.text-center{text-align:center;}');
+            printWindow.document.write('.text-right{text-align:right;}');
+            printWindow.document.write('@media print { @page { margin: 0.5cm; } body { margin: 0; } }');
+            printWindow.document.write('</style>');
+            printWindow.document.write('</head><body>');
+            printWindow.document.write(printContent.innerHTML);
+            printWindow.document.write('</body></html>');
+            printWindow.document.close();
+            
+            // Wait for content to load then print
+            setTimeout(function() {
+                printWindow.print();
+                printWindow.close();
+                printContent.style.display = 'none';
+            }, 500);
+        };
     </script>
     @endscript
+
+    <style>
+        @media print {
+            .no-print {
+                display: none !important;
+            }
+        }
+    </style>
 </div>
