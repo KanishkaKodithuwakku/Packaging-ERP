@@ -30,7 +30,7 @@ class ProductionOrderManagement extends Component
 
     public function loadProductionOrders()
     {
-        $this->productionOrders = ProductionOrder::with(['supplier', 'jobOrder', 'items'])
+        $this->productionOrders = ProductionOrder::with(['supplier', 'jobOrder', 'items', 'grns'])
             ->orderBy('created_at', 'desc')
             ->get();
     }

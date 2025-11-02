@@ -6,7 +6,7 @@
     <div class="flex justify-between items-center">
         <h1 class="mt-2 text-2xl font-bold">GRN Details</h1>
         
-        @if($grn && ($grn->status === 'pending' || $grn->hasPartialReceiving()))
+        @if($grn && $grn->hasUnprocessedItems())
             <div class="flex space-x-2">
                 <button wire:click="openModal" 
                         wire:loading.attr="disabled"

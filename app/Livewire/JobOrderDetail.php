@@ -27,6 +27,8 @@ class JobOrderDetail extends Component
     public $dividers = [];
     public float $productionPercent = 0;
     public int $productionCompleted = 0;
+    public int $productionFullyCompleted = 0;
+    public int $productionInProgressQty = 0;
     public int $productionTotal = 0;
     public string $productionStatusText = 'Not started';
     public int $poCount = 0;
@@ -119,47 +121,24 @@ class JobOrderDetail extends Component
         // Check if a purchase order already exists for this job order
         $this->hasPurchaseOrder = \App\Models\PurchaseOrder::where('job_order_id', $this->jobOrderId)->exists();
 
-        // Compute overall production status for the JOB ORDER
-        // Total required = sum of job order item quantities (boxes + dividers)
-        $total = 0;
-        foreach ($this->jobOrder->boxes as $box) {
-            $total += (int) ($box->order_qty ?? 0);
-        }
-        foreach ($this->jobOrder->dividers as $divider) {
-            $total += (int) ($divider->quantity ?? 0);
-        }
-
-        // Completed = sum of completed quantities across all production orders for this job order
-        $productionOrders = \App\Models\ProductionOrder::where('job_order_id', $this->jobOrderId)
-            ->with('items')
-            ->get();
-
-        $completed = 0;
-        foreach ($productionOrders as $po) {
-            foreach ($po->items as $item) {
-                $completed += (int) ($item->completed_quantity ?? 0);
-            }
-        }
-        $this->productionTotal = $total;
-        $this->productionCompleted = $completed;
-        $this->productionPercent = $total > 0 ? round(($completed / $total) * 100, 1) : 0;
-        if ($total === 0) {
-            $this->productionStatusText = 'Not started';
-        } elseif ($completed >= $total) {
-            $this->productionStatusText = 'Completed';
-        } else {
-            $this->productionStatusText = 'In production';
-        }
+        // Calculate production progress
+        $this->calculateProductionProgress();
 
         // Purchase Orders status summary
-        $purchaseOrders = \App\Models\PurchaseOrder::where('job_order_id', $this->jobOrderId)->get();
+        $purchaseOrders = \App\Models\PurchaseOrder::where('job_order_id', $this->jobOrderId)
+            ->where('status', '!=', 'cancelled')
+            ->get();
         $this->poCount = $purchaseOrders->count();
-        $this->poProcessedCount = $purchaseOrders->where('status', 'processed')->count();
+        // Count confirmed purchase orders
+        $this->poProcessedCount = $purchaseOrders->where('status', 'confirmed')->count();
         if ($this->poCount === 0) {
             $this->poStatusText = 'No purchase orders';
         } else {
-            $this->poStatusText = $this->poProcessedCount . ' / ' . $this->poCount . ' processed';
+            $this->poStatusText = $this->poProcessedCount . ' / ' . $this->poCount . ' confirmed';
         }
+
+        // Get production orders for GRN status summary
+        $productionOrders = \App\Models\ProductionOrder::where('job_order_id', $this->jobOrderId)->get();
 
         // GRN status summary (from POs and Production Orders linked to this Job Order)
         $poIds = $purchaseOrders->pluck('id')->all();
@@ -348,8 +327,7 @@ class JobOrderDetail extends Component
             
             session()->flash('success', 'Box added successfully!');
             
-            // Close modal after adding
-            $this->closeBoxDividerModal();
+            // Modal stays open to allow adding more boxes/dividers
             
         } catch (\Exception $e) {
             \Log::error('Error adding box: ' . $e->getMessage());
@@ -392,8 +370,7 @@ class JobOrderDetail extends Component
             
             session()->flash('success', 'Divider added successfully!');
             
-            // Close modal after adding
-            $this->closeBoxDividerModal();
+            // Modal stays open to allow adding more boxes/dividers
             
         } catch (\Exception $e) {
             \Log::error('Error adding divider: ' . $e->getMessage());
@@ -404,6 +381,12 @@ class JobOrderDetail extends Component
     public function removeBox($index)
     {
         try {
+            // Check if job order is confirmed or beyond - cannot delete items
+            if ($this->jobOrder && !in_array($this->jobOrder->status, ['draft', 'pending'])) {
+                session()->flash('error', 'Cannot delete boxes from confirmed job orders.');
+                return;
+            }
+            
             // Get the box from the current boxes array
             $box = $this->boxes[$index];
             
@@ -424,6 +407,12 @@ class JobOrderDetail extends Component
     public function removeDivider($index)
     {
         try {
+            // Check if job order is confirmed or beyond - cannot delete items
+            if ($this->jobOrder && !in_array($this->jobOrder->status, ['draft', 'pending'])) {
+                session()->flash('error', 'Cannot delete dividers from confirmed job orders.');
+                return;
+            }
+            
             // Get the divider from the current dividers array
             $divider = $this->dividers[$index];
             
@@ -678,8 +667,91 @@ class JobOrderDetail extends Component
         $this->js('window.printJobOrder();');
     }
 
+    protected function calculateProductionProgress()
+    {
+        // Compute overall production status for the JOB ORDER
+        // Total required = sum of job order item quantities (boxes + dividers)
+        $total = 0;
+        if ($this->jobOrder) {
+            foreach ($this->jobOrder->boxes as $box) {
+                $total += (int) ($box->order_qty ?? 0);
+            }
+            foreach ($this->jobOrder->dividers as $divider) {
+                $total += (int) ($divider->quantity ?? 0);
+            }
+
+            // Calculate production progress
+            // Completed = sum of completed quantities across all production orders for this job order
+            // Also include items that are "in production" (received but not yet completed)
+            $productionOrders = \App\Models\ProductionOrder::where('job_order_id', $this->jobOrderId)
+                ->with(['items'])
+                ->get();
+
+            $completed = 0;
+            $inProgressQty = 0;
+            
+            foreach ($productionOrders as $po) {
+                foreach ($po->items as $item) {
+                    // Count completed quantity
+                    $itemCompleted = (int) ($item->completed_quantity ?? 0);
+                    $completed += $itemCompleted;
+                    
+                    // Calculate work in progress (same logic as Inventory Dashboard)
+                    // WIP = quantity - completed_quantity for items that are in progress
+                    if (in_array($po->status, ['pending', 'in_production', 'ready_for_production'])) {
+                        $remaining = $item->quantity - $itemCompleted;
+                        if ($remaining > 0) {
+                            $inProgressQty += $remaining;
+                        }
+                    }
+                }
+            }
+            
+            // Total in progress = completed + items that are started but not completed
+            $inProgress = $completed + $inProgressQty;
+            
+            $this->productionTotal = $total;
+            // Store separately for segmented progress bar
+            $this->productionFullyCompleted = $completed;
+            $this->productionInProgressQty = $inProgressQty;
+            // Show total in progress (completed + items received but not completed)
+            $this->productionCompleted = $inProgress > 0 ? $inProgress : $completed;
+            $this->productionPercent = $total > 0 ? round(($this->productionCompleted / $total) * 100, 1) : 0;
+            
+            if ($total === 0) {
+                $this->productionStatusText = 'Not started';
+            } elseif ($completed >= $total) {
+                $this->productionStatusText = 'Completed';
+            } elseif ($inProgress > 0 || $completed > 0) {
+                $this->productionStatusText = 'In production';
+            } else {
+                $this->productionStatusText = 'Not started';
+            }
+        } else {
+            // Reset values if job order is not loaded
+            $this->productionTotal = 0;
+            $this->productionCompleted = 0;
+            $this->productionFullyCompleted = 0;
+            $this->productionInProgressQty = 0;
+            $this->productionPercent = 0;
+            $this->productionStatusText = 'Not started';
+        }
+    }
+
+    public function refreshProductionProgress()
+    {
+        // Reload job order data and recalculate progress
+        $this->loadJobOrder();
+    }
+
     public function render()
     {
+        // Ensure production progress is calculated on each render
+        // This ensures data is fresh when page is viewed
+        if ($this->jobOrderId && $this->jobOrder) {
+            $this->calculateProductionProgress();
+        }
+        
         return view('livewire.job-order-detail', [
             'suppliers' => Supplier::all(),
             'customers' => Customer::all(),

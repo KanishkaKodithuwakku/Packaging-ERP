@@ -28,13 +28,13 @@
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Job Order</label>
                 <div class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
-                    {{ $deliveryNote->jobOrder->job_number }}
+                    {{ optional($deliveryNote->jobOrder)->job_number ?? 'N/A' }}
                 </div>
             </div>
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Customer</label>
                 <div class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
-                    {{ $deliveryNote->jobOrder->customer->name ?? 'N/A' }}
+                    {{ optional($deliveryNote->jobOrder)->customer->name ?? 'N/A' }}
                 </div>
             </div>
             <div>
@@ -132,8 +132,8 @@
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                     <div>
                         <h3 style="font-weight: bold; margin-bottom: 10px;">Customer Information</h3>
-                        <p><strong>Customer:</strong> {{ $deliveryNote->jobOrder->customer->name ?? 'N/A' }}</p>
-                        <p><strong>Job Order:</strong> {{ $deliveryNote->jobOrder->job_number }}</p>
+                        <p><strong>Customer:</strong> {{ optional($deliveryNote->jobOrder)->customer->name ?? 'N/A' }}</p>
+                        <p><strong>Job Order:</strong> {{ optional($deliveryNote->jobOrder)->job_number ?? 'N/A' }}</p>
                     </div>
                     <div>
                         <h3 style="font-weight: bold; margin-bottom: 10px;">Delivery Information</h3>

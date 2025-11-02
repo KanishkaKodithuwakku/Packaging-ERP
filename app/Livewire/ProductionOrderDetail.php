@@ -177,9 +177,12 @@ class ProductionOrderDetail extends Component
                     ]);
                 }
 
-                // Process GRN to stock as FG
-                $processingService = app(\App\Services\GRNProcessingService::class);
-                $processingService->processGRNToStock($grn, 'FIFO');
+                // DO NOT auto-process to stock - user must manually process from GRN detail page
+                // This gives users control over when to process to stock
+                
+                // Redirect to GRNs page after GRN creation
+                session()->flash('success', "GRN {$grnNo} has been created successfully. Please process to stock from the GRN detail page.");
+                return $this->redirect(route('grns'), navigate: true);
             }
             
             // Reload the production order to get updated data
@@ -269,13 +272,20 @@ class ProductionOrderDetail extends Component
     }
 
     /**
-     * Generate a GRN from the completed quantities as Finished Goods and process to stock
+     * Generate a GRN from the completed quantities as Finished Goods
+     * Note: Does NOT auto-process to stock - user must manually process from GRN detail page
      */
-    public function generateFGGRNFromCompleted(): void
+    public function generateFGGRNFromCompleted()
     {
         try {
             if (!$this->productionOrder) {
                 session()->flash('error', 'Production order not found.');
+                return;
+            }
+
+            // Check if GRN already exists for this production order
+            if ($this->hasAnyGRN) {
+                session()->flash('error', 'A GRN has already been created for this production order. Cannot create duplicate GRNs.');
                 return;
             }
 
@@ -331,14 +341,13 @@ class ProductionOrderDetail extends Component
                 ]);
             }
 
-            // Immediately process to stock (Finished Goods)
-            $processingService = app(\App\Services\GRNProcessingService::class);
-            $processingService->processGRNToStock($grn, 'FIFO');
+            // DO NOT auto-process to stock - user must manually process from GRN detail page
+            // This gives users control over when to process to stock
 
-            // Reload order to reflect changes
-            $this->loadProductionOrder();
-
-            session()->flash('success', "GRN {$grn->grn_no} generated from completed quantities and processed to stock.");
+            session()->flash('success', "GRN {$grn->grn_no} generated from completed quantities. Please process to stock from the GRN detail page.");
+            
+            // Redirect to GRNs page
+            return $this->redirect(route('grns'), navigate: true);
         } catch (\Exception $e) {
             \Log::error('Error generating FG GRN from completed qty: ' . $e->getMessage());
             session()->flash('error', 'Error generating GRN: ' . $e->getMessage());
@@ -411,11 +420,12 @@ class ProductionOrderDetail extends Component
                 $this->grnLotCode ?: null
             );
 
-            // Reload production order to get updated data
-            $this->loadProductionOrder();
             $this->closeGRNModal();
             
             session()->flash('success', "GRN {$grn->grn_no} generated successfully for {$this->grnQuantity} items!");
+            
+            // Redirect to GRNs page
+            return $this->redirect(route('grns'), navigate: true);
             
         } catch (\Exception $e) {
             Log::error('Error generating GRN: ' . $e->getMessage());

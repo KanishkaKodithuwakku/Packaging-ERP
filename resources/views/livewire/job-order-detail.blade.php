@@ -273,10 +273,45 @@
                             <span>{{ $productionStatusText }}</span>
                             <span>{{ number_format($productionPercent, 1) }}%</span>
                         </div>
-                        <div class="mt-2 h-2 bg-gray-200 rounded">
-                            <div class="h-2 bg-green-500 rounded" style="width: {{ $productionPercent }}%"></div>
+                        <div class="mt-2 h-4 bg-gray-200 rounded-full overflow-hidden relative">
+                            @php
+                                $completedPercent = $productionTotal > 0 ? round(($productionFullyCompleted / $productionTotal) * 100, 1) : 0;
+                                $inProgressPercent = $productionTotal > 0 ? round(($productionInProgressQty / $productionTotal) * 100, 1) : 0;
+                            @endphp
+                            {{-- Fully Completed (Green) --}}
+                            @if($completedPercent > 0)
+                            <div class="h-full bg-green-500 absolute left-0 top-0 transition-all duration-300" 
+                                 style="width: {{ $completedPercent }}%; z-index: 2;"
+                                 title="Completed: {{ number_format($productionFullyCompleted) }}">
+                            </div>
+                            @endif
+                            {{-- In Progress (Yellow/Orange) --}}
+                            @if($inProgressPercent > 0)
+                            <div class="h-full bg-yellow-500 absolute top-0 transition-all duration-300" 
+                                 style="left: {{ $completedPercent }}%; width: {{ $inProgressPercent }}%; z-index: 1;"
+                                 title="In Progress: {{ number_format($productionInProgressQty) }}">
+                            </div>
+                            @endif
                         </div>
-                        <div class="mt-1 text-xs text-gray-600">{{ number_format($productionCompleted) }} / {{ number_format($productionTotal) }} completed</div>
+                        <div class="mt-2 space-y-1">
+                            <div class="flex items-center justify-between text-xs">
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-3 h-3 bg-green-500 rounded"></div>
+                                    <span class="text-gray-600">Completed:</span>
+                                    <span class="font-medium text-gray-900">{{ number_format($productionFullyCompleted) }}</span>
+                                </div>
+                                @if($productionInProgressQty > 0)
+                                <div class="flex items-center space-x-2">
+                                    <div class="w-3 h-3 bg-yellow-500 rounded"></div>
+                                    <span class="text-gray-600">In Progress:</span>
+                                    <span class="font-medium text-gray-900">{{ number_format($productionInProgressQty) }}</span>
+                                </div>
+                                @endif
+                            </div>
+                            <div class="text-xs text-gray-500 text-right">
+                                Total: {{ number_format($productionTotal) }}
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div>
@@ -395,6 +430,7 @@
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ number_format($box['cut_size'],
                             3) }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            @if($jobOrder->status === 'draft' || $jobOrder->status === 'pending')
                             <button wire:click="removeBox({{ $index }})" class="text-red-600 hover:text-red-900" title="Remove Box">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -402,6 +438,15 @@
                                     </path>
                                 </svg>
                             </button>
+                            @else
+                            <span class="text-gray-400 cursor-not-allowed" title="Cannot delete items from confirmed job orders">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+                                    </path>
+                                </svg>
+                            </span>
+                            @endif
                         </td>
                     </tr>
                     @endforeach
@@ -422,6 +467,7 @@
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">-</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">-</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            @if($jobOrder->status === 'draft' || $jobOrder->status === 'pending')
                             <button wire:click="removeDivider({{ $index }})" class="text-red-600 hover:text-red-900" title="Remove Divider">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -429,6 +475,15 @@
                                     </path>
                                 </svg>
                             </button>
+                            @else
+                            <span class="text-gray-400 cursor-not-allowed" title="Cannot delete items from confirmed job orders">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+                                    </path>
+                                </svg>
+                            </span>
+                            @endif
                         </td>
                     </tr>
                     @endforeach

@@ -61,6 +61,16 @@ class GRNDetail extends Component
 
     public function openModal()
     {
+        // Refresh GRN data to ensure we have the latest processed quantities
+        $this->grn->refresh();
+        $this->grn->load('items');
+        
+        // Prevent opening modal if GRN is already fully processed
+        if ($this->grn->status === 'processed' && $this->grn->isFullyProcessed()) {
+            session()->flash('error', 'This GRN has already been fully processed and cannot be processed again.');
+            return;
+        }
+        
         $this->showProcessingModal = true;
         
         // Initialize partial quantities with available quantities for processing
@@ -92,6 +102,22 @@ class GRNDetail extends Component
     public function processToStock()
     {
         try {
+            // Refresh GRN data to ensure we have the latest processed quantities
+            $this->grn->refresh();
+            $this->grn->load('items');
+            
+            // Prevent processing if GRN is already fully processed
+            if ($this->grn->status === 'processed' && $this->grn->isFullyProcessed()) {
+                session()->flash('error', 'This GRN has already been fully processed and cannot be processed again.');
+                return;
+            }
+
+            // Check if there are any unprocessed items
+            if (!$this->grn->hasUnprocessedItems()) {
+                session()->flash('error', 'All items in this GRN have already been processed.');
+                return;
+            }
+
             // Filter out items with 0 received quantities
             $itemsToProcess = $this->partialQuantities;
             foreach ($itemsToProcess as $itemId => $quantity) {
@@ -104,6 +130,13 @@ class GRNDetail extends Component
                 
                 // Check against remaining available quantity (received - processed)
                 $availableForProcessing = $grnItem->qty_received_partial - ($grnItem->qty_processed ?? 0);
+                
+                // Prevent processing if item is already fully processed
+                if ($availableForProcessing <= 0) {
+                    unset($itemsToProcess[$itemId]);
+                    continue;
+                }
+                
                 if ($grnItem && $quantity > $availableForProcessing) {
                     session()->flash('error', "Cannot process {$quantity} units for {$grnItem->description}. Only {$availableForProcessing} units are available for processing (Received: {$grnItem->qty_received_partial}, Already Processed: " . ($grnItem->qty_processed ?? 0) . ").");
                     return;
@@ -219,6 +252,9 @@ class GRNDetail extends Component
         ]);
 
         try {
+            // Store the old status to check if we need to reset it
+            $oldStatus = $this->grn->status;
+            
             $this->selectedGRNItem->addPartialReceiving(
                 $this->partialReceivingForm['quantity'],
                 $this->partialReceivingForm['notes']
@@ -228,6 +264,15 @@ class GRNDetail extends Component
             
             // Refresh the GRN data
             $this->grn->refresh();
+            
+            // If GRN was previously 'processed' but now has unprocessed items, reset status to 'pending'
+            if ($oldStatus === 'processed' && $this->grn->hasUnprocessedItems()) {
+                $this->grn->update([
+                    'status' => 'pending',
+                    'processed_at' => null
+                ]);
+                $this->grn->refresh();
+            }
             
             // Sync all items status in case any updates were needed
             $this->syncItemsReceivingStatus();

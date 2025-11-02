@@ -128,42 +128,41 @@ class GRNProcessingService
     public function processGRNItemToStockPartial(GRNItem $grnItem, float $quantityToProcess, string $costingMethod = 'FIFO'): array
     {
         try {
-            // Check if this item has already been processed before
-            $existingTransaction = InventoryTransaction::where('related_doc_type', 'GRN')
-                ->where('related_doc_id', $grnItem->grn_id)
-                ->where('item_code', $grnItem->material_code)
-                ->first();
+            // Check if item is already fully processed
+            $qtyReceived = $grnItem->qty_received_partial ?? $grnItem->qty_received ?? 0;
+            $qtyProcessed = $grnItem->qty_processed ?? 0;
+            $remaining = $qtyReceived - $qtyProcessed;
+            
+            if ($remaining <= 0) {
+                throw new \Exception("This item has already been fully processed. Received: {$qtyReceived}, Processed: {$qtyProcessed}");
+            }
+            
+            // Ensure we don't process more than available
+            if ($quantityToProcess > $remaining) {
+                throw new \Exception("Cannot process {$quantityToProcess} units. Only {$remaining} units remaining for processing.");
+            }
 
             // Get required variables first
             $category = $this->determineItemCategory($grnItem);
             $lotCode = $this->generateInventoryLotCode($grnItem);
             $unitCost = $this->calculateUnitCost($grnItem);
             
-            if ($existingTransaction) {
-                // Update existing transaction with cumulative quantity
-                $newTotalQuantity = $existingTransaction->qty + $quantityToProcess;
-                $existingTransaction->update([
-                    'qty' => $newTotalQuantity,
-                    'remarks' => "GRN Item: {$grnItem->description} (Total Processed: {$newTotalQuantity})",
-                ]);
-                $transaction = $existingTransaction;
-            } else {
-                // Create new transaction for first processing
-                $transaction = $this->inventoryService->recordTransaction([
-                    'lot_code' => $lotCode,
-                    'item_code' => $grnItem->material_code,
-                    'category' => $category,
-                    'txn_type' => 'receipt',
-                    'qty' => $quantityToProcess,
-                    'unit_cost' => $unitCost,
-                    'uom' => $grnItem->uom,
-                    'warehouse' => $this->getWarehouseForCategory($category),
-                    'related_doc_type' => 'GRN',
-                    'related_doc_id' => $grnItem->grn_id,
-                    'txn_date' => now()->toDateString(),
-                    'remarks' => "GRN Item: {$grnItem->description} (Total Processed: {$quantityToProcess})",
-                ], $costingMethod);
-            }
+            // Always create a new transaction for each processing batch
+            // This ensures we have a complete audit trail
+            $transaction = $this->inventoryService->recordTransaction([
+                'lot_code' => $lotCode,
+                'item_code' => $grnItem->material_code,
+                'category' => $category,
+                'txn_type' => 'receipt',
+                'qty' => $quantityToProcess,
+                'unit_cost' => $unitCost,
+                'uom' => $grnItem->uom,
+                'warehouse' => $this->getWarehouseForCategory($category),
+                'related_doc_type' => 'GRN',
+                'related_doc_id' => $grnItem->grn_id,
+                'txn_date' => now()->toDateString(),
+                'remarks' => "GRN Item: {$grnItem->description} (Batch: {$quantityToProcess}, Total Processed: " . ($qtyProcessed + $quantityToProcess) . ")",
+            ], $costingMethod);
 
             // Update GRN item with partial processing details
             $currentProcessed = $grnItem->qty_processed ?? 0;
@@ -212,6 +211,26 @@ class GRNProcessingService
     public function processGRNItemToStock(GRNItem $grnItem, string $costingMethod = 'FIFO'): array
     {
         try {
+            // Check if item is already fully processed
+            $qtyReceived = $grnItem->qty_received_partial ?? $grnItem->qty_received ?? 0;
+            $qtyProcessed = $grnItem->qty_processed ?? 0;
+            $remaining = $qtyReceived - $qtyProcessed;
+            
+            if ($remaining <= 0) {
+                throw new \Exception("This item has already been fully processed. Received: {$qtyReceived}, Processed: {$qtyProcessed}");
+            }
+            
+            // Check if transaction already exists for this GRN item (prevent duplicates)
+            $existingTransaction = InventoryTransaction::where('related_doc_type', 'GRN')
+                ->where('related_doc_id', $grnItem->grn_id)
+                ->where('item_code', $grnItem->material_code)
+                ->where('qty', $qtyReceived)
+                ->first();
+            
+            if ($existingTransaction) {
+                throw new \Exception("A transaction already exists for this item. This GRN item has already been processed.");
+            }
+            
             // Determine item category based on production order item
             $category = $this->determineItemCategory($grnItem);
             
