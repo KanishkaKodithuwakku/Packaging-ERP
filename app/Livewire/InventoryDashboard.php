@@ -101,9 +101,10 @@ class InventoryDashboard extends Component
 
     public function getRecentTransactions()
     {
-        return \App\Models\InventoryTransaction::with(['inventory', 'grn.purchaseOrder.jobOrder'])
+        return \App\Models\InventoryTransaction::with(['inventory', 'grn.productionOrder', 'grn.purchaseOrder.jobOrder'])
+            ->orderBy('txn_date', 'desc')
             ->orderBy('created_at', 'desc')
-            ->limit(10)
+            ->limit(20)
             ->get();
     }
 

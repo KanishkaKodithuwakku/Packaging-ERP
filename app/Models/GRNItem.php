@@ -115,14 +115,10 @@ class GRNItem extends Model
         }
 
         $this->qty_received_partial += $quantity;
-        $this->qty_pending = $this->qty_expected - $this->qty_received_partial;
         $this->last_received_at = now();
 
-        // Check if fully received
-        if ($this->qty_received_partial >= $this->qty_expected) {
-            $this->is_fully_received = true;
-            $this->qty_pending = 0;
-        }
+        // Sync status and recalculate pending
+        $this->syncReceivingStatus();
 
         $this->save();
 
@@ -137,6 +133,40 @@ class GRNItem extends Model
         ]);
 
         return $this;
+    }
+
+    /**
+     * Sync receiving status based on current quantities
+     * This ensures is_fully_received and qty_pending are always correct
+     */
+    public function syncReceivingStatus()
+    {
+        // Ensure we have valid values, default to 0 if null
+        $qtyReceived = $this->qty_received_partial ?? 0;
+        $qtyExpected = $this->qty_expected ?? ($this->qty_received ?? 0);
+        
+        // If qty_expected is 0 or null but qty_received exists, use that
+        if (($qtyExpected <= 0) && ($this->qty_received > 0)) {
+            $qtyExpected = $this->qty_received;
+            $this->qty_expected = $qtyExpected;
+        }
+        
+        // Use a small tolerance for floating point comparison
+        $tolerance = 0.0001;
+        $difference = abs($qtyReceived - $qtyExpected);
+        
+        // Check if fully received (accounting for floating point precision)
+        if ($qtyExpected > 0 && ($qtyReceived >= $qtyExpected || $difference <= $tolerance)) {
+            $this->is_fully_received = true;
+            $this->qty_pending = 0;
+            // Ensure received doesn't exceed expected
+            if ($qtyReceived > $qtyExpected) {
+                $this->qty_received_partial = $qtyExpected;
+            }
+        } else {
+            $this->is_fully_received = false;
+            $this->qty_pending = max(0, $qtyExpected - $qtyReceived);
+        }
     }
 
     /**

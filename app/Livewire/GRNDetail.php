@@ -33,7 +33,24 @@ class GRNDetail extends Component
             $this->grn->update(['status' => 'pending']);
         }
         
+        // Sync receiving status for all items to fix any inconsistencies
+        $this->syncItemsReceivingStatus();
+        
         $this->loadProcessingStatus();
+    }
+
+    /**
+     * Sync receiving status for all GRN items
+     */
+    protected function syncItemsReceivingStatus()
+    {
+        foreach ($this->grn->items as $item) {
+            $item->syncReceivingStatus();
+            // Only save if there were changes to avoid unnecessary writes
+            if ($item->isDirty()) {
+                $item->save();
+            }
+        }
     }
 
     public function loadProcessingStatus()
@@ -131,6 +148,10 @@ class GRNDetail extends Component
                 
                 // Refresh GRN data
                 $this->grn = GRN::with(['supplierOrder.supplier', 'productionOrder.supplier', 'items'])->findOrFail($this->grnId);
+                
+                // Sync all items status in case any updates were needed
+                $this->syncItemsReceivingStatus();
+                
                 $this->loadProcessingStatus();
                 
             } else {
@@ -208,12 +229,25 @@ class GRNDetail extends Component
             // Refresh the GRN data
             $this->grn->refresh();
             
+            // Sync all items status in case any updates were needed
+            $this->syncItemsReceivingStatus();
+            
             // Close modal
             $this->closePartialReceivingModal();
             
         } catch (\Exception $e) {
             session()->flash('error', 'Failed to add partial receipt: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Refresh GRN data and sync status
+     */
+    public function refreshGRN()
+    {
+        $this->grn = GRN::with(['supplierOrder.supplier', 'productionOrder.supplier', 'items'])->findOrFail($this->grnId);
+        $this->syncItemsReceivingStatus();
+        $this->loadProcessingStatus();
     }
 
     public function render()
