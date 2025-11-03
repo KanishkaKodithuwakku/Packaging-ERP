@@ -16,11 +16,7 @@ class SupplierDetail extends Component
     public bool $showReelModal = false;
     public ?int $editingReelId = null;
     public array $reelForm = [
-        'ply' => '3',
-        'flute' => 'B',
-        'size_mm' => '',
-        'is_default' => false,
-        'notes' => '',
+        'reel_size' => '',
     ];
 
     public function mount(int $id)
@@ -40,14 +36,10 @@ class SupplierDetail extends Component
         if ($id) {
             $reel = SupplierReelSize::findOrFail($id);
             $this->reelForm = [
-                'ply' => (string)($reel->ply),
-                'flute' => (string)($reel->flute),
-                'size_mm' => (string)$reel->size_mm,
-                'is_default' => (bool)$reel->is_default,
-                'notes' => (string)($reel->notes ?? ''),
+                'reel_size' => (string)$reel->reel_size,
             ];
         } else {
-            $this->reelForm = ['ply' => '3','flute' => 'B','size_mm' => '', 'is_default' => false, 'notes' => ''];
+            $this->reelForm = ['reel_size' => ''];
         }
         $this->showReelModal = true;
     }
@@ -60,11 +52,7 @@ class SupplierDetail extends Component
     public function saveReel()
     {
         $validated = $this->validate([
-            'reelForm.ply' => 'required|in:3,5,7',
-            'reelForm.flute' => 'required|in:A,B,C,E,BC,BE',
-            'reelForm.size_mm' => 'required|numeric|min:0.01',
-            'reelForm.is_default' => 'boolean',
-            'reelForm.notes' => 'nullable|string',
+            'reelForm.reel_size' => 'required|numeric|min:0.01',
         ])['reelForm'];
 
         $validated['supplier_id'] = $this->supplierId;
