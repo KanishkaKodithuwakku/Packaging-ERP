@@ -148,6 +148,16 @@ class JobOrderManagement extends Component
         $this->showFilterModal = false;
     }
 
+    public function resetFilters()
+    {
+        $this->filterSupplier = '';
+        $this->filterCustomer = '';
+        $this->filterStatus = '';
+        $this->filterDateFrom = '';
+        $this->filterDateTo = '';
+        $this->search = '';
+    }
+
     public function openDispatchModal($jobOrderId)
     {
         $this->selectedJobOrderForDispatch = \App\Models\JobOrder::with(['boxes', 'dividers', 'supplier', 'customer'])->findOrFail($jobOrderId);
