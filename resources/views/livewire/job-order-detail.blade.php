@@ -454,6 +454,29 @@
             </div>
         </div>
 
+        <!-- Flash Messages -->
+        @if(session()->has('success'))
+        <div class="px-6 py-3 bg-green-50 border-b border-green-200">
+            <div class="flex items-center">
+                <svg class="w-5 h-5 text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <p class="text-sm font-medium text-green-800">{{ session('success') }}</p>
+            </div>
+        </div>
+        @endif
+
+        @if(session()->has('error'))
+        <div class="px-6 py-3 bg-red-50 border-b border-red-200">
+            <div class="flex items-center">
+                <svg class="w-5 h-5 text-red-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <p class="text-sm font-medium text-red-800">{{ session('error') }}</p>
+            </div>
+        </div>
+        @endif
+
         @if(count($boxes) > 0 || count($dividers) > 0)
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
@@ -575,7 +598,7 @@
     <!-- Add Box/Divider Modal -->
     @if($showBoxDividerModal)
     <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-        <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-6xl shadow-lg rounded-md bg-white">
+        <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-[95vw] shadow-lg rounded-md bg-white">
             <div class="mt-3">
                 <!-- Modal Header -->
                 <div class="flex justify-between items-center pb-4 border-b">
