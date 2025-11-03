@@ -23,6 +23,15 @@
             <div class="flex items-center space-x-4">
                 <input type="text" wire:model.live="search" placeholder="Search job orders..."
                     class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[200px]">
+                @if($filterSupplier || $filterCustomer || $filterStatus || $filterDateFrom || $filterDateTo)
+                <button wire:click="resetFilters"
+                    class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center">
+                    <svg class="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M15.312 11.424a5.5 5.5 0 0 1-9.201 2.466l-.312-.311h2.433a.75.75 0 0 0 0-1.5H3.989a.75.75 0 0 0-.75.75v4.242a.75.75 0 0 0 1.5 0v-2.43l.31.31a7 7 0 0 0 11.712-3.138.75.75 0 0 0-1.449-.39Zm1.23-3.723a.75.75 0 0 0 .219-.53V2.929a.75.75 0 0 0-1.5 0V5.36l-.31-.31A7 7 0 0 0 3.239 8.188a.75.75 0 1 0 1.448.389A5.5 5.5 0 0 1 13.89 6.11l.311.31h-2.432a.75.75 0 0 0 0 1.5h4.243a.75.75 0 0 0 .53-.219Z" clip-rule="evenodd" />
+                    </svg>
+                    Reset Filter
+                </button>
+                @else
                 <button wire:click="openFilterModal"
                     class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -32,6 +41,7 @@
                     </svg>
                     Filter
                 </button>
+                @endif
                 <button wire:click="openCreateModal"
                     class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -203,7 +213,7 @@
                                     @if($jobOrder->boxes->count() == 0 && $jobOrder->dividers->count() == 0)
                                     <span class="text-gray-400 text-xs">No items</span>
                                     @endif
-                                    
+
                                     @php
                                     // Calculate overall GRN progress for this job order
                                     $totalOrderedQty = $jobOrder->boxes->sum('order_qty') + $jobOrder->dividers->sum('quantity');
@@ -214,7 +224,7 @@
                                     })->sum('qty_received_partial');
                                     $overallGRNProgress = $totalOrderedQty > 0 ? min(100, ($totalGRNReceivedQty / $totalOrderedQty) * 100) : 0;
                                     @endphp
-                                    
+
                                     @if($totalOrderedQty > 0)
                                     <div class="mt-2 pt-2 border-t border-gray-200">
                                         <div class="flex items-center justify-between">
@@ -305,7 +315,7 @@
                                 Dispatch Status - Job Order {{ $selectedJobOrderForDispatch->job_number }}
                             </h3>
                             <p class="text-sm text-gray-500 mt-1">
-                                {{ optional($selectedJobOrderForDispatch->supplier)->name ?? 'N/A' }} → 
+                                {{ optional($selectedJobOrderForDispatch->supplier)->name ?? 'N/A' }} →
                                 {{ optional($selectedJobOrderForDispatch->customer)->name ?? 'N/A' }}
                             </p>
                         </div>
@@ -334,7 +344,7 @@
                                     @forelse($dispatchComparison as $item)
                                         <tr>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
                                                     {{ $item['type'] === 'box' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800' }}">
                                                     {{ ucfirst($item['type']) }}
                                                 </span>
@@ -410,7 +420,7 @@
 
                     <!-- Action Buttons -->
                     <div class="flex justify-end space-x-3 mt-8 pt-6 border-t">
-                        <button type="button" 
+                        <button type="button"
                                 wire:click="closeDispatchModal"
                                 class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                             Close
@@ -440,64 +450,77 @@
 
                     <!-- Filter Form -->
                     <div class="mt-6">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <!-- Left Column -->
-                            <div class="space-y-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-                                    <input type="date" wire:model.live="filterDateFrom"
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <div class="space-y-3">
+                            <!-- Row 1: Start Date, End Date -->
+                            <div class="flex gap-3">
+                                <div class="flex items-center gap-3 flex-1">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1 w-1/5">Start Date</label>
+                                    <div class="flex-1">
+                                        <input type="date" wire:model.live="filterDateFrom"
+                                            class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
                                 </div>
 
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Supplier</label>
-                                    <select wire:model.live="filterSupplier"
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                        <option value="">All Suppliers</option>
-                                        @foreach($suppliers as $supplier)
-                                        <option value="{{ $supplier->id }}">{{ $supplier->name }}</option>
-                                        @endforeach
-                                    </select>
+                                <div class="flex items-center gap-3 flex-1">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1 w-1/5">End Date</label>
+                                    <div class="flex-1">
+                                        <input type="date" wire:model.live="filterDateTo"
+                                            class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
                                 </div>
                             </div>
 
-                            <!-- Right Column -->
-                            <div class="space-y-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-                                    <input type="date" wire:model.live="filterDateTo"
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <!-- Row 2: Supplier, Customer -->
+                            <div class="flex gap-3">
+                                <div class="flex items-center gap-3 flex-1">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1 w-1/5">Supplier</label>
+                                    <div class="flex-1">
+                                        <select wire:model.live="filterSupplier"
+                                            class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                            <option value="">All Suppliers</option>
+                                            @foreach($suppliers as $supplier)
+                                            <option value="{{ $supplier->id }}">{{ $supplier->name }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
                                 </div>
 
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Customer</label>
-                                    <select wire:model.live="filterCustomer"
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                        <option value="">All Customers</option>
-                                        @foreach($customers as $customer)
-                                        <option value="{{ $customer->id }}">{{ $customer->name }}</option>
-                                        @endforeach
-                                    </select>
+                                <div class="flex items-center gap-3 flex-1">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1 w-1/5">Customer</label>
+                                    <div class="flex-1">
+                                        <select wire:model.live="filterCustomer"
+                                            class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                            <option value="">All Customers</option>
+                                            @foreach($customers as $customer)
+                                            <option value="{{ $customer->id }}">{{ $customer->name }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
                                 </div>
+                            </div>
 
-                                <div>
-                                    <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                                    <select wire:model.live="filterStatus"
-                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                        <option value="">All Status</option>
-                                        <option value="draft">Draft</option>
-                                        <option value="confirmed">Confirmed</option>
-                                        <option value="in_production">In Production</option>
-                                        <option value="completed">Completed</option>
-                                        <option value="cancelled">Cancelled</option>
-                                    </select>
+                            <!-- Row 3: Status -->
+                            <div class="flex gap-3">
+                                <div class="flex items-center gap-3" style="width: calc(51% - 0.75rem);">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1 w-1/5">Status</label>
+                                    <div class="flex-1">
+                                        <select wire:model.live="filterStatus"
+                                            class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                            <option value="">All Status</option>
+                                            <option value="draft">Draft</option>
+                                            <option value="confirmed">Confirmed</option>
+                                            <option value="in_production">In Production</option>
+                                            <option value="completed">Completed</option>
+                                            <option value="cancelled">Cancelled</option>
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
                         <!-- Action Buttons -->
                         <div class="flex justify-end space-x-3 mt-8 pt-6 border-t">
-                            <button type="button" 
+                            <button type="button"
                                     wire:click="closeFilterModal"
                                     class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                                 Close

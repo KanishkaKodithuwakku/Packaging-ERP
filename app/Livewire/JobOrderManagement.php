@@ -38,6 +38,7 @@ class JobOrderManagement extends Component
         'date' => '',
         'supplier_id' => '',
         'supplier_po_number' => '',
+        'supplier_address' => '',
         'customer_id' => '',
         'customer_address' => '',
         'purchase_order_no' => '',
@@ -147,6 +148,16 @@ class JobOrderManagement extends Component
         $this->showFilterModal = false;
     }
 
+    public function resetFilters()
+    {
+        $this->filterSupplier = '';
+        $this->filterCustomer = '';
+        $this->filterStatus = '';
+        $this->filterDateFrom = '';
+        $this->filterDateTo = '';
+        $this->search = '';
+    }
+
     public function openDispatchModal($jobOrderId)
     {
         $this->selectedJobOrderForDispatch = \App\Models\JobOrder::with(['boxes', 'dividers', 'supplier', 'customer'])->findOrFail($jobOrderId);
@@ -239,6 +250,7 @@ class JobOrderManagement extends Component
             if ($supplier) {
                 $this->form['job_number'] = JobOrder::generateJobNumber($supplier->id);
                 $this->form['supplier_po_number'] = $this->form['job_number'];
+                $this->form['supplier_address'] = $supplier->address ?? '';
             }
         }
         // Trigger dimension calculations when supplier changes
@@ -721,6 +733,7 @@ class JobOrderManagement extends Component
             'date' => now()->format('Y-m-d'),
             'supplier_id' => '',
             'supplier_po_number' => '',
+            'supplier_address' => '',
             'customer_id' => '',
             'customer_address' => '',
             'purchase_order_no' => '',

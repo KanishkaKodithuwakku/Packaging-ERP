@@ -273,14 +273,53 @@ class JobOrderDetail extends Component
 
     public function addBox()
     {
-        $this->validate([
+        // Build base validation rules
+        $rules = [
             'boxForm.order_qty' => 'required|numeric|min:1',
             'boxForm.selling_price' => 'required|numeric|min:0',
+            'boxForm.activity' => 'required|string',
+            'boxForm.printing_instruction' => 'required|string',
+            'boxForm.no_of_colours' => 'required|numeric|min:0',
+            'boxForm.stitched_glued' => 'required|string',
+            'boxForm.sample_available' => 'required|string',
+            'boxForm.sample_attached' => 'required|string',
             'boxForm.length' => 'required|numeric|min:0.01',
             'boxForm.width' => 'required|numeric|min:0.01',
             'boxForm.height' => 'required|numeric|min:0.01',
+            'boxForm.unit' => 'required|string',
+            'boxForm.dimension_type' => 'required|string',
+            'boxForm.top_liner' => 'required|string',
             'boxForm.ply' => 'required|in:3,5,7',
-        ]);
+            'boxForm.flute' => 'required|string',
+            'boxForm.fsc_claim' => 'required|string',
+            'boxForm.no_of_ups' => 'required|numeric|min:1',
+            'boxForm.supplier_price' => 'required|numeric|min:0',
+            'boxForm.notes' => 'required|string',
+        ];
+
+        // Add combination fields validation based on PLY
+        $ply = $this->boxForm['ply'] ?? null;
+        if ($ply == '3') {
+            $rules['boxForm.combination_1'] = 'required|string';
+            $rules['boxForm.combination_2'] = 'required|string';
+            $rules['boxForm.combination_3'] = 'required|string';
+        } elseif ($ply == '5') {
+            $rules['boxForm.combination_1'] = 'required|string';
+            $rules['boxForm.combination_2'] = 'required|string';
+            $rules['boxForm.combination_3'] = 'required|string';
+            $rules['boxForm.combination_4'] = 'required|string';
+            $rules['boxForm.combination_5'] = 'required|string';
+        } elseif ($ply == '7') {
+            $rules['boxForm.combination_1'] = 'required|string';
+            $rules['boxForm.combination_2'] = 'required|string';
+            $rules['boxForm.combination_3'] = 'required|string';
+            $rules['boxForm.combination_4'] = 'required|string';
+            $rules['boxForm.combination_5'] = 'required|string';
+            $rules['boxForm.combination_6'] = 'required|string';
+            $rules['boxForm.combination_7'] = 'required|string';
+        }
+
+        $this->validate($rules);
 
         try {
             // Create the box directly in the database
@@ -288,10 +327,10 @@ class JobOrderDetail extends Component
                 'job_order_id' => $this->jobOrderId,
                 'order_qty' => $this->boxForm['order_qty'],
                 'selling_price' => $this->boxForm['selling_price'],
-                'activity' => $this->boxForm['activity'] ?: null,
-                'printing_instruction' => $this->boxForm['printing_instruction'] ?: null,
-                'no_of_colours' => $this->boxForm['no_of_colours'] ? (int)$this->boxForm['no_of_colours'] : null,
-                'stitched_glued' => $this->boxForm['stitched_glued'] ?: null,
+                'activity' => $this->boxForm['activity'],
+                'printing_instruction' => $this->boxForm['printing_instruction'],
+                'no_of_colours' => (int)$this->boxForm['no_of_colours'],
+                'stitched_glued' => $this->boxForm['stitched_glued'],
                 'sample_available' => $this->boxForm['sample_available'] === 'Yes',
                 'sample_attached' => $this->boxForm['sample_attached'] === 'Yes',
                 'length' => $this->boxForm['length'],
@@ -301,17 +340,18 @@ class JobOrderDetail extends Component
                 'dimension_type' => $this->boxForm['dimension_type'],
                 'top_liner' => $this->boxForm['top_liner'],
                 'ply' => $this->boxForm['ply'],
-                'combination_1' => $this->boxForm['combination_1'] ?: null,
-                'combination_2' => $this->boxForm['combination_2'] ?: null,
-                'combination_3' => $this->boxForm['combination_3'] ?: null,
-                'combination_4' => $this->boxForm['combination_4'] ?: null,
-                'combination_5' => $this->boxForm['combination_5'] ?: null,
-                'combination_6' => $this->boxForm['combination_6'] ?: null,
-                'combination_7' => $this->boxForm['combination_7'] ?: null,
+                'combination_1' => $this->boxForm['combination_1'] ?? '',
+                'combination_2' => $this->boxForm['combination_2'] ?? '',
+                'combination_3' => $this->boxForm['combination_3'] ?? '',
+                'combination_4' => $this->boxForm['combination_4'] ?? '',
+                'combination_5' => $this->boxForm['combination_5'] ?? '',
+                'combination_6' => $this->boxForm['combination_6'] ?? '',
+                'combination_7' => $this->boxForm['combination_7'] ?? '',
                 'flute' => $this->boxForm['flute'],
                 'fsc_claim' => $this->boxForm['fsc_claim'],
-                'no_of_ups' => $this->boxForm['no_of_ups'] ? (int)$this->boxForm['no_of_ups'] : null,
-                'supplier_price' => $this->boxForm['supplier_price'] ?: null,
+                'no_of_ups' => (int)$this->boxForm['no_of_ups'],
+                'supplier_price' => $this->boxForm['supplier_price'],
+                'notes' => $this->boxForm['notes'],
                 'reel_size' => $this->calculatedReelSize,
                 'cut_size' => $this->calculatedCutSize,
                 'board_qty' => $this->calculatedBoardQty,
@@ -325,10 +365,10 @@ class JobOrderDetail extends Component
             $this->resetBoxForm();
             $this->activeTab = 'boxes';
             
+            // Close the modal
+            $this->closeBoxDividerModal();
+            
             session()->flash('success', 'Box added successfully!');
-            
-            // Modal stays open to allow adding more boxes/dividers
-            
         } catch (\Exception $e) {
             \Log::error('Error adding box: ' . $e->getMessage());
             session()->flash('error', 'Error adding box: ' . $e->getMessage());
@@ -337,10 +377,38 @@ class JobOrderDetail extends Component
 
     public function addDivider()
     {
-        $this->validate([
+        // Build base validation rules
+        $rules = [
             'dividerForm.quantity' => 'required|numeric|min:1',
             'dividerForm.ply' => 'required|in:3,5,7',
-        ]);
+            'dividerForm.unit' => 'required|string',
+            'dividerForm.fsc_claim' => 'required|string',
+            'dividerForm.supplier_price' => 'required|numeric|min:0',
+        ];
+
+        // Add combination fields validation based on PLY
+        $ply = $this->dividerForm['ply'] ?? null;
+        if ($ply == '3') {
+            $rules['dividerForm.combination_1'] = 'required|string';
+            $rules['dividerForm.combination_2'] = 'required|string';
+            $rules['dividerForm.combination_3'] = 'required|string';
+        } elseif ($ply == '5') {
+            $rules['dividerForm.combination_1'] = 'required|string';
+            $rules['dividerForm.combination_2'] = 'required|string';
+            $rules['dividerForm.combination_3'] = 'required|string';
+            $rules['dividerForm.combination_4'] = 'required|string';
+            $rules['dividerForm.combination_5'] = 'required|string';
+        } elseif ($ply == '7') {
+            $rules['dividerForm.combination_1'] = 'required|string';
+            $rules['dividerForm.combination_2'] = 'required|string';
+            $rules['dividerForm.combination_3'] = 'required|string';
+            $rules['dividerForm.combination_4'] = 'required|string';
+            $rules['dividerForm.combination_5'] = 'required|string';
+            $rules['dividerForm.combination_6'] = 'required|string';
+            $rules['dividerForm.combination_7'] = 'required|string';
+        }
+
+        $this->validate($rules);
 
         try {
             // Create the divider directly in the database
@@ -348,13 +416,13 @@ class JobOrderDetail extends Component
                 'job_order_id' => $this->jobOrderId,
                 'quantity' => $this->dividerForm['quantity'],
                 'ply' => $this->dividerForm['ply'],
-                'combination_1' => $this->dividerForm['combination_1'],
-                'combination_2' => $this->dividerForm['combination_2'],
-                'combination_3' => $this->dividerForm['combination_3'],
-                'combination_4' => $this->dividerForm['combination_4'],
-                'combination_5' => $this->dividerForm['combination_5'],
-                'combination_6' => $this->dividerForm['combination_6'],
-                'combination_7' => $this->dividerForm['combination_7'],
+                'combination_1' => $this->dividerForm['combination_1'] ?? '',
+                'combination_2' => $this->dividerForm['combination_2'] ?? '',
+                'combination_3' => $this->dividerForm['combination_3'] ?? '',
+                'combination_4' => $this->dividerForm['combination_4'] ?? '',
+                'combination_5' => $this->dividerForm['combination_5'] ?? '',
+                'combination_6' => $this->dividerForm['combination_6'] ?? '',
+                'combination_7' => $this->dividerForm['combination_7'] ?? '',
                 'unit' => $this->dividerForm['unit'],
                 'fsc_claim' => $this->dividerForm['fsc_claim'],
                 'supplier_price' => $this->dividerForm['supplier_price'],
@@ -368,10 +436,10 @@ class JobOrderDetail extends Component
             $this->resetDividerForm();
             $this->activeTab = 'dividers';
             
+            // Close the modal
+            $this->closeBoxDividerModal();
+            
             session()->flash('success', 'Divider added successfully!');
-            
-            // Modal stays open to allow adding more boxes/dividers
-            
         } catch (\Exception $e) {
             \Log::error('Error adding divider: ' . $e->getMessage());
             session()->flash('error', 'Error adding divider: ' . $e->getMessage());

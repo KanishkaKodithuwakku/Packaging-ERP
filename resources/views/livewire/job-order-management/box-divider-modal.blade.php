@@ -1,7 +1,7 @@
 <!-- Add Box/Divider Modal -->
 @if($showBoxDividerModal)
     <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-        <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-6xl shadow-lg rounded-md bg-white">
+        <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-[95vw] shadow-lg rounded-md bg-white">
             <div class="mt-3">
                 <!-- Modal Header -->
                 <div class="flex justify-between items-center pb-4 border-b">
@@ -18,11 +18,11 @@
                 <!-- Tab Navigation -->
                 <div class="border-b border-gray-200 mt-4">
                     <nav class="-mb-px flex space-x-8">
-                        <button wire:click="setActiveTab('boxes')" 
+                        <button wire:click="setActiveTab('boxes')"
                                 class="py-2 px-1 border-b-2 font-medium text-sm {{ $activeTab === 'boxes' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}">
                             Boxes ({{ count($boxes) }})
                         </button>
-                        <button wire:click="setActiveTab('dividers')" 
+                        <button wire:click="setActiveTab('dividers')"
                                 class="py-2 px-1 border-b-2 font-medium text-sm {{ $activeTab === 'dividers' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}">
                             Dividers ({{ count($dividers) }})
                         </button>
