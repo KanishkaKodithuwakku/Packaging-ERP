@@ -18,6 +18,9 @@ class JobOrderManagement extends Component
     // Modal states
     public $showModal = false;
     public $showFilterModal = false;
+    public $showDispatchModal = false;
+    public $selectedJobOrderForDispatch = null;
+    public $dispatchComparison = [];
     public $editingJobOrder = false;
     public $activeTab = 'main';
     
@@ -142,6 +145,88 @@ class JobOrderManagement extends Component
     public function closeFilterModal()
     {
         $this->showFilterModal = false;
+    }
+
+    public function openDispatchModal($jobOrderId)
+    {
+        $this->selectedJobOrderForDispatch = \App\Models\JobOrder::with(['boxes', 'dividers', 'supplier', 'customer'])->findOrFail($jobOrderId);
+        $this->loadDispatchComparison($jobOrderId);
+        $this->showDispatchModal = true;
+    }
+
+    public function closeDispatchModal()
+    {
+        $this->showDispatchModal = false;
+        $this->selectedJobOrderForDispatch = null;
+        $this->dispatchComparison = [];
+    }
+
+    public function loadDispatchComparison($jobOrderId)
+    {
+        $jobOrder = \App\Models\JobOrder::with(['boxes', 'dividers'])->findOrFail($jobOrderId);
+        
+        // Get all delivery notes for this job order
+        $deliveryNotes = \App\Models\DeliveryNote::where('job_order_id', $jobOrderId)
+            ->with('items')
+            ->get();
+
+        $comparison = [];
+
+        // Process boxes
+        foreach ($jobOrder->boxes as $box) {
+            $materialCode = 'BOX-' . $box->id . '-' . $box->ply . 'PLY';
+            $orderQty = $box->order_qty;
+            
+            // Calculate total dispatched from all delivery notes for this box
+            $dispatchedQty = 0;
+            foreach ($deliveryNotes as $dn) {
+                foreach ($dn->items as $item) {
+                    if ($item->item_type === 'box' && $item->item_id == $box->id) {
+                        $dispatchedQty += $item->dispatched_qty;
+                    }
+                }
+            }
+
+            $comparison[] = [
+                'type' => 'box',
+                'id' => $box->id,
+                'description' => "Box - {$box->length}x{$box->width}x{$box->height}cm",
+                'material_code' => $materialCode,
+                'order_qty' => $orderQty,
+                'dispatched_qty' => $dispatchedQty,
+                'remaining_qty' => max(0, $orderQty - $dispatchedQty),
+                'progress' => $orderQty > 0 ? min(100, ($dispatchedQty / $orderQty) * 100) : 0,
+            ];
+        }
+
+        // Process dividers
+        foreach ($jobOrder->dividers as $divider) {
+            $materialCode = 'DIVIDER-' . $divider->id . '-' . $divider->ply . 'PLY';
+            $orderQty = $divider->quantity;
+            
+            // Calculate total dispatched from all delivery notes for this divider
+            $dispatchedQty = 0;
+            foreach ($deliveryNotes as $dn) {
+                foreach ($dn->items as $item) {
+                    if ($item->item_type === 'divider' && $item->item_id == $divider->id) {
+                        $dispatchedQty += $item->dispatched_qty;
+                    }
+                }
+            }
+
+            $comparison[] = [
+                'type' => 'divider',
+                'id' => $divider->id,
+                'description' => "Divider - {$divider->ply} PLY",
+                'material_code' => $materialCode,
+                'order_qty' => $orderQty,
+                'dispatched_qty' => $dispatchedQty,
+                'remaining_qty' => max(0, $orderQty - $dispatchedQty),
+                'progress' => $orderQty > 0 ? min(100, ($dispatchedQty / $orderQty) * 100) : 0,
+            ];
+        }
+
+        $this->dispatchComparison = $comparison;
     }
 
 

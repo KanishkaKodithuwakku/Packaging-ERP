@@ -250,8 +250,16 @@
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <div class="flex items-center space-x-2">
+                                    <button wire:click.stop="openDispatchModal({{ $jobOrder->id }})"
+                                        class="text-green-600 hover:text-green-900" title="View Dispatch Status">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z">
+                                            </path>
+                                        </svg>
+                                    </button>
                                     <button wire:click.stop="editJobOrder({{ $jobOrder->id }})"
-                                        class="text-blue-600 hover:text-blue-900">
+                                        class="text-blue-600 hover:text-blue-900" title="Edit">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                 d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
@@ -260,7 +268,7 @@
                                     </button>
                                     <button wire:click.stop="deleteJobOrder({{ $jobOrder->id }})"
                                         wire:confirm="Are you sure you want to delete this job order?"
-                                        class="text-red-600 hover:text-red-900">
+                                        class="text-red-600 hover:text-red-900" title="Delete">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                                 d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
@@ -284,6 +292,134 @@
 
     <!-- Create Job Order Modal -->
     @include('livewire.job-order-management.create-job-order-modal')
+
+    <!-- Dispatch Comparison Modal -->
+    @if($showDispatchModal && $selectedJobOrderForDispatch)
+        <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" wire:click.self="closeDispatchModal">
+            <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-5xl shadow-lg rounded-md bg-white">
+                <div class="mt-3">
+                    <!-- Modal Header -->
+                    <div class="flex justify-between items-center pb-4 border-b">
+                        <div>
+                            <h3 class="text-lg font-medium text-gray-900">
+                                Dispatch Status - Job Order {{ $selectedJobOrderForDispatch->job_number }}
+                            </h3>
+                            <p class="text-sm text-gray-500 mt-1">
+                                {{ optional($selectedJobOrderForDispatch->supplier)->name ?? 'N/A' }} → 
+                                {{ optional($selectedJobOrderForDispatch->customer)->name ?? 'N/A' }}
+                            </p>
+                        </div>
+                        <button wire:click="closeDispatchModal" class="text-gray-400 hover:text-gray-600">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Comparison Table -->
+                    <div class="mt-6">
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Item</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Material Code</th>
+                                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Order Qty</th>
+                                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Dispatched Qty</th>
+                                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Remaining</th>
+                                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Progress</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    @forelse($dispatchComparison as $item)
+                                        <tr>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
+                                                    {{ $item['type'] === 'box' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800' }}">
+                                                    {{ ucfirst($item['type']) }}
+                                                </span>
+                                                <div class="mt-1 text-xs text-gray-500">{{ $item['description'] }}</div>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $item['material_code'] }}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right">
+                                                {{ number_format($item['order_qty'], 2) }}
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-right">
+                                                <span class="font-medium {{ $item['dispatched_qty'] > 0 ? 'text-green-600' : 'text-gray-400' }}">
+                                                    {{ number_format($item['dispatched_qty'], 2) }}
+                                                </span>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-right">
+                                                <span class="{{ $item['remaining_qty'] > 0 ? 'text-orange-600' : 'text-gray-400' }}">
+                                                    {{ number_format($item['remaining_qty'], 2) }}
+                                                </span>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <div class="flex items-center space-x-2">
+                                                    <div class="flex-1 bg-gray-200 rounded-full h-2 max-w-32">
+                                                        <div class="bg-green-500 h-2 rounded-full" style="width: {{ $item['progress'] }}%"></div>
+                                                    </div>
+                                                    <span class="text-xs text-gray-600 min-w-[45px] text-right">
+                                                        {{ number_format($item['progress'], 1) }}%
+                                                    </span>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+                                                No items found in this job order
+                                            </td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                                @if(count($dispatchComparison) > 0)
+                                <tfoot class="bg-gray-50">
+                                    <tr>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900" colspan="2">Total</td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 text-right">
+                                            {{ number_format(collect($dispatchComparison)->sum('order_qty'), 2) }}
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-green-600 text-right">
+                                            {{ number_format(collect($dispatchComparison)->sum('dispatched_qty'), 2) }}
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-orange-600 text-right">
+                                            {{ number_format(collect($dispatchComparison)->sum('remaining_qty'), 2) }}
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap">
+                                            @php
+                                                $totalOrdered = collect($dispatchComparison)->sum('order_qty');
+                                                $totalDispatched = collect($dispatchComparison)->sum('dispatched_qty');
+                                                $overallProgress = $totalOrdered > 0 ? min(100, ($totalDispatched / $totalOrdered) * 100) : 0;
+                                            @endphp
+                                            <div class="flex items-center space-x-2">
+                                                <div class="flex-1 bg-gray-200 rounded-full h-2 max-w-32">
+                                                    <div class="bg-green-500 h-2 rounded-full" style="width: {{ $overallProgress }}%"></div>
+                                                </div>
+                                                <span class="text-xs font-medium text-gray-900 min-w-[45px] text-right">
+                                                    {{ number_format($overallProgress, 1) }}%
+                                                </span>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tfoot>
+                                @endif
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="flex justify-end space-x-3 mt-8 pt-6 border-t">
+                        <button type="button" 
+                                wire:click="closeDispatchModal"
+                                class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
 
     <!-- Filter Modal -->
     @if($showFilterModal)
