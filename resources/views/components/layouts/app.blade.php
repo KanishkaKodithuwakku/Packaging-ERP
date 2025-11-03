@@ -85,7 +85,7 @@
                     </a>
 
                     <!-- Test Menu with Submenu -->
-                    <div x-data="{
+                    {{-- <div x-data="{
                         testMenuOpen: false,
                         item1Visible: false,
                         item2Visible: false,
@@ -186,7 +186,7 @@
                                 Test Item 4
                             </a>
                         </div>
-                    </div>
+                    </div> --}}
 
                     {{-- <a wire:navigate href="{{ route('quotations') }}"
                         class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-colors duration-200 {{ request()->routeIs('quotations') ? 'bg-gray-200 text-gray-900' : '' }}">
@@ -344,7 +344,7 @@
                         Chart of Accounts
                     </a> --}}
 
-                    <a href="https://uat.finance.kingspack.com.lk/wzusers/login"
+                    <a href="https://uat.finance.kingspack.com.lk/wzusers/login" target="_blank"
                     class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-colors duration-200 {{ request()->routeIs('accounting.chart-of-accounts') ? 'bg-gray-200 text-gray-900' : '' }}">
                     <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
