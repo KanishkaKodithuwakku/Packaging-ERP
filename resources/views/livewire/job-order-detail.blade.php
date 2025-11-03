@@ -71,7 +71,7 @@
                     Generate Purchase Order
                 </button>
                 @endif
-                
+
                 <button wire:click="toggleEditMode"
                     class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -81,7 +81,7 @@
                     </svg>
                     Edit Job Order
                 </button>
-                
+
                 <button wire:click="showPrintPreview"
                     class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -98,278 +98,337 @@
 
     <!-- Job Order Information -->
     <div class="bg-white rounded-lg shadow-sm border p-6 mb-6">
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <!-- Column 1 -->
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Job Number</label>
-                    <div class="w-full px-3 py-1 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
-                        {{ $jobOrder->job_number }}
-                    </div>
-                </div>
+            <div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                    @if($isEditMode)
-                    <input type="date" wire:model="form.date"
-                        class="w-full px-3 py-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                    @error('form.date') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                    @else
-                    <div class="w-full px-3 py-1 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
-                        {{ $jobOrder->date->format('M d, Y') }}
+                <div class="space-y-3">
+                    <!-- Job Number -->
+                    <div class="flex items-center gap-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1 w-1/5">Job Number</label>
+                        <div class="flex-1">
+                            <div class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-900">
+                                {{ $jobOrder->job_number }}
+                            </div>
+                        </div>
                     </div>
-                    @endif
-                </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Supplier</label>
-                    @if($isEditMode)
-                    <select wire:model.live="form.supplier_id"
-                        class="w-full px-3 py-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                        <option value="">Select Supplier</option>
-                        @foreach($suppliers as $supplier)
-                        <option value="{{ $supplier->id }}">{{ $supplier->name }} ({{ $supplier->code }})</option>
-                        @endforeach
-                    </select>
-                    @error('form.supplier_id') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span>
-                    @enderror
-                    @else
-                    <div class="w-full px-3 py-1 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
-                        {{ $jobOrder->supplier->name }} ({{ $jobOrder->supplier->code }})
+                    <!-- Date -->
+                    <div class="flex items-center gap-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1 w-1/5">Date <span class="text-red-500">*</span></label>
+                        <div class="flex-1">
+                            @if($isEditMode)
+                            <input type="date" wire:model="form.date"
+                                class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            @error('form.date') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                            @else
+                            <div class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-900">
+                                {{ $jobOrder->date->format('M d, Y') }}
+                            </div>
+                            @endif
+                        </div>
                     </div>
-                    @endif
-                </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Supplier PO Number</label>
-                    <div class="w-full px-3 py-1 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
-                        {{ $jobOrder->supplier_po_number }}
+                    <!-- Supplier -->
+                    <div class="flex items-center gap-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1 w-1/5">Supplier <span class="text-red-500">*</span></label>
+                        <div class="flex-1">
+                            @if($isEditMode)
+                            <select wire:model.live="form.supplier_id"
+                                class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">Select Supplier</option>
+                                @foreach($suppliers as $supplier)
+                                <option value="{{ $supplier->id }}">{{ $supplier->name }} ({{ $supplier->code }})</option>
+                                @endforeach
+                            </select>
+                            @error('form.supplier_id') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                            @else
+                            <div class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-900">
+                                {{ $jobOrder->supplier->name }} ({{ $jobOrder->supplier->code }})
+                            </div>
+                            @endif
+                        </div>
                     </div>
-                </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Purchase Order Number</label>
-                    @if($isEditMode)
-                    <input type="text" wire:model="form.purchase_order_no"
-                        class="w-full px-3 py-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="PO Number">
-                    @error('form.purchase_order_no') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span>
-                    @enderror
-                    @else
-                    <div class="w-full px-3 py-1 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
-                        {{ $jobOrder->purchase_order_no ?: 'N/A' }}
+                    <!-- Supplier PO Number -->
+                    <div class="flex items-center gap-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1 w-1/5">Supplier <br> PO Number</label>
+                        <div class="flex-1">
+                            <div class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-900">
+                                {{ $jobOrder->supplier_po_number }}
+                            </div>
+                        </div>
                     </div>
-                    @endif
-                </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Purchase Order Date</label>
-                    @if($isEditMode)
-                    <input type="date" wire:model="form.po_date"
-                        class="w-full px-3 py-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                    @error('form.po_date') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                    @else
-                    <div class="w-full px-3 py-1 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
-                        {{ $jobOrder->po_date ? $jobOrder->po_date->format('M d, Y') : 'N/A' }}
+                    <!-- Purchase Order Number -->
+                    <div class="flex items-center gap-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1 w-1/5">Purchase <br> OrderNo</label>
+                        <div class="flex-1">
+                            @if($isEditMode)
+                            <input type="text" wire:model="form.purchase_order_no"
+                                class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="Enter PO Number">
+                            @error('form.purchase_order_no') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                            @else
+                            <div class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-900">
+                                {{ $jobOrder->purchase_order_no ?: 'N/A' }}
+                            </div>
+                            @endif
+                        </div>
                     </div>
-                    @endif
+
+                    <!-- PO Date -->
+                    <div class="flex items-center gap-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1 w-1/5">PO Date</label>
+                        <div class="flex-1">
+                            @if($isEditMode)
+                            <input type="date" wire:model="form.po_date"
+                                class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            @error('form.po_date') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                            @else
+                            <div class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-900">
+                                {{ $jobOrder->po_date ? $jobOrder->po_date->format('M d, Y') : 'N/A' }}
+                            </div>
+                            @endif
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <!-- Column 2 -->
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Customer</label>
-                    @if($isEditMode)
-                    <select wire:model.live="form.customer_id"
-                        class="w-full px-3 py-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                        <option value="">Select Customer</option>
-                        @foreach($customers as $customer)
-                        <option value="{{ $customer->id }}">{{ $customer->name }} ({{ $customer->code }})</option>
-                        @endforeach
-                    </select>
-                    @error('form.customer_id') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span>
-                    @enderror
-                    @else
-                    <div class="w-full px-3 py-1 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
-                        {{ $jobOrder->customer->name }} ({{ $jobOrder->customer->code }})
-                    </div>
-                    @endif
-                </div>
+            <div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Customer Address</label>
-                    @if($isEditMode)
-                    <textarea wire:model="form.customer_address" rows="3"
-                        class="w-full px-3 py-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="Customer address"></textarea>
-                    @error('form.customer_address') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span>
-                    @enderror
-                    @else
-                    <div
-                        class="w-full px-3 py-1 border border-gray-300 rounded-md bg-gray-50 text-gray-900 min-h-[60px]">
-                        {{ $jobOrder->customer_address }}
+                <div class="space-y-3">
+                    <!-- Customer -->
+                    <div class="flex items-center gap-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1 w-1/5">Customer <span class="text-red-500">*</span></label>
+                        <div class="flex-1">
+                            @if($isEditMode)
+                            <select wire:model.live="form.customer_id"
+                                class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <option value="">Select Customer</option>
+                                @foreach($customers as $customer)
+                                <option value="{{ $customer->id }}">{{ $customer->name }} ({{ $customer->code }})</option>
+                                @endforeach
+                            </select>
+                            @error('form.customer_id') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                            @else
+                            <div class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-900">
+                                {{ $jobOrder->customer->name }} ({{ $jobOrder->customer->code }})
+                            </div>
+                            @endif
+                        </div>
                     </div>
-                    @endif
-                </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                    @if($isEditMode)
-                    <select wire:model="form.status"
-                        class="w-full px-3 py-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
-                        <option value="draft">Draft</option>
-                        <option value="confirmed">Confirmed</option>
-                        <option value="in_production">In Production</option>
-                        <option value="completed">Completed</option>
-                        <option value="cancelled">Cancelled</option>
-                    </select>
-                    @error('form.status') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                    @else
-                    <div class="w-full px-3 py-1">
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                                {{ $jobOrder->status === 'draft' ? 'bg-gray-100 text-gray-800' : '' }}
-                                {{ $jobOrder->status === 'confirmed' ? 'bg-blue-100 text-blue-800' : '' }}
-                                {{ $jobOrder->status === 'in_production' ? 'bg-yellow-100 text-yellow-800' : '' }}
-                                {{ $jobOrder->status === 'completed' ? 'bg-green-100 text-green-800' : '' }}
-                                {{ $jobOrder->status === 'cancelled' ? 'bg-red-100 text-red-800' : '' }}">
-                            {{ ucfirst($jobOrder->status) }}
-                        </span>
+                    <!-- Customer Address -->
+                    <div class="flex items-center gap-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1 w-1/5">Customer Address</label>
+                        <div class="flex-1">
+                            @if($isEditMode)
+                            <textarea wire:model="form.customer_address" rows="3"
+                                class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 min-h-[90px]"
+                                placeholder="Enter customer address..."></textarea>
+                            @error('form.customer_address') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                            @else
+                            <div class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-900 min-h-[90px]">
+                                {{ $jobOrder->customer_address }}
+                            </div>
+                            @endif
+                        </div>
                     </div>
-                    @endif
+
+                    <!-- Status -->
+                    <div class="flex items-center gap-3 " style="margin-top: 15px !important;">
+                        <label class="block text-sm font-medium text-gray-700 mb-1 w-1/5">Status</label>
+                        <div class="flex-1">
+                            @if($isEditMode)
+                            <select wire:model="form.status"
+                                class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <option value="draft">Draft</option>
+                                <option value="confirmed">Confirmed</option>
+                                <option value="in_production">In Production</option>
+                                <option value="completed">Completed</option>
+                                <option value="cancelled">Cancelled</option>
+                            </select>
+                            @error('form.status') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                            @else
+                            <div class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-900">
+                                {{ ucfirst(str_replace('_', ' ', $jobOrder->status)) }}
+                            </div>
+                            @endif
+                        </div>
+                    </div>
+
+                    <!-- Items Count -->
+                    <div class="flex items-center gap-3" style="margin-top: 18px !important;">
+                        <label class="block text-sm font-medium text-gray-700 mb-1 w-1/5">Items Count</label>
+                        <div class="flex-1">
+                            <div class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-900">
+                                {{ count($boxes) + count($dividers) }} items
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Boxes -->
+                    <div class="flex items-center gap-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1 w-1/5">Boxes</label>
+                        <div class="flex-1">
+                            <div class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-900">
+                                {{ count($boxes) }} boxes
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <!-- Column 3 -->
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Items Count</label>
-                    <div class="w-full px-3 py-1 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
-                        {{ count($boxes) + count($dividers) }} items
+            <div>
+
+                <div class="space-y-3">
+                    <!-- Dividers -->
+                    <div class="flex items-center gap-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1 w-1/5">Dividers</label>
+                        <div class="flex-1">
+                            <div class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-900">
+                                {{ count($dividers) }} dividers
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Created At -->
+                    <div class="flex items-center gap-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1 w-1/5">Created At</label>
+                        <div class="flex-1">
+                            <div class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-900">
+                                {{ $jobOrder->created_at->format('M d, Y H:i') }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Purchase Orders -->
+                    <div class="flex items-center gap-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1 w-1/5">Purchase Orders</label>
+                        <div class="flex-1">
+                            <div class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-900">
+                                <div class="flex items-center justify-between text-sm">
+                                    <span>{{ $poStatusText }}</span>
+                                    <span>{{ number_format($poProcessedCount) }} / {{ number_format($poCount) }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- GRNs -->
+                    <div class="flex items-center gap-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1 w-1/5">GRNs</label>
+                        <div class="flex-1">
+                            <div class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-900">
+                                <div class="flex items-center justify-between text-sm">
+                                    <span>{{ number_format($grnProcessedCount) }} / {{ number_format($grnCount) }} processed</span>
+                                    <span></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dispatched Quantity -->
+                    <div class="flex items-center gap-3" style="margin-top: 18px !important;">
+                        <label class="block text-sm font-medium text-gray-700 mb-1 w-1/5">Dispatched <br> Quantity</label>
+                        <div class="flex-1">
+                            <div class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-900">
+                                <div class="flex items-center justify-between text-sm">
+                                    <span>{{ number_format($dispatchedQuantity, 2) }} units</span>
+                                    <span class="text-xs text-gray-500">{{ $deliveryCount }} DN(s)</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Updated At -->
+                    <div class="flex items-center gap-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1 w-1/5">Updated At</label>
+                        <div class="flex-1">
+                            <div class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-900">
+                                {{ $jobOrder->updated_at->format('M d, Y H:i') }}
+                            </div>
+                        </div>
                     </div>
                 </div>
+            </div>
+        </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Boxes</label>
-                    <div class="w-full px-3 py-1 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
-                        {{ count($boxes) }} boxes
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Dividers</label>
-                    <div class="w-full px-3 py-1 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
-                        {{ count($dividers) }} dividers
+        <!-- Bottom Section: Production Status and Notes -->
+        <div class="flex gap-4 mt-6">
+            <!-- Production Status -->
+            <div class="flex-1">
+                <div class="items-center gap-3">
+                    <label class="block text-sm font-medium text-gray-700 mb-1 w-1/5">Production Status</label>
+                    <div class="flex-1">
+                        <div class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-900">
+                            <div class="flex items-center justify-between text-sm mb-2">
+                                <span>{{ $productionStatusText }}</span>
+                                <span>{{ number_format($productionPercent, 1) }}%</span>
+                            </div>
+                            <div class="mt-2 h-4 bg-gray-200 rounded-full overflow-hidden relative">
+                                @php
+                                    $completedPercent = $productionTotal > 0 ? round(($productionFullyCompleted / $productionTotal) * 100, 1) : 0;
+                                    $inProgressPercent = $productionTotal > 0 ? round(($productionInProgressQty / $productionTotal) * 100, 1) : 0;
+                                @endphp
+                                {{-- Fully Completed (Green) --}}
+                                @if($completedPercent > 0)
+                                <div class="h-full bg-green-500 absolute left-0 top-0 transition-all duration-300"
+                                     style="width: {{ $completedPercent }}%; z-index: 2;"
+                                     title="Completed: {{ number_format($productionFullyCompleted) }}">
+                                </div>
+                                @endif
+                                {{-- In Progress (Yellow/Orange) --}}
+                                @if($inProgressPercent > 0)
+                                <div class="h-full bg-yellow-500 absolute top-0 transition-all duration-300"
+                                     style="left: {{ $completedPercent }}%; width: {{ $inProgressPercent }}%; z-index: 1;"
+                                     title="In Progress: {{ number_format($productionInProgressQty) }}">
+                                </div>
+                                @endif
+                            </div>
+                            <div class="mt-2 space-y-1">
+                                <div class="flex items-center justify-between text-xs">
+                                    <div class="flex items-center space-x-2">
+                                        <div class="w-3 h-3 bg-green-500 rounded"></div>
+                                        <span class="text-gray-600">Completed:</span>
+                                        <span class="font-medium text-gray-900">{{ number_format($productionFullyCompleted) }}</span>
+                                    </div>
+                                    @if($productionInProgressQty > 0)
+                                    <div class="flex items-center space-x-2">
+                                        <div class="w-3 h-3 bg-yellow-500 rounded"></div>
+                                        <span class="text-gray-600">In Progress:</span>
+                                        <span class="font-medium text-gray-900">{{ number_format($productionInProgressQty) }}</span>
+                                    </div>
+                                    @endif
+                                </div>
+                                <div class="text-xs text-gray-500 text-right">
+                                    Total: {{ number_format($productionTotal) }}
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Column 4 -->
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Production Status</label>
-                    <div class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
-                        <div class="flex items-center justify-between text-sm">
-                            <span>{{ $productionStatusText }}</span>
-                            <span>{{ number_format($productionPercent, 1) }}%</span>
+            <!-- Notes -->
+            <div class="flex-1">
+                <div class=" items-center gap-3">
+                    <label class="block text-sm font-medium text-gray-700 mb-1 w-1/5">Notes</label>
+                    <div class="flex-1">
+                        @if($isEditMode)
+                        <textarea wire:model="form.notes" rows="3"
+                            class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 min-h-[100px]"
+                            placeholder="Enter any additional notes or remarks..."></textarea>
+                        @error('form.notes') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                        @else
+                        <div class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-900 min-h-[100px]">
+                            {{ $jobOrder->notes ?: 'No notes' }}
                         </div>
-                        <div class="mt-2 h-4 bg-gray-200 rounded-full overflow-hidden relative">
-                            @php
-                                $completedPercent = $productionTotal > 0 ? round(($productionFullyCompleted / $productionTotal) * 100, 1) : 0;
-                                $inProgressPercent = $productionTotal > 0 ? round(($productionInProgressQty / $productionTotal) * 100, 1) : 0;
-                            @endphp
-                            {{-- Fully Completed (Green) --}}
-                            @if($completedPercent > 0)
-                            <div class="h-full bg-green-500 absolute left-0 top-0 transition-all duration-300" 
-                                 style="width: {{ $completedPercent }}%; z-index: 2;"
-                                 title="Completed: {{ number_format($productionFullyCompleted) }}">
-                            </div>
-                            @endif
-                            {{-- In Progress (Yellow/Orange) --}}
-                            @if($inProgressPercent > 0)
-                            <div class="h-full bg-yellow-500 absolute top-0 transition-all duration-300" 
-                                 style="left: {{ $completedPercent }}%; width: {{ $inProgressPercent }}%; z-index: 1;"
-                                 title="In Progress: {{ number_format($productionInProgressQty) }}">
-                            </div>
-                            @endif
-                        </div>
-                        <div class="mt-2 space-y-1">
-                            <div class="flex items-center justify-between text-xs">
-                                <div class="flex items-center space-x-2">
-                                    <div class="w-3 h-3 bg-green-500 rounded"></div>
-                                    <span class="text-gray-600">Completed:</span>
-                                    <span class="font-medium text-gray-900">{{ number_format($productionFullyCompleted) }}</span>
-                                </div>
-                                @if($productionInProgressQty > 0)
-                                <div class="flex items-center space-x-2">
-                                    <div class="w-3 h-3 bg-yellow-500 rounded"></div>
-                                    <span class="text-gray-600">In Progress:</span>
-                                    <span class="font-medium text-gray-900">{{ number_format($productionInProgressQty) }}</span>
-                                </div>
-                                @endif
-                            </div>
-                            <div class="text-xs text-gray-500 text-right">
-                                Total: {{ number_format($productionTotal) }}
-                            </div>
-                        </div>
+                        @endif
                     </div>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Created At</label>
-                    <div class="w-full px-3 py-1 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
-                        {{ $jobOrder->created_at->format('M d, Y H:i') }}
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Purchase Orders</label>
-                    <div class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
-                        <div class="flex items-center justify-between text-sm">
-                            <span>{{ $poStatusText }}</span>
-                            <span>{{ number_format($poProcessedCount) }} / {{ number_format($poCount) }}</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">GRNs</label>
-                    <div class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
-                        <div class="flex items-center justify-between text-sm">
-                            <span>{{ number_format($grnProcessedCount) }} / {{ number_format($grnCount) }} processed</span>
-                            <span></span>
-                        </div>
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Dispatched Quantity</label>
-                    <div class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
-                        <div class="flex items-center justify-between text-sm">
-                            <span>{{ number_format($dispatchedQuantity, 2) }} units</span>
-                            <span class="text-xs text-gray-500">{{ $deliveryCount }} DN(s)</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Updated At</label>
-                    <div class="w-full px-3 py-1 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
-                        {{ $jobOrder->updated_at->format('M d, Y H:i') }}
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                    @if($isEditMode)
-                    <textarea wire:model="form.notes" rows="3"
-                        class="w-full px-3 py-1 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                        placeholder="Additional notes"></textarea>
-                    @error('form.notes') <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span> @enderror
-                    @else
-                    <div class="w-full px-3 py-1 border border-gray-300 rounded-md bg-gray-50 text-gray-900 min-h-[60px]">
-                        {{ $jobOrder->notes ?: 'No notes' }}
-                    </div>
-                    @endif
                 </div>
             </div>
         </div>
@@ -498,7 +557,7 @@
             </svg>
             <h3 class="mt-2 text-sm font-medium text-gray-900">No job order items</h3>
             <p class="mt-1 text-sm text-gray-500">Get started by adding boxes or dividers to this job order.</p>
-            
+
             <div class="mt-6">
                 <button wire:click="openBoxDividerModal"
                         class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center mx-auto">
@@ -586,7 +645,7 @@
                             <span class="text-sm text-gray-700">Dimensions</span>
                         </label>
                     </div>
-                    
+
                     <!-- Debug indicator -->
                     <div class="mb-4 p-2 bg-blue-50 border border-blue-200 rounded text-sm text-blue-700">
                         <strong>Current Format:</strong> {{ $printDisplayFormat === 'reel_cuts' ? 'Reel and Cuts' : 'Dimensions' }}
@@ -693,11 +752,11 @@
 
                 <!-- Modal Footer -->
                 <div class="flex items-center justify-end space-x-3 pt-6 border-t mt-6">
-                    <button wire:click="closePrintPreviewModal" 
+                    <button wire:click="closePrintPreviewModal"
                             class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-md transition-colors">
                         Cancel
                     </button>
-                    <button wire:click="printJobOrder" 
+                    <button wire:click="printJobOrder"
                             class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors">
                         Print
                     </button>
@@ -724,15 +783,15 @@
         // Print functionality
         window.printJobOrder = function() {
             console.log('Print function called'); // Debug log
-            
+
             var printContent = document.getElementById('printContent');
             if (!printContent) {
                 console.error('Print content not found');
                 return;
             }
-            
+
             var originalContents = document.body.innerHTML;
-            
+
             // Create a new window for printing
             var printWindow = window.open('', '_blank', 'width=800,height=600');
             printWindow.document.write('<html><head><title>Job Order Print</title>');
@@ -741,7 +800,7 @@
             printWindow.document.write(printContent.innerHTML);
             printWindow.document.write('</body></html>');
             printWindow.document.close();
-            
+
             // Wait for content to load then print
             setTimeout(function() {
                 printWindow.print();
