@@ -17,6 +17,7 @@ class InventoryTransaction extends Model
         'warehouse',
         'related_doc_type',
         'related_doc_id',
+        'delivery_note_item_id',
         'txn_date',
         'remarks',
     ];
@@ -48,5 +49,21 @@ class InventoryTransaction extends Model
             return $this->grn->purchaseOrder?->jobOrder;
         }
         return null;
+    }
+
+    /**
+     * Get the delivery note item if this transaction is from a delivery note
+     */
+    public function deliveryNoteItem(): BelongsTo
+    {
+        return $this->belongsTo(DeliveryNoteItem::class);
+    }
+
+    /**
+     * Get the delivery note if this transaction is from a delivery note
+     */
+    public function deliveryNote(): BelongsTo
+    {
+        return $this->belongsTo(DeliveryNote::class, 'related_doc_id');
     }
 }

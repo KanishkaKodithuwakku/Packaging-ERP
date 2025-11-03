@@ -17,7 +17,10 @@ class DeliveryNoteDetail extends Component
 
     public function mount($id)
     {
-        $this->deliveryNote = DeliveryNote::with(['jobOrder.customer', 'items'])->findOrFail($id);
+        $this->deliveryNote = DeliveryNote::with([
+            'jobOrder.customer', 
+            'items.inventoryTransactions'
+        ])->findOrFail($id);
     }
 
     public function dispatchItem($itemId, $quantity)
@@ -46,22 +49,68 @@ class DeliveryNoteDetail extends Component
         }
 
         try {
+            Log::info('Dispatching FG', [
+                'delivery_note_id' => $this->deliveryNote->id,
+                'delivery_note_item_id' => $item->id,
+                'quantity' => $actualQty,
+                'item_material_code' => $item->material_code,
+                'current_dispatched_qty' => $item->dispatched_qty,
+                'current_remaining_qty' => $item->remaining_qty,
+            ]);
+
             $deliveryService = app(DeliveryService::class);
             $result = $deliveryService->dispatchFg($this->deliveryNote, $item, $actualQty);
 
-            // Update item
+            // Verify transaction was created
+            if (!isset($result['transaction']) || !$result['transaction']) {
+                Log::error('No transaction created during dispatch', [
+                    'delivery_note_id' => $this->deliveryNote->id,
+                    'delivery_note_item_id' => $item->id,
+                    'quantity' => $actualQty,
+                ]);
+                throw new \Exception('Failed to create inventory transaction');
+            }
+
+            // Verify transaction has the delivery_note_item_id
+            $transaction = $result['transaction'];
+            if ($transaction instanceof \App\Models\InventoryTransaction) {
+                if (!$transaction->delivery_note_item_id) {
+                    $transaction->delivery_note_item_id = $item->id;
+                    $transaction->save();
+                    Log::info('Updated transaction with delivery_note_item_id', [
+                        'transaction_id' => $transaction->id,
+                        'delivery_note_item_id' => $item->id,
+                    ]);
+                }
+            }
+
+            // Update item - refresh to get latest data
+            $item->refresh();
             $item->dispatched_qty += $actualQty;
             $item->remaining_qty -= $actualQty;
             
+            // Ensure remaining_qty doesn't go negative (safety check)
+            if ($item->remaining_qty < 0) {
+                $item->remaining_qty = 0;
+            }
+            
+            // Update item status
             if ($item->remaining_qty <= 0) {
                 $item->status = 'dispatched';
-            } elseif ($item->dispatched_qty > 0) {
+            } elseif ($item->dispatched_qty > 0 && $item->remaining_qty > 0) {
                 $item->status = 'partial';
             }
             
             $item->save();
 
-            // Update delivery note status
+            Log::info('Delivery note item updated', [
+                'delivery_note_item_id' => $item->id,
+                'new_dispatched_qty' => $item->dispatched_qty,
+                'new_remaining_qty' => $item->remaining_qty,
+                'new_status' => $item->status,
+            ]);
+
+            // Update delivery note status immediately
             $this->updateDeliveryNoteStatus();
 
             // Reload the delivery note to show updated data
@@ -69,10 +118,16 @@ class DeliveryNoteDetail extends Component
             $this->deliveryNote->load('items');
 
             $this->dispatchQuantities[$itemId] = 0;
-            session()->flash('success', "Dispatched {$actualQty} units successfully.");
+            session()->flash('success', "Dispatched {$actualQty} units successfully. Transaction ID: {$transaction->id}");
 
         } catch (\Exception $e) {
-            Log::error('Error dispatching FG: ' . $e->getMessage());
+            Log::error('Error dispatching FG', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'delivery_note_id' => $this->deliveryNote->id,
+                'delivery_note_item_id' => $itemId,
+                'quantity' => $actualQty,
+            ]);
             session()->flash('error', 'Error dispatching: ' . $e->getMessage());
         }
     }
@@ -80,14 +135,37 @@ class DeliveryNoteDetail extends Component
     public function updateDeliveryNoteStatus()
     {
         $this->deliveryNote->refresh();
-        $allDispatched = $this->deliveryNote->items->every(fn($item) => $item->status === 'dispatched');
-        $anyPartial = $this->deliveryNote->items->contains(fn($item) => $item->status === 'partial');
+        $this->deliveryNote->load('items');
+        
+        // Check if all items are fully dispatched
+        $allDispatched = $this->deliveryNote->items->every(function($item) {
+            return $item->status === 'dispatched' || $item->remaining_qty <= 0;
+        });
+        
+        // Check if any item has been partially dispatched (has dispatched_qty > 0 but remaining_qty > 0)
+        $anyPartial = $this->deliveryNote->items->contains(function($item) {
+            return ($item->dispatched_qty > 0 && $item->remaining_qty > 0) || $item->status === 'partial';
+        });
+        
+        // Check if any item has been dispatched at all
+        $anyDispatched = $this->deliveryNote->items->contains(function($item) {
+            return $item->dispatched_qty > 0;
+        });
 
-        if ($allDispatched) {
+        if ($allDispatched && $anyDispatched) {
             $this->deliveryNote->update(['status' => 'dispatched']);
         } elseif ($anyPartial) {
             $this->deliveryNote->update(['status' => 'partial']);
+        } elseif ($anyDispatched) {
+            // If some items are dispatched but none are partial, check if all are dispatched
+            // This handles edge cases
+            if ($allDispatched) {
+                $this->deliveryNote->update(['status' => 'dispatched']);
+            } else {
+                $this->deliveryNote->update(['status' => 'partial']);
+            }
         }
+        // If nothing is dispatched, keep status as 'draft'
     }
 
     public function printDeliveryNote()
@@ -96,8 +174,27 @@ class DeliveryNoteDetail extends Component
         $this->dispatch('openPrintDialog');
     }
 
+    public function printDispatch($transactionId)
+    {
+        // Trigger JavaScript to print specific dispatch
+        $this->dispatch('openDispatchPrintDialog', transactionId: $transactionId);
+    }
+
+    public function getDispatchHistory()
+    {
+        // Get all dispatch transactions for this delivery note
+        $transactions = \App\Models\InventoryTransaction::where('related_doc_type', 'DeliveryNote')
+            ->where('related_doc_id', $this->deliveryNote->id)
+            ->where('txn_type', 'delivery')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return $transactions;
+    }
+
     public function render()
     {
         return view('livewire.delivery-note-detail');
     }
 }
+

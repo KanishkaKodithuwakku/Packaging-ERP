@@ -65,9 +65,9 @@
     </div>
 
     <div class="bg-white rounded-lg shadow-sm border">
-        <div class="px-6 py-4 border-b border-gray-200">
-            <h3 class="text-lg font-medium text-gray-900">Items</h3>
-        </div>
+            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                <h3 class="text-lg font-medium text-gray-900">Items</h3>
+            </div>
 
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
@@ -112,6 +112,27 @@
                                 @else
                                     <span class="text-gray-400">Completed</span>
                                 @endif
+                                
+                                @if($item->inventoryTransactions->count() > 0)
+                                    <div class="mt-2 pt-2 border-t border-gray-200">
+                                        <div class="text-xs font-medium text-gray-700 mb-1">Dispatch History:</div>
+                                        @foreach($item->inventoryTransactions->sortByDesc('created_at') as $transaction)
+                                            <div class="flex items-center justify-between text-xs mb-1">
+                                                <span class="text-gray-600">
+                                                    {{ number_format(abs($transaction->qty), 2) }} units - 
+                                                    {{ $transaction->txn_date->format('M d, Y H:i') }}
+                                                </span>
+                                                <button wire:click="printDispatch({{ $transaction->id }})"
+                                                    class="text-blue-600 hover:text-blue-800 flex items-center">
+                                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+                                                    </svg>
+                                                    Print
+                                                </button>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @endif
                             </td>
                         </tr>
                     @endforeach
@@ -120,6 +141,7 @@
         </div>
     </div>
 
+    <!-- Print content for full delivery note -->
     <div id="printContent" style="display: none;">
         <div style="max-width: 800px; margin: 0 auto; padding: 20px;">
             <div style="text-align: center; margin-bottom: 30px;">
@@ -200,11 +222,122 @@
         }
     </style>
 
+    <!-- Print content for individual dispatches -->
+    @foreach($deliveryNote->items as $item)
+        @foreach($item->inventoryTransactions->sortByDesc('created_at') as $transaction)
+            <div id="printDispatch-{{ $transaction->id }}" style="display: none;">
+                <div style="max-width: 800px; margin: 0 auto; padding: 20px;">
+                    <div style="text-align: center; margin-bottom: 30px;">
+                        <h2 style="font-size: 28px; font-weight: bold; margin-bottom: 10px;">DISPATCH NOTE</h2>
+                        <p style="font-size: 18px;">DN Number: {{ $deliveryNote->dn_number }}</p>
+                        <p style="font-size: 14px;">Dispatch Date: {{ $transaction->txn_date->format('M d, Y') }}</p>
+                        <p style="font-size: 12px; color: #666;">Transaction ID: {{ $transaction->id }}</p>
+                    </div>
+
+                    <div style="margin-bottom: 30px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                            <div>
+                                <h3 style="font-weight: bold; margin-bottom: 10px;">Customer Information</h3>
+                                <p><strong>Customer:</strong> {{ optional($deliveryNote->jobOrder)->customer->name ?? 'N/A' }}</p>
+                                <p><strong>Job Order:</strong> {{ optional($deliveryNote->jobOrder)->job_number ?? 'N/A' }}</p>
+                            </div>
+                            <div>
+                                <h3 style="font-weight: bold; margin-bottom: 10px;">Dispatch Information</h3>
+                                <p><strong>Dispatch Date:</strong> {{ $transaction->txn_date->format('M d, Y') }}</p>
+                                <p><strong>Dispatch Time:</strong> {{ $transaction->created_at->format('H:i') }}</p>
+                                <p><strong>Address:</strong> {{ $deliveryNote->delivery_address ?: 'N/A' }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+                        <thead>
+                            <tr style="background-color: #f3f4f6; border-bottom: 2px solid #000;">
+                                <th style="padding: 10px; text-align: left; border: 1px solid #000;">No</th>
+                                <th style="padding: 10px; text-align: left; border: 1px solid #000;">Item Description</th>
+                                <th style="padding: 10px; text-align: left; border: 1px solid #000;">Material Code</th>
+                                <th style="padding: 10px; text-align: right; border: 1px solid #000;">Quantity Dispatched</th>
+                                <th style="padding: 10px; text-align: left; border: 1px solid #000;">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="border-bottom: 1px solid #000;">
+                                <td style="padding: 10px; border: 1px solid #000;">1</td>
+                                <td style="padding: 10px; border: 1px solid #000;">{{ $item->description }}</td>
+                                <td style="padding: 10px; border: 1px solid #000;">{{ $item->material_code }}</td>
+                                <td style="padding: 10px; text-align: right; border: 1px solid #000;">{{ number_format(abs($transaction->qty), 2) }}</td>
+                                <td style="padding: 10px; border: 1px solid #000;">Dispatched</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <div style="margin-bottom: 20px; background-color: #f9fafb; padding: 15px; border-radius: 5px;">
+                        <h3 style="font-weight: bold; margin-bottom: 10px;">Dispatch Summary</h3>
+                        <p><strong>Total Quantity in DN:</strong> {{ number_format($item->quantity, 2) }}</p>
+                        <p><strong>This Dispatch:</strong> {{ number_format(abs($transaction->qty), 2) }}</p>
+                        <p><strong>Total Dispatched to Date:</strong> {{ number_format($item->dispatched_qty, 2) }}</p>
+                        <p><strong>Remaining:</strong> {{ number_format($item->remaining_qty, 2) }}</p>
+                    </div>
+
+                    @if($deliveryNote->notes)
+                    <div style="margin-bottom: 20px;">
+                        <h3 style="font-weight: bold; margin-bottom: 10px;">Notes</h3>
+                        <p>{{ $deliveryNote->notes }}</p>
+                    </div>
+                    @endif
+
+                    <div style="margin-top: 50px; border-top: 2px solid #000; padding-top: 20px;">
+                        <p>Prepared By: ________________</p>
+                        <p style="margin-top: 40px;">Received By: ________________</p>
+                        <p style="margin-top: 20px; font-size: 12px; color: #666;">Transaction ID: {{ $transaction->id }} | Printed: {{ now()->format('M d, Y H:i') }}</p>
+                    </div>
+                </div>
+            </div>
+        @endforeach
+    @endforeach
+
+    <style>
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #printContent, #printContent *,
+            [id^="printDispatch-"], [id^="printDispatch-"] * {
+                visibility: visible;
+            }
+            #printContent,
+            [id^="printDispatch-"] {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                display: block !important;
+            }
+        }
+    </style>
+
     @script
     <script>
         document.addEventListener('livewire:initialized', () => {
             Livewire.on('openPrintDialog', () => {
                 window.print();
+            });
+            
+            Livewire.on('openDispatchPrintDialog', (event) => {
+                const transactionId = event.transactionId;
+                // Hide all print contents
+                document.querySelectorAll('[id^="printContent"], [id^="printDispatch-"]').forEach(el => {
+                    el.style.display = 'none';
+                });
+                // Show specific dispatch print content
+                const dispatchPrint = document.getElementById('printDispatch-' + transactionId);
+                if (dispatchPrint) {
+                    dispatchPrint.style.display = 'block';
+                    setTimeout(() => {
+                        window.print();
+                        dispatchPrint.style.display = 'none';
+                    }, 100);
+                }
             });
         });
     </script>

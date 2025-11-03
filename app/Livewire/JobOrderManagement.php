@@ -17,6 +17,7 @@ class JobOrderManagement extends Component
 
     // Modal states
     public $showModal = false;
+    public $showFilterModal = false;
     public $editingJobOrder = false;
     public $activeTab = 'main';
     
@@ -131,6 +132,16 @@ class JobOrderManagement extends Component
         $this->showModal = false;
         $this->editingJobOrder = false;
         $this->resetForm();
+    }
+
+    public function openFilterModal()
+    {
+        $this->showFilterModal = true;
+    }
+
+    public function closeFilterModal()
+    {
+        $this->showFilterModal = false;
     }
 
 

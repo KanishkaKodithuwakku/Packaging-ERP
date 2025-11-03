@@ -71,7 +71,7 @@ class DeliveryService
                 }
             }
 
-            // Create delivery transaction
+            // Create delivery transaction with delivery note item reference
             $transaction = InventoryTransaction::create([
                 'lot_code' => $lastLayer ? $lastLayer->lot_code : 'DISPATCH-' . now()->format('YmdHis'),
                 'item_code' => $item->material_code,
@@ -84,8 +84,9 @@ class DeliveryService
                 'warehouse' => 'FINISHED_GOODS',
                 'related_doc_type' => 'DeliveryNote',
                 'related_doc_id' => $deliveryNote->id,
+                'delivery_note_item_id' => $item->id, // Link to specific delivery note item
                 'txn_date' => now()->toDateString(),
-                'remarks' => "Delivery: {$item->description}",
+                'remarks' => "Delivery: {$item->description} (DN Item ID: {$item->id})",
                 'costing_method' => 'FIFO',
             ]);
 

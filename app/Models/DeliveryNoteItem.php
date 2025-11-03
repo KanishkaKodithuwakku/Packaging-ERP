@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class DeliveryNoteItem extends Model
 {
@@ -28,6 +29,14 @@ class DeliveryNoteItem extends Model
     public function deliveryNote(): BelongsTo
     {
         return $this->belongsTo(DeliveryNote::class);
+    }
+
+    /**
+     * Get all inventory transactions related to this delivery note item
+     */
+    public function inventoryTransactions(): HasMany
+    {
+        return $this->hasMany(\App\Models\InventoryTransaction::class, 'delivery_note_item_id');
     }
 }
 
