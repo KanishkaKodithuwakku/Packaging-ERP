@@ -502,7 +502,7 @@
                                 <div>
                                     @php
                                     $statusColors = [
-                                    'draft' => 'bg-gray-100 text-gray-800',
+                                    'draft' => 'bg-yellow-100 text-yellow-800',
                                     'confirmed' => 'bg-green-100 text-green-800',
                                     'cancelled' => 'bg-red-100 text-red-800',
                                     ];
@@ -727,28 +727,28 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div class="space-y-4">
                             <div>
-                                <label class="block text-sm font-bold text-gray-700">Supplier: <span class="text-xs font-normal text-gray-900">{{ $selectedPurchaseOrder->supplier->name ?? 'N/A' }}</span>
+                                <label class="block text-sm font-bold text-gray-700">Supplier : <span class="text-xs font-normal text-gray-900">{{ $selectedPurchaseOrder->supplier->name ?? 'N/A' }}</span>
                                     @if($selectedPurchaseOrder->supplier->code ?? '')
                                         <span class="text-xs text-gray-500">({{ $selectedPurchaseOrder->supplier->code }})</span>
                                     @endif
                                 </label>
                             </div>
                             <div>
-                                <label class="block text-sm font-bold text-gray-700">Supplier Address: <span class="text-xs font-normal text-gray-900">{{ $selectedPurchaseOrder->supplier->address ?? 'N/A' }}</span></label>
+                                <label class="block text-sm font-bold text-gray-700">Supplier Address : <span class="text-xs font-normal text-gray-900">{{ $selectedPurchaseOrder->supplier->address ?? 'N/A' }}</span></label>
                             </div>
                             <div>
-                                <label class="block text-sm font-bold text-gray-700">Job Order: <span class="text-xs font-normal text-gray-900">{{ $selectedPurchaseOrder->jobOrder->supplier_po_number ?? 'N/A' }}</span>
+                                <label class="block text-sm font-bold text-gray-700">Job Order : <span class="text-xs font-normal text-gray-900">{{ $selectedPurchaseOrder->jobOrder->supplier_po_number ?? 'N/A' }}</span>
                                     @if($selectedPurchaseOrder->jobOrder->job_number ?? '')
                                         <span class="text-xs text-gray-500">({{ $selectedPurchaseOrder->jobOrder->job_number }})</span>
                                     @endif
                                 </label>
                             </div>
                             <div class="flex gap-1">
-                                <label class="block text-sm font-bold text-gray-700">Status:</label>
+                                <label class="block text-sm font-bold text-gray-700">Status :</label>
                                 <div>
                                     @php
                                     $statusColors = [
-                                    'draft' => 'bg-gray-100 text-gray-800',
+                                    'draft' => 'bg-yellow-100 text-yellow-800',
                                     'confirmed' => 'bg-green-100 text-green-800',
                                     'cancelled' => 'bg-red-100 text-red-800',
                                     ];
@@ -774,13 +774,13 @@
                     </div>
 
                     <!-- Info Box -->
-                    <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-400">
+                    <div class="bg-yellow-50 p-2 rounded-lg border border-yellow-400">
                         <div class="flex items-start gap-3">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-5 text-yellow-600 flex-shrink-0 mt-0.5">
                                 <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495ZM10 5a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 5Zm0 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd" />
                             </svg>
                             <div class="flex-1">
-                                <h4 class="font-medium text-yellow-900 mb-2">Purchase Order: {{
+                                <h4 class="font-medium text-yellow-900 mb-2">Purchase Order : {{
                                     $selectedPurchaseOrder->po_number }}</h4>
                                 <p class="text-sm text-yellow-700">Update supplier prices and confirm this Purchase Order after
                                     confirmation.</p>
@@ -831,7 +831,7 @@
                                             number_format($item->unit_price, 2) }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <input type="number" step="0.01"
-                                                wire:model="phoneConfirmForm.item_{{ $item->id }}_unit_price"
+                                                wire:model.live="phoneConfirmForm.item_{{ $item->id }}_unit_price"
                                                 class="w-24 px-2 py-1 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500">
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
