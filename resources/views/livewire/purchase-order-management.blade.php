@@ -160,7 +160,7 @@
                             <div class="flex items-center space-x-2">
                                 <button wire:click="viewPurchaseOrder({{ $po->id }})"
                                     class="text-gray-400 hover:text-gray-600" title="View Purchase Order">
-                                    <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                    <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" style="color: #8d8d8d;" onMouseOver="this.style.color='#242629'" onMouseOut="this.style.color='#8d8d8d'">
                                         <path stroke="currentColor" stroke-width="2" d="M21 12c0 1.2-4.03 6-9 6s-9-4.8-9-6c0-1.2 4.03-6 9-6s9 4.8 9 6Z"/>
                                         <path stroke="currentColor" stroke-width="2" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
                                       </svg>
@@ -169,8 +169,8 @@
 
                                 @if($po->status === 'draft')
                                 <button wire:click="openPhoneConfirmModal({{ $po->id }})"
-                                    class="text-green-600 hover:text-green-900" title="Confirm Purchase Order">
-                                    <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                    class="text-green-600 hover:text-green-900" title="Confirm Purchase Order" >
+                                    <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24" style="color: #8d8d8d;" onMouseOver="this.style.color='green'" onMouseOut="this.style.color='#242629'">
                                         <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 3v4a1 1 0 0 1-1 1H5m4 6 2 2 4-4m4-8v16a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7.914a1 1 0 0 1 .293-.707l3.914-3.914A1 1 0 0 1 9.914 3H18a1 1 0 0 1 1 1Z"/>
                                       </svg>
 
@@ -201,7 +201,7 @@
                                     class="{{ $po->grn->isNotEmpty() ? 'text-gray-300 cursor-not-allowed' : 'text-gray-400 hover:text-gray-600' }}"
                                     title="{{ $po->grn->isNotEmpty() ? 'GRN Already Created' : 'Create GRN' }}"
                                     {{ $po->grn->isNotEmpty() ? 'disabled' : '' }}>
-                                    <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
+                                    <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24" style="color: #8d8d8d;" onMouseOver="this.style.color='#242629'" onMouseOut="this.style.color='#8d8d8d'">
                                         <path d="M17 20v-5h2v6.988H3V15h1.98v5H17Z"/>
                                         <path d="m6.84 14.522 8.73 1.825.369-1.755-8.73-1.825-.369 1.755Zm1.155-4.323 8.083 3.764.739-1.617-8.083-3.787-.739 1.64Zm3.372-5.481L10.235 6.08l6.859 5.704 1.132-1.362-6.859-5.704ZM15.57 17H6.655v2h8.915v-2ZM12.861 3.111l6.193 6.415 1.414-1.415-6.43-6.177-1.177 1.177Z"/>
                                       </svg>
@@ -211,9 +211,9 @@
 
                                 @if($po->status === 'confirmed' || $po->status === 'draft')
                                 <button wire:click="openCancelConfirmModal({{ $po->id }})"
-                                    class="text-red-600 hover:text-red-900"
+                                    class="" style="color: #c40d0d;"
                                     title="Cancel Purchase Order">
-                                    <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                    <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" style="color: #8d8d8d;" onMouseOver="this.style.color='red'" onMouseOut="this.style.color='#8d8d8d'">
                                         <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18 17.94 6M18 18 6.06 6"/>
                                       </svg>
 
@@ -481,18 +481,25 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div class="space-y-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700">PO Number</label>
-                                <div class="mt-1 text-lg font-semibold text-gray-900">{{
-                                    $selectedPurchaseOrder->po_number }}</div>
+                                <label class="block text-sm font-bold text-gray-700">Supplier: <span class="text-xs font-normal text-gray-900">{{ $selectedPurchaseOrder->supplier->name ?? 'N/A' }}</span>
+                                    @if($selectedPurchaseOrder->supplier->code ?? '')
+                                        <span class="text-xs text-gray-500">({{ $selectedPurchaseOrder->supplier->code }})</span>
+                                    @endif
+                                </label>
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700">Date</label>
-                                <div class="mt-1 text-gray-900">{{ \App\Helpers\DateFormatHelper::format($selectedPurchaseOrder->date) }}
-                                </div>
+                                <label class="block text-sm font-bold text-gray-700">Supplier Address: <span class="text-xs font-normal text-gray-900">{{ $selectedPurchaseOrder->supplier->address ?? 'N/A' }}</span></label>
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700">Status</label>
-                                <div class="mt-1">
+                                <label class="block text-sm font-bold text-gray-700">Job Order: <span class="text-xs font-normal text-gray-900">{{ $selectedPurchaseOrder->jobOrder->supplier_po_number ?? 'N/A' }}</span>
+                                    @if($selectedPurchaseOrder->jobOrder->job_number ?? '')
+                                        <span class="text-xs text-gray-500">({{ $selectedPurchaseOrder->jobOrder->job_number }})</span>
+                                    @endif
+                                </label>
+                            </div>
+                            <div class="flex gap-1">
+                                <label class="block text-sm font-bold text-gray-700">Status:</label>
+                                <div>
                                     @php
                                     $statusColors = [
                                     'draft' => 'bg-gray-100 text-gray-800',
@@ -507,25 +514,15 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="space-y-4">
+                        <div class="space-y-4 text-right">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700">Supplier</label>
-                                <div class="mt-1 text-gray-900">{{ $selectedPurchaseOrder->supplier->name ?? 'N/A' }}
-                                </div>
-                                <div class="text-sm text-gray-500">{{ $selectedPurchaseOrder->supplier->code ?? '' }}
-                                </div>
+                                <label class="block text-sm font-bold text-gray-700">PO Number: <span class="text-xs font-normal text-gray-900">{{ $selectedPurchaseOrder->po_number }}</span></label>
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700">Job Order</label>
-                                <div class="mt-1 text-gray-900">{{ $selectedPurchaseOrder->jobOrder->supplier_po_number
-                                    ?? 'N/A' }}</div>
-                                <div class="text-sm text-gray-500">{{ $selectedPurchaseOrder->jobOrder->job_number ?? ''
-                                    }}</div>
+                                <label class="block text-sm font-bold text-gray-700">Date: <span class="text-xs font-normal text-gray-900">{{ \App\Helpers\DateFormatHelper::format($selectedPurchaseOrder->date) }}</span></label>
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700">Total Amount</label>
-                                <div class="mt-1 text-lg font-semibold text-gray-900">Rs. {{
-                                    number_format($selectedPurchaseOrder->getTotalAmount(), 2) }}</div>
+                                <label class="block text-sm font-bold text-gray-700">Total Amount: <span class="text-lg font-bold text-gray-900">Rs. {{ number_format($selectedPurchaseOrder->getTotalAmount(), 2) }}</span></label>
                             </div>
                         </div>
                     </div>
@@ -633,8 +630,7 @@
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                             @if($selectedPurchaseOrder->status === 'draft')
                                                 <input type="number"
-                                                       wire:model.live="itemQuantities.{{ $item->id }}"
-                                                       wire:change="updateItemQuantity({{ $item->id }})"
+                                                       wire:model="itemQuantities.{{ $item->id }}"
                                                        min="1"
                                                        class="w-24 px-2 py-1 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500">
                                             @else
@@ -644,7 +640,9 @@
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Rs. {{
                                             number_format($item->unit_price, 2) }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Rs. {{
-                                            number_format($item->total_price, 2) }}</td>
+                                            number_format(isset($itemQuantities[$item->id]) && $selectedPurchaseOrder->status === 'draft'
+                                                ? ($item->unit_price * (int)$itemQuantities[$item->id])
+                                                : $item->total_price, 2) }}</td>
                                         @if($selectedPurchaseOrder->status === 'draft')
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                             <button wire:click="deletePurchaseOrderItem({{ $item->id }})"
@@ -726,11 +724,68 @@
                 <!-- Modal Body -->
                 <div class="mt-6 space-y-6">
                     <!-- PO Header Information -->
-                    <div class="bg-yellow-50 p-4 rounded-lg">
-                        <h4 class="font-medium text-yellow-900 mb-2">Purchase Order: {{
-                            $selectedPurchaseOrder->po_number }}</h4>
-                        <p class="text-sm text-yellow-700">Update supplier prices and confirm this Purchase Order after
-                            confirmation.</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700">Supplier: <span class="text-xs font-normal text-gray-900">{{ $selectedPurchaseOrder->supplier->name ?? 'N/A' }}</span>
+                                    @if($selectedPurchaseOrder->supplier->code ?? '')
+                                        <span class="text-xs text-gray-500">({{ $selectedPurchaseOrder->supplier->code }})</span>
+                                    @endif
+                                </label>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700">Supplier Address: <span class="text-xs font-normal text-gray-900">{{ $selectedPurchaseOrder->supplier->address ?? 'N/A' }}</span></label>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700">Job Order: <span class="text-xs font-normal text-gray-900">{{ $selectedPurchaseOrder->jobOrder->supplier_po_number ?? 'N/A' }}</span>
+                                    @if($selectedPurchaseOrder->jobOrder->job_number ?? '')
+                                        <span class="text-xs text-gray-500">({{ $selectedPurchaseOrder->jobOrder->job_number }})</span>
+                                    @endif
+                                </label>
+                            </div>
+                            <div class="flex gap-1">
+                                <label class="block text-sm font-bold text-gray-700">Status:</label>
+                                <div>
+                                    @php
+                                    $statusColors = [
+                                    'draft' => 'bg-gray-100 text-gray-800',
+                                    'confirmed' => 'bg-green-100 text-green-800',
+                                    'cancelled' => 'bg-red-100 text-red-800',
+                                    ];
+                                    @endphp
+                                    <span
+                                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $statusColors[$selectedPurchaseOrder->status] ?? 'bg-gray-100 text-gray-800' }}">
+                                        {{ ucfirst($selectedPurchaseOrder->status) }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="space-y-4 text-right">
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700">PO Number: <span class="text-xs font-normal text-gray-900">{{ $selectedPurchaseOrder->po_number }}</span></label>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700">Date: <span class="text-xs font-normal text-gray-900">{{ \App\Helpers\DateFormatHelper::format($selectedPurchaseOrder->date) }}</span></label>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700">Total Amount: <span class="text-lg font-bold text-gray-900">Rs. {{ number_format($selectedPurchaseOrder->getTotalAmount(), 2) }}</span></label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Info Box -->
+                    <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-400">
+                        <div class="flex items-start gap-3">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-5 text-yellow-600 flex-shrink-0 mt-0.5">
+                                <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495ZM10 5a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 5Zm0 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd" />
+                            </svg>
+                            <div class="flex-1">
+                                <h4 class="font-medium text-yellow-900 mb-2">Purchase Order: {{
+                                    $selectedPurchaseOrder->po_number }}</h4>
+                                <p class="text-sm text-yellow-700">Update supplier prices and confirm this Purchase Order after
+                                    confirmation.</p>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Price Update Table -->
@@ -794,7 +849,7 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Confirmation Notes</label>
                         <textarea wire:model="phoneConfirmForm.notes" rows="3"
-                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                            class="border border-gray-400 mt-1 block w-full p-2  rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                             placeholder="Any notes from the conversation..."></textarea>
                     </div>
                 </div>
