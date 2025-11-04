@@ -13,6 +13,8 @@ class RolePermissionEditor extends Component
     public int $roleId;
     public ?Role $role = null;
     public array $selected = [];
+    public bool $showAddPermissionModal = false;
+    public string $newPermissionName = '';
 
     public function mount(Role $role)
     {
@@ -40,6 +42,38 @@ class RolePermissionEditor extends Component
         $perms = Permission::whereIn('name', $this->selected)->get();
         $this->role->syncPermissions($perms);
         session()->flash('success', 'Permissions updated for role: ' . $this->role->name);
+        $this->loadRole();
+    }
+
+    public function openAddPermissionModal()
+    {
+        $this->showAddPermissionModal = true;
+        $this->newPermissionName = '';
+    }
+
+    public function closeAddPermissionModal()
+    {
+        $this->showAddPermissionModal = false;
+        $this->newPermissionName = '';
+    }
+
+    public function createPermission()
+    {
+        $this->validate([
+            'newPermissionName' => 'required|string|max:255|unique:permissions,name',
+        ], [
+            'newPermissionName.required' => 'Permission name is required.',
+            'newPermissionName.unique' => 'This permission already exists.',
+        ]);
+
+        Permission::create([
+            'name' => trim($this->newPermissionName),
+            'guard_name' => 'web',
+        ]);
+
+        session()->flash('success', 'Permission "' . $this->newPermissionName . '" created successfully!');
+        $this->closeAddPermissionModal();
+        // Refresh the role to get updated permissions list
         $this->loadRole();
     }
 
