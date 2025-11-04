@@ -71,7 +71,7 @@
                             <div class="text-sm font-medium text-gray-900">{{ $po->po_number }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {{ $po->date->format('Y-m-d') }}
+                            {{ \App\Helpers\DateFormatHelper::format($po->date) }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm text-gray-900">{{ $po->supplier->name ?? 'N/A' }}</div>
@@ -385,7 +385,7 @@
                     <div class="text-center mb-6 border-b-2 border-gray-800 pb-4">
                         <h2 class="text-3xl font-bold text-gray-900">PURCHASE ORDER</h2>
                         <p class="text-lg text-gray-700 mt-2">PO Number: {{ $selectedPurchaseOrder->po_number }}</p>
-                        <p class="text-sm text-gray-600">Date: {{ $selectedPurchaseOrder->date->format('M d, Y') }}</p>
+                        <p class="text-sm text-gray-600">Date: {{ \App\Helpers\DateFormatHelper::format($selectedPurchaseOrder->date) }}</p>
                     </div>
 
                     <!-- Print Details -->
@@ -487,7 +487,7 @@
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700">Date</label>
-                                <div class="mt-1 text-gray-900">{{ $selectedPurchaseOrder->date->format('Y-m-d') }}
+                                <div class="mt-1 text-gray-900">{{ \App\Helpers\DateFormatHelper::format($selectedPurchaseOrder->date) }}
                                 </div>
                             </div>
                             <div>
