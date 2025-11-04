@@ -164,7 +164,7 @@
                                         <path stroke="currentColor" stroke-width="2" d="M21 12c0 1.2-4.03 6-9 6s-9-4.8-9-6c0-1.2 4.03-6 9-6s9 4.8 9 6Z"/>
                                         <path stroke="currentColor" stroke-width="2" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
                                       </svg>
-                                      
+
                                 </button>
 
                                 @if($po->status === 'draft')
@@ -173,7 +173,7 @@
                                     <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
                                         <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 3v4a1 1 0 0 1-1 1H5m4 6 2 2 4-4m4-8v16a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7.914a1 1 0 0 1 .293-.707l3.914-3.914A1 1 0 0 1 9.914 3H18a1 1 0 0 1 1 1Z"/>
                                       </svg>
-                                      
+
                                 </button>
                                 {{-- <button wire:click="openPhoneConfirmModal({{ $po->id }})"
                                     class="text-yellow-600 hover:text-yellow-900" title="Confirm (Update Prices)">
@@ -198,25 +198,25 @@
 
                                 @if($po->status === 'confirmed')
                                 <button wire:click="openGRNConfirmModal({{ $po->id }})"
-                                    class="{{ $po->grn->isNotEmpty() ? 'text-gray-300 cursor-not-allowed' : 'text-gray-400 hover:text-gray-600' }}" 
+                                    class="{{ $po->grn->isNotEmpty() ? 'text-gray-300 cursor-not-allowed' : 'text-gray-400 hover:text-gray-600' }}"
                                     title="{{ $po->grn->isNotEmpty() ? 'GRN Already Created' : 'Create GRN' }}"
                                     {{ $po->grn->isNotEmpty() ? 'disabled' : '' }}>
                                     <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
                                         <path d="M17 20v-5h2v6.988H3V15h1.98v5H17Z"/>
                                         <path d="m6.84 14.522 8.73 1.825.369-1.755-8.73-1.825-.369 1.755Zm1.155-4.323 8.083 3.764.739-1.617-8.083-3.787-.739 1.64Zm3.372-5.481L10.235 6.08l6.859 5.704 1.132-1.362-6.859-5.704ZM15.57 17H6.655v2h8.915v-2ZM12.861 3.111l6.193 6.415 1.414-1.415-6.43-6.177-1.177 1.177Z"/>
                                       </svg>
-                                      
+
                                 </button>
                                 @endif
 
                                 @if($po->status === 'confirmed' || $po->status === 'draft')
                                 <button wire:click="openCancelConfirmModal({{ $po->id }})"
-                                    class="text-red-600 hover:text-red-900" 
+                                    class="text-red-600 hover:text-red-900"
                                     title="Cancel Purchase Order">
                                     <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
                                         <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18 17.94 6M18 18 6.06 6"/>
                                       </svg>
-                                      
+
                                 </button>
                                 @endif
 
@@ -225,16 +225,18 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="8" class="px-6 py-12 text-center text-gray-500">
-                            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
-                                </path>
-                            </svg>
-                            <h3 class="mt-2 text-sm font-medium text-gray-900">No purchase orders</h3>
-                            <p class="mt-1 text-sm text-gray-500">Get started by generating a purchase order from a job
-                                order.</p>
+                        <td colspan="9" class="px-6 py-12 text-center text-gray-500">
+                            <div class="flex flex-col items-center justify-center">
+                                <svg class="h-12 w-12 text-gray-400" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                                    </path>
+                                </svg>
+                                <h3 class="mt-2 text-sm font-medium text-gray-900 text-center">No purchase orders</h3>
+                                <p class="mt-1 text-sm text-gray-500 text-center">Get started by generating a purchase order from a job
+                                    order.</p>
+                            </div>
                         </td>
                     </tr>
                     @endforelse
@@ -370,7 +372,7 @@
                             <span class="text-sm text-gray-700">Dimensions</span>
                         </label>
                     </div>
-                    
+
                     <!-- Format indicator -->
                     <div class="mb-4 p-2 bg-blue-50 border border-blue-200 rounded text-sm text-blue-700">
                         <strong>Current Format:</strong> {{ $displayFormat === 'reel_cuts' ? 'Reel and Cuts' : 'Dimensions' }}
@@ -590,7 +592,7 @@
                                             // Get reel_size and cut_size from item
                                             $reelSize = $item->reel_size;
                                             $cutSize = $item->cut_size;
-                                            
+
                                             // If values are not stored, try to calculate from the related box
                                             if (($reelSize === null || $cutSize === null || $reelSize == 0 || $cutSize == 0) && $item->item_type === 'box' && $selectedPurchaseOrder->jobOrder) {
                                                 $box = $selectedPurchaseOrder->jobOrder->boxes->firstWhere('id', $item->item_id);
@@ -613,7 +615,7 @@
                                             $length = '-';
                                             $width = '-';
                                             $height = '-';
-                                            
+
                                             if ($item->item_type === 'box' && $selectedPurchaseOrder->jobOrder) {
                                                 // Try to find the box in job order
                                                 $box = $selectedPurchaseOrder->jobOrder->boxes->firstWhere('id', $item->item_id);
@@ -630,7 +632,7 @@
                                         @endif
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                             @if($selectedPurchaseOrder->status === 'draft')
-                                                <input type="number" 
+                                                <input type="number"
                                                        wire:model.live="itemQuantities.{{ $item->id }}"
                                                        wire:change="updateItemQuantity({{ $item->id }})"
                                                        min="1"
@@ -825,11 +827,11 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                         </svg>
                     </div>
-                    
+
                     <h3 class="text-lg font-medium text-gray-900 text-center mb-2">
                         Create GRN from Purchase Order
                     </h3>
-                    
+
                     <div class="text-center text-sm text-gray-600 mb-6">
                         <p>Are you sure you want to create a GRN from:</p>
                         <p class="font-semibold text-gray-900 mt-1">
@@ -839,13 +841,13 @@
                             This will create a Goods Received Note with {{ $selectedPurchaseOrder->items->count() ?? 0 }} items.
                         </p>
                     </div>
-                    
+
                     <div class="flex space-x-3">
-                        <button wire:click="closeGRNConfirmModal" 
+                        <button wire:click="closeGRNConfirmModal"
                                 class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-4 rounded-md transition-colors">
                             Cancel
                         </button>
-                        <button wire:click="createGRNFromPurchaseOrder({{ $selectedPurchaseOrder->id ?? '' }})" 
+                        <button wire:click="createGRNFromPurchaseOrder({{ $selectedPurchaseOrder->id ?? '' }})"
                                 class="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 px-4 rounded-md transition-colors">
                             Create GRN
                         </button>
@@ -865,11 +867,11 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
                         </svg>
                     </div>
-                    
+
                     <h3 class="text-lg font-medium text-gray-900 text-center mb-2">
                         Cancel Purchase Order
                     </h3>
-                    
+
                     <div class="text-center text-sm text-gray-600 mb-6">
                         <p>Are you sure you want to cancel:</p>
                         <p class="font-semibold text-gray-900 mt-1">
@@ -885,25 +887,25 @@
                                 @endif
                             </p>
                         </div>
-                        
+
                         <div class="mt-4">
                             <label for="cancellation_reason" class="block text-sm font-medium text-gray-700 mb-2">
                                 Cancellation Reason (Optional)
                             </label>
-                            <textarea wire:model="cancellationReason" 
+                            <textarea wire:model="cancellationReason"
                                     id="cancellation_reason"
                                     rows="3"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
                                     placeholder="Enter reason for cancellation..."></textarea>
                         </div>
                     </div>
-                    
+
                     <div class="flex space-x-3">
-                        <button wire:click="closeCancelConfirmModal" 
+                        <button wire:click="closeCancelConfirmModal"
                                 class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-4 rounded-md transition-colors">
                             Keep Order
                         </button>
-                        <button wire:click="cancelPurchaseOrder({{ $selectedPurchaseOrder->id ?? '' }})" 
+                        <button wire:click="cancelPurchaseOrder({{ $selectedPurchaseOrder->id ?? '' }})"
                                 class="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-md transition-colors">
                             Cancel Order
                         </button>
@@ -918,7 +920,7 @@
         $wire.on('redirectToProductionOrder', function(url) {
             window.location.href = url;
         });
-        
+
         // Handle redirect after production order creation
         @if($redirectToProductionOrder)
             setTimeout(function() {
@@ -933,10 +935,10 @@
                 console.error('Print content not found');
                 return;
             }
-            
+
             // Show print content and hide modal
             printContent.style.display = 'block';
-            
+
             // Create a new window for printing
             var printWindow = window.open('', '_blank', 'width=800,height=600');
             printWindow.document.write('<html><head><title>Purchase Order - {{ $selectedPurchaseOrder->po_number ?? "" }}</title>');
@@ -953,7 +955,7 @@
             printWindow.document.write(printContent.innerHTML);
             printWindow.document.write('</body></html>');
             printWindow.document.close();
-            
+
             // Wait for content to load then print
             setTimeout(function() {
                 printWindow.print();
