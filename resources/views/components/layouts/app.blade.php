@@ -332,7 +332,7 @@
                         <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Accounting</h3>
                     </div>
 
-                    {{-- <a wire:navigate href="{{ route('accounting.dashboard') }}"
+                    <a wire:navigate href="{{ route('accounting.dashboard') }}"
                         class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-colors duration-200 {{ request()->routeIs('accounting.dashboard') ? 'bg-gray-200 text-gray-900' : '' }}">
                         <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -341,9 +341,9 @@
                                 d="M8 5a2 2 0 012-2h4a2 2 0 012 2v2H8V5z"></path>
                         </svg>
                         Dashboard
-                    </a> --}}
+                    </a> 
 
-                    {{-- <a wire:navigate href="{{ route('accounting.chart-of-accounts') }}"
+                    <a wire:navigate href="{{ route('accounting.chart-of-accounts') }}"
                         class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-colors duration-200 {{ request()->routeIs('accounting.chart-of-accounts') ? 'bg-gray-200 text-gray-900' : '' }}">
                         <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -351,7 +351,7 @@
                             </path>
                         </svg>
                         Chart of Accounts
-                    </a> --}}
+                    </a>
 
                     <a href="https://uat.finance.kingspack.com.lk/wzusers/login" target="_blank"
                     class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-colors duration-200 {{ request()->routeIs('accounting.chart-of-accounts') ? 'bg-gray-200 text-gray-900' : '' }}">
@@ -363,7 +363,7 @@
                     Chart of Accounts
                 </a>
 
-                    {{-- <a wire:navigate href="{{ route('accounting.entries') }}"
+                <a wire:navigate href="{{ route('accounting.entries') }}"
                         class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-colors duration-200 {{ request()->routeIs('accounting.entries') ? 'bg-gray-200 text-gray-900' : '' }}">
                         <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -371,9 +371,9 @@
                             </path>
                         </svg>
                         Entries
-                    </a> --}}
+                </a>
 
-                    {{-- <a wire:navigate href="{{ route('accounting.search') }}"
+                <a wire:navigate href="{{ route('accounting.search') }}"
                         class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-colors duration-200 {{ request()->routeIs('accounting.search') ? 'bg-gray-200 text-gray-900' : '' }}">
                         <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -493,7 +493,7 @@
                             </path>
                         </svg>
                         Entry Types
-                    </a> --}}
+                    </a>
 
                     <div class="border-t border-gray-300 my-4"></div>
 
