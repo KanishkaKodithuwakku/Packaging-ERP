@@ -29,14 +29,37 @@
         <div class="px-6 py-4 border-b border-gray-200">
             <div class="flex items-center justify-between">
                 <h3 class="text-lg font-medium text-gray-900">All Purchase Orders</h3>
-                <button wire:click="openCreateModal({{ $selectedJobOrderId ?? '' }})"
-                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                    </svg>
-                    Generate Purchase Order
-                </button>
+                <div class="flex items-center space-x-4">
+                    <input type="text" wire:model.live="search" placeholder="Search purchase orders..."
+                        class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[200px]">
+                    @if($filterSupplier || $filterStatus || $filterDateFrom || $filterDateTo)
+                    <button wire:click="resetFilters"
+                        class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center">
+                        <svg class="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M15.312 11.424a5.5 5.5 0 0 1-9.201 2.466l-.312-.311h2.433a.75.75 0 0 0 0-1.5H3.989a.75.75 0 0 0-.75.75v4.242a.75.75 0 0 0 1.5 0v-2.43l.31.31a7 7 0 0 0 11.712-3.138.75.75 0 0 0-1.449-.39Zm1.23-3.723a.75.75 0 0 0 .219-.53V2.929a.75.75 0 0 0-1.5 0V5.36l-.31-.31A7 7 0 0 0 3.239 8.188a.75.75 0 1 0 1.448.389A5.5 5.5 0 0 1 13.89 6.11l.311.31h-2.432a.75.75 0 0 0 0 1.5h4.243a.75.75 0 0 0 .53-.219Z" clip-rule="evenodd" />
+                        </svg>
+                        Reset Filter
+                    </button>
+                    @else
+                    <button wire:click="openFilterModal"
+                        class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z">
+                            </path>
+                        </svg>
+                        Filter
+                    </button>
+                    @endif
+                    <button wire:click="openCreateModal({{ $selectedJobOrderId ?? '' }})"
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                        </svg>
+                        Generate Purchase Order
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -209,11 +232,23 @@
                                 </button>
                                 @endif
 
-                                @if($po->status === 'confirmed' || $po->status === 'draft')
+                                @if($po->status === 'draft')
                                 <button wire:click="openCancelConfirmModal({{ $po->id }})"
                                     class="" style="color: #c40d0d;"
                                     title="Cancel Purchase Order">
                                     <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" style="color: #8d8d8d;" onMouseOver="this.style.color='red'" onMouseOut="this.style.color='#8d8d8d'">
+                                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18 17.94 6M18 18 6.06 6"/>
+                                      </svg>
+
+                                </button>
+                                @endif
+
+                                @if($po->status === 'confirmed')
+                                <button wire:click="openCancelConfirmModal({{ $po->id }})"
+                                    class="text-gray-300 cursor-not-allowed" style="color: #9ca3af;"
+                                    title="Cannot cancel confirmed purchase order"
+                                    disabled>
+                                    <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" style="color: #9ca3af;">
                                         <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18 17.94 6M18 18 6.06 6"/>
                                       </svg>
 
@@ -1020,6 +1055,89 @@
         };
     </script>
     @endscript
+
+    <!-- Filter Modal -->
+    @if($showFilterModal)
+        <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" wire:click.self="closeFilterModal">
+            <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-md bg-white">
+                <div class="mt-3">
+                    <!-- Modal Header -->
+                    <div class="flex justify-between items-center pb-4 border-b">
+                        <h3 class="text-lg font-medium text-gray-900">
+                            Filter Purchase Orders
+                        </h3>
+                        <button wire:click="closeFilterModal" class="text-gray-400 hover:text-gray-600">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Filter Form -->
+                    <div class="mt-6">
+                        <div class="space-y-3">
+                            <!-- Row 1: Start Date, End Date -->
+                            <div class="flex gap-3">
+                                <div class="flex items-center gap-3 flex-1">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1 w-1/5">Start Date</label>
+                                    <div class="flex-1">
+                                        <input type="date" wire:model.live="filterDateFrom"
+                                            class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center gap-3 flex-1">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1 w-1/5">End Date</label>
+                                    <div class="flex-1">
+                                        <input type="date" wire:model.live="filterDateTo"
+                                            class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Row 2: Supplier, Status -->
+                            <div class="flex gap-3">
+                                <div class="flex items-center gap-3 flex-1">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1 w-1/5">Supplier</label>
+                                    <div class="flex-1">
+                                        <select wire:model.live="filterSupplier"
+                                            class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                            <option value="">All Suppliers</option>
+                                            @foreach($suppliers as $supplier)
+                                            <option value="{{ $supplier->id }}">{{ $supplier->name }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center gap-3 flex-1">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1 w-1/5">Status</label>
+                                    <div class="flex-1">
+                                        <select wire:model.live="filterStatus"
+                                            class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                            <option value="">All Status</option>
+                                            <option value="draft">Draft</option>
+                                            <option value="confirmed">Confirmed</option>
+                                            <option value="cancelled">Cancelled</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="flex justify-end space-x-3 mt-8 pt-6 border-t">
+                            <button type="button"
+                                    wire:click="closeFilterModal"
+                                    class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
 
     <style>
         @media print {

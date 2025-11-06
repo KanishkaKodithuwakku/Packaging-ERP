@@ -19,11 +19,13 @@ class JobOrderManagement extends Component
     public $showModal = false;
     public $showFilterModal = false;
     public $showDispatchModal = false;
+    public $showDeleteConfirmModal = false;
     public $selectedJobOrderForDispatch = null;
+    public $jobOrderToDelete = null;
     public $dispatchComparison = [];
     public $editingJobOrder = false;
     public $activeTab = 'main';
-    
+
     // Search and filters
     public $search = '';
     public $filterSupplier = '';
@@ -31,7 +33,7 @@ class JobOrderManagement extends Component
     public $filterStatus = '';
     public $filterDateFrom = '';
     public $filterDateTo = '';
-    
+
     // Main form data
     public $form = [
         'job_number' => '',
@@ -46,7 +48,7 @@ class JobOrderManagement extends Component
         'notes' => '',
         'status' => 'pending'
     ];
-    
+
     // Box form data
     public $boxForm = [
         'order_qty' => '',
@@ -72,9 +74,10 @@ class JobOrderManagement extends Component
         'flute' => 'B',
         'fsc_claim' => '100%',
         'no_of_ups' => '',
-        'supplier_price' => ''
+        'supplier_price' => '',
+        'notes' => ''
     ];
-    
+
     // Divider form data
     public $dividerForm = [
         'combination_1' => '',
@@ -90,22 +93,27 @@ class JobOrderManagement extends Component
         'fsc_claim' => '100%',
         'supplier_price' => ''
     ];
-    
+
     // Calculated values
     public $calculatedReelSize = 0;
     public $calculatedCutSize = 0;
     public $calculatedBoardQty = 0;
-    
+
     // Current job order items
     public $currentJobOrderId = null;
     public $boxes = [];
     public $dividers = [];
 
+    protected $messages = [
+        'form.po_date.required' => 'Please fill PO date',
+        'form.po_date.date' => 'Please select a valid date',
+    ];
+
     public function mount()
     {
         $this->form['date'] = now()->format('Y-m-d');
         $this->resetBoxForm();
-        
+
         // Set default values and calculate immediately
         $this->boxForm['length'] = 0;
         $this->boxForm['width'] = 0;
@@ -113,7 +121,7 @@ class JobOrderManagement extends Component
         $this->boxForm['unit'] = 'INCHES';
         $this->boxForm['dimension_type'] = 'INTERNAL';
         $this->boxForm['ply'] = '3';
-        
+
         $this->calculateDimensions();
     }
 
@@ -122,10 +130,10 @@ class JobOrderManagement extends Component
         $this->resetForm();
         $this->showModal = true;
         $this->editingJobOrder = false;
-        
+
         // Force calculation when modal opens
         $this->calculateDimensions();
-        
+
         \Log::info('Create modal opened', [
             'form' => $this->form
         ]);
@@ -175,7 +183,7 @@ class JobOrderManagement extends Component
     public function loadDispatchComparison($jobOrderId)
     {
         $jobOrder = \App\Models\JobOrder::with(['boxes', 'dividers'])->findOrFail($jobOrderId);
-        
+
         // Get all delivery notes for this job order
         $deliveryNotes = \App\Models\DeliveryNote::where('job_order_id', $jobOrderId)
             ->with('items')
@@ -187,7 +195,7 @@ class JobOrderManagement extends Component
         foreach ($jobOrder->boxes as $box) {
             $materialCode = 'BOX-' . $box->id . '-' . $box->ply . 'PLY';
             $orderQty = $box->order_qty;
-            
+
             // Calculate total dispatched from all delivery notes for this box
             $dispatchedQty = 0;
             foreach ($deliveryNotes as $dn) {
@@ -214,7 +222,7 @@ class JobOrderManagement extends Component
         foreach ($jobOrder->dividers as $divider) {
             $materialCode = 'DIVIDER-' . $divider->id . '-' . $divider->ply . 'PLY';
             $orderQty = $divider->quantity;
-            
+
             // Calculate total dispatched from all delivery notes for this divider
             $dispatchedQty = 0;
             foreach ($deliveryNotes as $dn) {
@@ -322,12 +330,12 @@ class JobOrderManagement extends Component
             'value' => $value,
             'boxForm' => $this->boxForm
         ]);
-        
+
         if (in_array($field, ['length', 'width', 'height', 'ply', 'unit', 'dimension_type'])) {
             $this->calculateDimensions();
             $this->dispatch('$refresh');
         }
-        
+
         if (in_array($field, ['order_qty', 'no_of_ups'])) {
             $this->calculateBoardQty();
         }
@@ -349,7 +357,7 @@ class JobOrderManagement extends Component
             $height = (float) $this->boxForm['height'];
             $unit = $this->boxForm['unit'];
             $type = $this->boxForm['dimension_type'];
-            
+
             // Debug input values
             \Log::info('Calculation input values', [
                 'length' => $length,
@@ -359,12 +367,12 @@ class JobOrderManagement extends Component
                 'type' => $type,
                 'unit_type' => gettype($unit)
             ]);
-            
+
             // Convert to inches
             $lengthInches = $this->convertToInches($length, $unit);
             $widthInches = $this->convertToInches($width, $unit);
             $heightInches = $this->convertToInches($height, $unit);
-            
+
             // Debug conversion
             \Log::info('Unit conversion debug', [
                 'unit' => $unit,
@@ -375,11 +383,11 @@ class JobOrderManagement extends Component
                 'converted_width' => $widthInches,
                 'converted_height' => $heightInches
             ]);
-            
+
             // Calculate reel size: (W + H) + 0.75
             $reelSize = $widthInches + $heightInches + 0.75;
             $this->calculatedReelSize = $this->roundToNextReelSize($reelSize, $this->boxForm['supplier_id'] ?? null);
-            
+
             // Calculate cut size: ((L + W) * 2) + addition
             $cutSize = ($lengthInches + $widthInches) * 2;
             if ($type === 'EXTERNAL') {
@@ -388,7 +396,7 @@ class JobOrderManagement extends Component
                 $cutSize += 2.5; // INTERNAL adds 2.5 inches
             }
             $this->calculatedCutSize = $cutSize;
-            
+
             // Debug logging
             \Log::info('Dimensions calculated', [
                 'unit' => $unit,
@@ -401,16 +409,16 @@ class JobOrderManagement extends Component
             $this->calculatedCutSize = 0;
         }
     }
-    
+
     private function convertToInches(float $dimension, string $unit): float
     {
         \Log::info('convertToInches called', [
-            'dimension' => $dimension, 
+            'dimension' => $dimension,
             'unit_received' => $unit,
             'unit_type' => gettype($unit),
             'unit_length' => strlen($unit)
         ]);
-        
+
         switch ($unit) {
             case 'MM':
                 $result = $dimension / 25.4;
@@ -426,7 +434,7 @@ class JobOrderManagement extends Component
                 return $dimension; // Already in inches
         }
     }
-    
+
     private function roundToNextReelSize(float $size, $supplierId = null): float
     {
         // Get supplier-specific reel sizes if supplier is provided
@@ -446,7 +454,7 @@ class JobOrderManagement extends Component
                 }
             }
         }
-        
+
         // Fallback to standard rounding if no supplier or no supplier reel sizes
         if ($size <= 13.50) {
             return 13.50;
@@ -519,7 +527,7 @@ class JobOrderManagement extends Component
             'boxForm_keys' => array_keys($this->boxForm),
             'boxForm_values' => array_values($this->boxForm)
         ]);
-        
+
         // Check if required fields are empty
         $requiredFields = ['order_qty', 'selling_price', 'length', 'width', 'height', 'ply'];
         $emptyFields = [];
@@ -528,13 +536,13 @@ class JobOrderManagement extends Component
                 $emptyFields[] = $field;
             }
         }
-        
+
         if (!empty($emptyFields)) {
             \Log::error('Required fields are empty', ['empty_fields' => $emptyFields]);
             $this->addError('boxForm', 'Please fill in all required fields: ' . implode(', ', $emptyFields));
             return;
         }
-        
+
         try {
             $this->validate([
                 'boxForm.order_qty' => 'required|integer|min:1',
@@ -548,6 +556,7 @@ class JobOrderManagement extends Component
                 'boxForm.ply' => 'required',
                 'boxForm.flute' => 'required',
                 'boxForm.fsc_claim' => 'required',
+                'boxForm.no_of_colours' => 'required|integer|min:0',
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             \Log::error('Box validation failed', ['errors' => $e->errors()]);
@@ -580,6 +589,7 @@ class JobOrderManagement extends Component
             'fsc_claim' => $this->boxForm['fsc_claim'],
             'no_of_ups' => $this->boxForm['no_of_ups'],
             'supplier_price' => $this->boxForm['supplier_price'],
+            'notes' => !empty($this->boxForm['notes']) ? $this->boxForm['notes'] : null,
             'reel_size' => $this->calculatedReelSize,
             'cut_size' => $this->calculatedCutSize,
             'board_qty' => $this->calculatedBoardQty,
@@ -587,11 +597,11 @@ class JobOrderManagement extends Component
 
         $this->resetBoxForm();
         $this->activeTab = 'boxes';
-        
+
         \Log::info('Box added successfully', ['total_boxes' => count($this->boxes)]);
-        
+
         // Modal stays open to allow adding more boxes/dividers
-        
+
     }
 
     public function addDivider()
@@ -621,9 +631,9 @@ class JobOrderManagement extends Component
 
         $this->resetDividerForm();
         $this->activeTab = 'dividers';
-        
+
         // Modal stays open to allow adding more boxes/dividers
-        
+
     }
 
     public function removeBox($index)
@@ -655,30 +665,31 @@ class JobOrderManagement extends Component
                 'form.supplier_id' => 'required|exists:suppliers,id',
                 'form.customer_id' => 'required|exists:customers,id',
                 'form.customer_address' => 'required|string',
+                'form.po_date' => 'required|date',
                 'form.status' => 'required|in:pending,draft,confirmed,in_production,completed,cancelled',
             ]);
 
             if ($this->editingJobOrder && $this->currentJobOrderId) {
                 // UPDATE EXISTING JOB ORDER
                 \Log::info('Updating existing job order', ['job_order_id' => $this->currentJobOrderId]);
-                
+
                 $jobOrder = JobOrder::findOrFail($this->currentJobOrderId);
                 $jobOrder->update($this->form);
-                
+
                 // Delete existing boxes and dividers
                 $jobOrder->boxes()->delete();
                 $jobOrder->dividers()->delete();
-                
+
                 \Log::info('Updated existing job order with ID: ' . $jobOrder->id);
                 $successMessage = 'Job Order updated successfully!';
             } else {
                 // CREATE NEW JOB ORDER
                 \Log::info('Creating new job order');
-                
+
                 // Generate fresh job number to avoid duplicates
                 $this->form['job_number'] = JobOrder::generateJobNumber($this->form['supplier_id']);
                 $this->form['supplier_po_number'] = $this->form['job_number'];
-                
+
                 $jobOrder = JobOrder::create($this->form);
                 \Log::info('Created new job order with ID: ' . $jobOrder->id);
                 $successMessage = 'Job Order created successfully!';
@@ -718,11 +729,26 @@ class JobOrderManagement extends Component
         return redirect('/job-order-detail/' . $id . '?edit=true');
     }
 
+    public function openDeleteConfirmModal($id)
+    {
+        $this->jobOrderToDelete = $id;
+        $this->showDeleteConfirmModal = true;
+    }
+
+    public function closeDeleteConfirmModal()
+    {
+        $this->showDeleteConfirmModal = false;
+        $this->jobOrderToDelete = null;
+    }
+
     public function deleteJobOrder($id)
     {
         $jobOrder = JobOrder::findOrFail($id);
         $jobOrder->delete();
-        
+
+        // Close modal
+        $this->closeDeleteConfirmModal();
+
         session()->flash('success', 'Job Order deleted successfully.');
     }
 
@@ -741,14 +767,14 @@ class JobOrderManagement extends Component
             'notes' => '',
             'status' => 'pending'
         ];
-        
+
         $this->resetBoxForm();
         $this->resetDividerForm();
-        
+
         $this->boxes = [];
         $this->dividers = [];
         $this->currentJobOrderId = null;
-        
+
         $this->resetErrorBag();
     }
 
@@ -778,9 +804,10 @@ class JobOrderManagement extends Component
             'flute' => 'B',
             'fsc_claim' => '100%',
             'no_of_ups' => '',
-            'supplier_price' => ''
+            'supplier_price' => '',
+            'notes' => ''
         ];
-        
+
         $this->calculatedReelSize = 0;
         $this->calculatedCutSize = 0;
         $this->calculatedBoardQty = 0;
@@ -812,7 +839,7 @@ class JobOrderManagement extends Component
     public function render()
     {
         $query = JobOrder::with(['supplier', 'customer', 'boxes', 'dividers']);
-        
+
         if ($this->search) {
             $query->where(function($q) {
                 $q->where('job_number', 'like', '%' . $this->search . '%')
@@ -820,27 +847,27 @@ class JobOrderManagement extends Component
                   ->orWhere('purchase_order_no', 'like', '%' . $this->search . '%');
             });
         }
-        
+
         if ($this->filterSupplier) {
             $query->where('supplier_id', $this->filterSupplier);
         }
-        
+
         if ($this->filterCustomer) {
             $query->where('customer_id', $this->filterCustomer);
         }
-        
+
         if ($this->filterStatus) {
             $query->where('status', $this->filterStatus);
         }
-        
+
         if ($this->filterDateFrom) {
             $query->where('date', '>=', $this->filterDateFrom);
         }
-        
+
         if ($this->filterDateTo) {
             $query->where('date', '<=', $this->filterDateTo);
         }
-        
+
         $jobOrders = $query->orderBy('date', 'desc')
                           ->orderBy('created_at', 'desc')
                           ->paginate(15);

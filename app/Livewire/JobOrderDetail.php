@@ -20,7 +20,7 @@ class JobOrderDetail extends Component
     public $hasPurchaseOrder = false;
     public $showPrintPreviewModal = false;
     public $printDisplayFormat = 'dimensions';
-    
+
     // Form data
     public $form = [];
     public $boxes = [];
@@ -38,7 +38,7 @@ class JobOrderDetail extends Component
     public int $grnProcessedCount = 0;
     public int $deliveryCount = 0;
     public float $dispatchedQuantity = 0;
-    
+
     // Box form
     public $boxForm = [
         'order_qty' => '',
@@ -68,7 +68,7 @@ class JobOrderDetail extends Component
         'no_of_ups' => '',
         'supplier_price' => '',
     ];
-    
+
     // Divider form
     public $dividerForm = [
         'quantity' => '',
@@ -84,7 +84,7 @@ class JobOrderDetail extends Component
         'fsc_claim' => '100%',
         'supplier_price' => '',
     ];
-    
+
     // Calculated values
     public $calculatedReelSize = 0;
     public $calculatedCutSize = 0;
@@ -93,10 +93,10 @@ class JobOrderDetail extends Component
     public function mount($id, $edit = false)
     {
         $this->jobOrderId = $id;
-        
+
         // Check for edit parameter in URL query string
         $editFromQuery = request()->query('edit');
-        
+
         $this->isEditMode = $edit === 'edit' || $edit === 'true' || $edit === true || $editFromQuery === 'true';
         $this->loadJobOrder();
     }
@@ -104,20 +104,20 @@ class JobOrderDetail extends Component
     public function loadJobOrder()
     {
         $this->jobOrder = JobOrder::with(['boxes', 'dividers', 'supplier', 'customer'])->findOrFail($this->jobOrderId);
-        
+
         $this->form = $this->jobOrder->toArray();
         $this->form['date'] = $this->jobOrder->date ? $this->jobOrder->date->format('Y-m-d') : null;
         $this->form['po_date'] = $this->jobOrder->po_date ? $this->jobOrder->po_date->format('Y-m-d') : null;
-        
+
         // Load boxes and dividers
         $this->boxes = $this->jobOrder->boxes->map(function($box) {
             return $box->toArray();
         })->toArray();
-        
+
         $this->dividers = $this->jobOrder->dividers->map(function($divider) {
             return $divider->toArray();
         })->toArray();
-        
+
         // Check if a purchase order already exists for this job order
         $this->hasPurchaseOrder = \App\Models\PurchaseOrder::where('job_order_id', $this->jobOrderId)->exists();
 
@@ -196,7 +196,7 @@ class JobOrderDetail extends Component
         $this->boxForm['combination_5'] = '';
         $this->boxForm['combination_6'] = '';
         $this->boxForm['combination_7'] = '';
-        
+
         $this->calculateDimensions();
     }
 
@@ -249,12 +249,12 @@ class JobOrderDetail extends Component
             $box->ply = $this->boxForm['ply'];
             $box->order_qty = (int) ($this->boxForm['order_qty'] ?? 0);
             $box->no_of_ups = (int) ($this->boxForm['no_of_ups'] ?? 0);
-            
+
             // Calculate reel size and cut size
             $this->calculatedReelSize = $box->calculateReelSize($this->jobOrder->supplier_id);
             $this->calculatedCutSize = $box->calculateCutSize();
             $this->calculatedBoardQty = $box->calculateBoardQty();
-            
+
             \Log::info('Calculations: ', [
                 'supplier_id' => $this->jobOrder->supplier_id,
                 'length' => $this->boxForm['length'],
@@ -294,7 +294,7 @@ class JobOrderDetail extends Component
             'boxForm.fsc_claim' => 'required|string',
             'boxForm.no_of_ups' => 'required|numeric|min:1',
             'boxForm.supplier_price' => 'required|numeric|min:0',
-            'boxForm.notes' => 'required|string',
+            'boxForm.notes' => 'nullable|string',
         ];
 
         // Add combination fields validation based on PLY
@@ -351,23 +351,23 @@ class JobOrderDetail extends Component
                 'fsc_claim' => $this->boxForm['fsc_claim'],
                 'no_of_ups' => (int)$this->boxForm['no_of_ups'],
                 'supplier_price' => $this->boxForm['supplier_price'],
-                'notes' => $this->boxForm['notes'],
+                'notes' => !empty($this->boxForm['notes']) ? $this->boxForm['notes'] : null,
                 'reel_size' => $this->calculatedReelSize,
                 'cut_size' => $this->calculatedCutSize,
                 'board_qty' => $this->calculatedBoardQty,
             ];
 
             $this->jobOrder->boxes()->create($boxData);
-            
+
             // Reload the job order to get updated data
             $this->loadJobOrder();
-            
+
             $this->resetBoxForm();
             $this->activeTab = 'boxes';
-            
+
             // Close the modal
             $this->closeBoxDividerModal();
-            
+
             session()->flash('success', 'Box added successfully!');
         } catch (\Exception $e) {
             \Log::error('Error adding box: ' . $e->getMessage());
@@ -429,16 +429,16 @@ class JobOrderDetail extends Component
             ];
 
             $this->jobOrder->dividers()->create($dividerData);
-            
+
             // Reload the job order to get updated data
             $this->loadJobOrder();
-            
+
             $this->resetDividerForm();
             $this->activeTab = 'dividers';
-            
+
             // Close the modal
             $this->closeBoxDividerModal();
-            
+
             session()->flash('success', 'Divider added successfully!');
         } catch (\Exception $e) {
             \Log::error('Error adding divider: ' . $e->getMessage());
@@ -454,18 +454,18 @@ class JobOrderDetail extends Component
                 session()->flash('error', 'Cannot delete boxes from confirmed job orders.');
                 return;
             }
-            
+
             // Get the box from the current boxes array
             $box = $this->boxes[$index];
-            
+
             // Find and delete the box from database
             $this->jobOrder->boxes()->where('id', $box['id'])->delete();
-            
+
             // Reload the job order to get updated data
             $this->loadJobOrder();
-            
+
             session()->flash('success', 'Box removed successfully!');
-            
+
         } catch (\Exception $e) {
             \Log::error('Error removing box: ' . $e->getMessage());
             session()->flash('error', 'Error removing box: ' . $e->getMessage());
@@ -480,18 +480,18 @@ class JobOrderDetail extends Component
                 session()->flash('error', 'Cannot delete dividers from confirmed job orders.');
                 return;
             }
-            
+
             // Get the divider from the current dividers array
             $divider = $this->dividers[$index];
-            
+
             // Find and delete the divider from database
             $this->jobOrder->dividers()->where('id', $divider['id'])->delete();
-            
+
             // Reload the job order to get updated data
             $this->loadJobOrder();
-            
+
             session()->flash('success', 'Divider removed successfully!');
-            
+
         } catch (\Exception $e) {
             \Log::error('Error removing divider: ' . $e->getMessage());
             session()->flash('error', 'Error removing divider: ' . $e->getMessage());
@@ -523,15 +523,15 @@ class JobOrderDetail extends Component
                 'notes' => $this->form['notes'],
                 'status' => $this->form['status'],
             ]);
-            
+
             // Reload the job order
             $this->loadJobOrder();
-            
+
             // Exit edit mode
             $this->isEditMode = false;
-            
+
             session()->flash('success', 'Job order updated successfully!');
-            
+
         } catch (\Exception $e) {
             \Log::error('Error saving job order: ' . $e->getMessage());
             session()->flash('error', 'Error updating job order: ' . $e->getMessage());
@@ -575,7 +575,7 @@ class JobOrderDetail extends Component
             'no_of_ups' => '',
             'supplier_price' => '',
         ];
-        
+
         $this->calculatedReelSize = 0;
         $this->calculatedCutSize = 0;
         $this->calculatedBoardQty = 0;
@@ -685,7 +685,7 @@ class JobOrderDetail extends Component
             }
 
             session()->flash('success', "Purchase order {$purchaseOrder->po_number} has been generated successfully!");
-            
+
             // Redirect to the purchase order detail page
             return redirect()->route('purchase-order-management', ['purchase_order' => $purchaseOrder->id]);
 
@@ -705,12 +705,12 @@ class JobOrderDetail extends Component
 
             // Update job order status to confirmed
             $this->jobOrder->update(['status' => 'confirmed']);
-            
+
             session()->flash('success', 'Job order has been confirmed successfully!');
-            
+
             // Redirect to job order list using Livewire's navigation
             return $this->redirect(route('job-order-management'), navigate: true);
-            
+
         } catch (\Exception $e) {
             \Log::error('Error confirming job order: ' . $e->getMessage());
             session()->flash('error', 'Error confirming job order: ' . $e->getMessage());
@@ -730,7 +730,7 @@ class JobOrderDetail extends Component
     public function printJobOrder()
     {
         $this->closePrintPreviewModal();
-        
+
         // Dispatch event to trigger JavaScript print function
         $this->js('window.printJobOrder();');
     }
@@ -757,13 +757,13 @@ class JobOrderDetail extends Component
 
             $completed = 0;
             $inProgressQty = 0;
-            
+
             foreach ($productionOrders as $po) {
                 foreach ($po->items as $item) {
                     // Count completed quantity
                     $itemCompleted = (int) ($item->completed_quantity ?? 0);
                     $completed += $itemCompleted;
-                    
+
                     // Calculate work in progress (same logic as Inventory Dashboard)
                     // WIP = quantity - completed_quantity for items that are in progress
                     if (in_array($po->status, ['pending', 'in_production', 'ready_for_production'])) {
@@ -774,10 +774,10 @@ class JobOrderDetail extends Component
                     }
                 }
             }
-            
+
             // Total in progress = completed + items that are started but not completed
             $inProgress = $completed + $inProgressQty;
-            
+
             $this->productionTotal = $total;
             // Store separately for segmented progress bar
             $this->productionFullyCompleted = $completed;
@@ -785,7 +785,7 @@ class JobOrderDetail extends Component
             // Show total in progress (completed + items received but not completed)
             $this->productionCompleted = $inProgress > 0 ? $inProgress : $completed;
             $this->productionPercent = $total > 0 ? round(($this->productionCompleted / $total) * 100, 1) : 0;
-            
+
             if ($total === 0) {
                 $this->productionStatusText = 'Not started';
             } elseif ($completed >= $total) {
@@ -819,7 +819,7 @@ class JobOrderDetail extends Component
         if ($this->jobOrderId && $this->jobOrder) {
             $this->calculateProductionProgress();
         }
-        
+
         return view('livewire.job-order-detail', [
             'suppliers' => Supplier::all(),
             'customers' => Customer::all(),

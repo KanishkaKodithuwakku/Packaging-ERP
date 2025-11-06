@@ -15,6 +15,40 @@
                     </button>
                 </div>
 
+                <!-- Flash Messages inside Modal -->
+                @if (session()->has('success'))
+                <div class="mb-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
+                    <div class="flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        {{ session('success') }}
+                    </div>
+                </div>
+                @endif
+
+                @if (session()->has('error'))
+                <div class="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                    <div class="flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                        </svg>
+                        {{ session('error') }}
+                    </div>
+                </div>
+                @endif
+
+                @if (session()->has('info'))
+                <div class="mb-4 bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded">
+                    <div class="flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        {{ session('info') }}
+                    </div>
+                </div>
+                @endif
+
                 <!-- Form -->
                 <div class="mt-6">
                     <form wire:submit.prevent="saveJobOrder">
@@ -104,13 +138,17 @@
                                     </div>
 
                                     <!-- PO Date -->
-                                    <div class="flex items-center" style="gap: 0;">
-                                        <label class="block text-sm font-medium text-gray-700 mb-1 w-1/3" style="margin-right: 1px;">PO Date</label>
+                                    <div class="flex items-start" style="gap: 0;">
+                                        <label class="block text-sm font-medium text-gray-700 mb-1 w-1/3" style="margin-right: 1px; padding-top: 8px;">PO Date <span class="text-red-500">*</span></label>
                                         <div class="flex-1">
                                             <input type="date"
                                                    wire:model="form.po_date"
-                                                   class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                                            @error('form.po_date') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                                                   class="block w-full px-2 py-1.5 text-sm border {{ $errors->has('form.po_date') ? 'border-red-500' : 'border-gray-300' }} rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                            @error('form.po_date')
+                                                <div class="mt-1 mb-0">
+                                                    <span class="text-red-500 text-sm">{{ $message }}</span>
+                                                </div>
+                                            @enderror
                                         </div>
                                     </div>
 

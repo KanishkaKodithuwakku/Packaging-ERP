@@ -66,6 +66,7 @@
                         <div class="flex-1">
                             <input type="number"
                                    wire:model="boxForm.no_of_colours"
+                                   min="0"
                                    class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                                    placeholder="0">
                             @error('boxForm.no_of_colours') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
@@ -347,7 +348,7 @@
 
         <!-- Notes -->
         <div class="mt-6">
-            <label class="block text-sm font-medium text-gray-700 mb-1">Notes <span class="text-red-500">*</span></label>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
             <textarea wire:model="boxForm.notes"
                       rows="3"
                       class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
