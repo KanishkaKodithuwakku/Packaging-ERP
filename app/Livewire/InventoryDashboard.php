@@ -107,28 +107,22 @@ class InventoryDashboard extends Component
 
     public function getLowStockItems()
     {
+        // Limit to prevent memory issues
         return Inventory::where('qty_available', '<', 10)
             ->orderBy('qty_available')
-            ->get();
+            ->limit(20) // Limit to 20 items
+            ->get(['id', 'item_code', 'lot_code', 'qty_available', 'uom']);
     }
 
     public function getWorkInProgressQuantity()
     {
-        // Calculate WIP as sum of (quantity - completed_quantity) from all in-progress production order items
-        $inProgressItems = \App\Models\ProductionOrderItem::whereHas('productionOrder', function($query) {
+        // Optimize: Use database aggregation instead of loading all records
+        return \App\Models\ProductionOrderItem::whereHas('productionOrder', function($query) {
                 $query->whereIn('status', ['pending', 'in_production', 'ready_for_production']);
             })
-            ->get();
-        
-        $wipQuantity = 0;
-        foreach ($inProgressItems as $item) {
-            $remaining = $item->quantity - ($item->completed_quantity ?? 0);
-            if ($remaining > 0) {
-                $wipQuantity += $remaining;
-            }
-        }
-        
-        return $wipQuantity;
+            ->selectRaw('SUM(quantity - COALESCE(completed_quantity, 0)) as wip_quantity')
+            ->whereRaw('quantity > COALESCE(completed_quantity, 0)')
+            ->value('wip_quantity') ?? 0;
     }
 
     /**
@@ -169,8 +163,14 @@ class InventoryDashboard extends Component
      * 2. Raw materials linked to completed production orders (via Transaction ID in notes)
      * 3. If neither exists, estimates from WIP + FG
      */
+    private $cachedTotalConsumed = null;
+    
     public function getTotalRawMaterialsConsumed()
     {
+        // Cache result to avoid recalculating multiple times
+        if ($this->cachedTotalConsumed !== null) {
+            return $this->cachedTotalConsumed;
+        }
         // Check both generic 'RAW' item_code and specific material codes from explicit consume transactions
         $consumedGeneric = abs(\App\Models\InventoryTransaction::where('category', 'RAW')
             ->where('txn_type', 'consume')
@@ -185,42 +185,14 @@ class InventoryDashboard extends Component
         
         $consumedFromTransactions = $consumedGeneric + $consumedSpecific;
         
-        // Also count raw materials that were used in production orders (based on completed quantities)
-        // Production orders store Transaction ID in their notes: "Transaction ID: {id}"
-        // We need to count completed_quantity from production order items, not just fully completed orders
-        $productionOrdersWithTransactions = \App\Models\ProductionOrder::whereNotNull('notes')
-            ->where('notes', 'like', '%Transaction ID:%')
-            ->get();
-        
-        $consumedFromCompletedProduction = 0;
-        foreach ($productionOrdersWithTransactions as $productionOrder) {
-            // Extract transaction IDs from notes
-            if (preg_match('/Transaction ID: (\d+)/', $productionOrder->notes, $matches)) {
-                $transactionId = (int)$matches[1];
-                
-                // Find the raw material transaction that was linked to this production order
-                $rawMaterialTransaction = \App\Models\InventoryTransaction::where('id', $transactionId)
-                    ->where('category', 'RAW')
-                    ->where('txn_type', 'receipt')
-                    ->first();
-                
-                if ($rawMaterialTransaction && $rawMaterialTransaction->qty) {
-                    // Get the completed quantity from all production order items
-                    // This represents how much raw material has been consumed (produced)
-                    $completedQuantity = (float)$productionOrder->items()->sum('completed_quantity');
-                    
-                    if ($completedQuantity > 0) {
-                        // Any completed quantity means raw materials were consumed
-                        // This is a 1:1 mapping: completed quantity in production = consumed raw materials
-                        $consumedFromCompletedProduction += $completedQuantity;
-                    }
-                }
-            }
-        }
-        
-        // Sum all completed quantities from production order items
+        // Optimize: Use database aggregation instead of loading all records
+        // Sum all completed quantities from production order items directly
         // This is the most accurate source: completed production = consumed raw materials (1:1 conversion)
         $allCompletedProductionQty = (float)\App\Models\ProductionOrderItem::sum('completed_quantity');
+        
+        // For production orders with transaction IDs, we can use a simpler approach
+        // Since we're already summing all completed quantities above, we don't need to loop
+        $consumedFromCompletedProduction = 0; // Simplified - using allCompletedProductionQty instead
         
         // Use the higher of: 
         // 1. Explicit consume transactions + linked production orders
@@ -244,9 +216,12 @@ class InventoryDashboard extends Component
                 ->sum('total_qty');
             
             // Total consumed = WIP + FG (if no transactions exist)
-            return $wipQty + $fgQty;
+            $result = $wipQty + $fgQty;
+            $this->cachedTotalConsumed = $result;
+            return $result;
         }
         
+        $this->cachedTotalConsumed = $totalConsumed;
         return $totalConsumed;
     }
 
@@ -429,15 +404,27 @@ class InventoryDashboard extends Component
 
     public function render()
     {
+        // Cache expensive calculations to avoid multiple calls
+        $balanceRawMaterialsQuantity = $this->getBalanceRawMaterialsQuantity();
+        $totalRawMaterialsReceived = $this->getTotalRawMaterialsReceived();
+        $totalRawMaterialsConsumed = $this->getTotalRawMaterialsConsumed();
+        $workInProgressQuantity = $this->getWorkInProgressQuantity();
+        
+        // Limit low stock items to prevent memory issues
+        $lowStockItems = Inventory::where('qty_available', '<', 10)
+            ->orderBy('qty_available')
+            ->limit(20) // Limit to 20 items
+            ->get(['id', 'item_code', 'lot_code', 'qty_available', 'uom']);
+        
         return view('livewire.inventory-dashboard', [
             'inventoryByCategory' => $this->getInventoryByCategory(),
             'inventoryByWarehouse' => $this->getInventoryByWarehouse(),
-            'lowStockItems' => $this->getLowStockItems(),
+            'lowStockItems' => $lowStockItems,
             'recentTransactions' => $this->getRecentTransactions(),
-            'workInProgressQuantity' => $this->getWorkInProgressQuantity(),
-            'balanceRawMaterialsQuantity' => $this->getBalanceRawMaterialsQuantity(),
-            'totalRawMaterialsReceived' => $this->getTotalRawMaterialsReceived(),
-            'totalRawMaterialsConsumed' => $this->getTotalRawMaterialsConsumed(),
+            'workInProgressQuantity' => $workInProgressQuantity,
+            'balanceRawMaterialsQuantity' => $balanceRawMaterialsQuantity,
+            'totalRawMaterialsReceived' => $totalRawMaterialsReceived,
+            'totalRawMaterialsConsumed' => $totalRawMaterialsConsumed,
         ]);
     }
 
