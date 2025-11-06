@@ -135,13 +135,9 @@
                                     <p class="text-xs text-gray-500 mt-1">{{ $transaction->txn_date }}</p>
                                     @if($transaction->getJobOrder() && $transaction->txn_type === 'receipt')
                                         @php
-                                            // Check if a production order already exists for THIS SPECIFIC transaction (by transaction ID in notes)
-                                            // Each transaction is tracked separately, even if they share the same item code
-                                            $transactionIdMarker = "Transaction ID: {$transaction->id}";
-                                            $existingProductionOrder = \App\Models\ProductionOrder::where('job_order_id', $transaction->getJobOrder()->id)
-                                                ->where('notes', 'like', '%' . $transactionIdMarker . '%')
-                                                ->first();
-                                            $hasProductionOrder = $existingProductionOrder !== null;
+                                            // Use pre-loaded hasProductionOrder flag to avoid N+1 queries
+                                            $hasProductionOrder = $transaction->hasProductionOrder ?? false;
+                                            $jobOrder = $transaction->getJobOrder();
                                         @endphp
                                         
                                         @if(!$hasProductionOrder)
@@ -153,7 +149,8 @@
                                                 Start Production
                                             </button>
                                         @else
-                                            <a href="{{ route('production-order-detail', $existingProductionOrder->id) }}" 
+                                            @if($transaction->productionOrderId ?? null)
+                                            <a href="{{ route('production-order-detail', $transaction->productionOrderId) }}" 
                                                wire:navigate
                                                class="mt-2 inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md text-blue-600 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
                                                 <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">

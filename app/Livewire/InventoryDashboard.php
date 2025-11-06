@@ -252,11 +252,54 @@ class InventoryDashboard extends Component
 
     public function getRecentTransactions()
     {
-        return \App\Models\InventoryTransaction::with(['inventory', 'grn.productionOrder', 'grn.purchaseOrder.jobOrder'])
+        // Optimize query to only load necessary data and limit relationships
+        $transactions = \App\Models\InventoryTransaction::select([
+                'id', 'lot_code', 'item_code', 'category', 'txn_type', 
+                'qty', 'uom', 'warehouse', 'related_doc_type', 
+                'related_doc_id', 'txn_date', 'created_at'
+            ])
+            ->with([
+                'grn:id,related_doc_id,related_doc_type',
+                'grn.purchaseOrder:id,job_order_id',
+                'grn.purchaseOrder.jobOrder:id,job_number,supplier_id,customer_id,status',
+                'grn.purchaseOrder.jobOrder.supplier:id,name',
+                'grn.purchaseOrder.jobOrder.customer:id,name'
+            ])
             ->orderBy('txn_date', 'desc')
             ->orderBy('created_at', 'desc')
-            ->limit(20)
+            ->limit(10) // Reduced from 20 to 10 to save memory
             ->get();
+        
+        // Pre-load production orders to avoid N+1 queries in the view
+        $jobOrderIds = $transactions->filter(function($t) {
+            return $t->getJobOrder() !== null;
+        })->map(function($t) {
+            return $t->getJobOrder()->id;
+        })->unique()->values();
+        
+        if ($jobOrderIds->isNotEmpty()) {
+            $productionOrders = \App\Models\ProductionOrder::whereIn('job_order_id', $jobOrderIds)
+                ->get()
+                ->groupBy('job_order_id');
+            
+            // Attach production order info to transactions
+            foreach ($transactions as $transaction) {
+                $jobOrder = $transaction->getJobOrder();
+                if ($jobOrder && isset($productionOrders[$jobOrder->id])) {
+                    $matchingPO = $productionOrders[$jobOrder->id]
+                        ->first(function($po) use ($transaction) {
+                            return str_contains($po->notes ?? '', "Transaction ID: {$transaction->id}");
+                        });
+                    $transaction->hasProductionOrder = $matchingPO !== null;
+                    $transaction->productionOrderId = $matchingPO ? $matchingPO->id : null;
+                } else {
+                    $transaction->hasProductionOrder = false;
+                    $transaction->productionOrderId = null;
+                }
+            }
+        }
+        
+        return $transactions;
     }
 
     public function openProductionOrderModal($transactionId)
