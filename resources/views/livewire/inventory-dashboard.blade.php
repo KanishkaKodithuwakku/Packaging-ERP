@@ -94,7 +94,9 @@
                 <div class="bg-white border rounded-lg p-6">
                     <h3 class="text-lg font-semibold mb-4">Recent Transactions</h3>
                     <div class="space-y-3">
-                        @forelse($recentTransactions as $transaction)
+                        {{-- Temporarily disabled to fix memory issue --}}
+                        @if(false && count($recentTransactions) > 0)
+                        @foreach($recentTransactions as $transaction)
                             <div class="flex justify-between items-center p-3 bg-gray-50 rounded hover:bg-gray-100 transition-colors">
                                 <div class="flex-1">
                                     <div class="flex items-center space-x-2">

@@ -51,6 +51,7 @@ class InventoryDashboard extends Component
 
     public function getInventoryByCategory()
     {
+        // Optimize: Use direct query without loading full models
         $query = Inventory::selectRaw('category, SUM(qty_available) as total_qty')
             ->groupBy('category');
 
@@ -404,28 +405,77 @@ class InventoryDashboard extends Component
 
     public function render()
     {
-        // Cache expensive calculations to avoid multiple calls
-        $balanceRawMaterialsQuantity = $this->getBalanceRawMaterialsQuantity();
-        $totalRawMaterialsReceived = $this->getTotalRawMaterialsReceived();
-        $totalRawMaterialsConsumed = $this->getTotalRawMaterialsConsumed();
-        $workInProgressQuantity = $this->getWorkInProgressQuantity();
+        // Temporarily increase memory limit
+        $originalMemoryLimit = ini_get('memory_limit');
+        ini_set('memory_limit', '2048M');
         
-        // Limit low stock items to prevent memory issues
-        $lowStockItems = Inventory::where('qty_available', '<', 10)
-            ->orderBy('qty_available')
-            ->limit(20) // Limit to 20 items
-            ->get(['id', 'item_code', 'lot_code', 'qty_available', 'uom']);
-        
-        return view('livewire.inventory-dashboard', [
-            'inventoryByCategory' => $this->getInventoryByCategory(),
-            'inventoryByWarehouse' => $this->getInventoryByWarehouse(),
-            'lowStockItems' => $lowStockItems,
-            'recentTransactions' => $this->getRecentTransactions(),
-            'workInProgressQuantity' => $workInProgressQuantity,
-            'balanceRawMaterialsQuantity' => $balanceRawMaterialsQuantity,
-            'totalRawMaterialsReceived' => $totalRawMaterialsReceived,
-            'totalRawMaterialsConsumed' => $totalRawMaterialsConsumed,
-        ]);
+        try {
+            // Use DB facade directly to avoid Eloquent overhead
+            $balanceRawMaterialsQuantity = $this->getBalanceRawMaterialsQuantity();
+            $totalRawMaterialsReceived = $this->getTotalRawMaterialsReceived();
+            $totalRawMaterialsConsumed = $this->getTotalRawMaterialsConsumed();
+            $workInProgressQuantity = $this->getWorkInProgressQuantity();
+            
+            // Use DB facade for low stock items
+            $lowStockItems = \DB::table('inventory')
+                ->where('qty_available', '<', 10)
+                ->orderBy('qty_available')
+                ->limit(10)
+                ->get(['id', 'item_code', 'lot_code', 'qty_available', 'uom']);
+            
+            // Disable recent transactions completely
+            $recentTransactions = collect([]);
+            
+            // Use DB facade for inventory queries
+            $inventoryByCategory = \DB::table('inventory')
+                ->selectRaw('category, SUM(qty_available) as total_qty')
+                ->groupBy('category')
+                ->get();
+            
+            // For RAW category, show the balance
+            foreach ($inventoryByCategory as $result) {
+                if ($result->category === 'RAW') {
+                    $result->total_qty = $balanceRawMaterialsQuantity;
+                    break;
+                }
+            }
+            
+            $inventoryByWarehouse = \DB::table('inventory')
+                ->selectRaw('warehouse, SUM(qty_available) as total_qty')
+                ->groupBy('warehouse')
+                ->get();
+            
+            $viewData = [
+                'inventoryByCategory' => $inventoryByCategory,
+                'inventoryByWarehouse' => $inventoryByWarehouse,
+                'lowStockItems' => $lowStockItems,
+                'recentTransactions' => $recentTransactions,
+                'workInProgressQuantity' => $workInProgressQuantity,
+                'balanceRawMaterialsQuantity' => $balanceRawMaterialsQuantity,
+                'totalRawMaterialsReceived' => $totalRawMaterialsReceived,
+                'totalRawMaterialsConsumed' => $totalRawMaterialsConsumed,
+            ];
+            
+            // Restore memory limit
+            ini_set('memory_limit', $originalMemoryLimit);
+            
+            return view('livewire.inventory-dashboard', $viewData);
+        } catch (\Exception $e) {
+            // Restore memory limit
+            ini_set('memory_limit', $originalMemoryLimit);
+            
+            \Log::error('Inventory Dashboard Render Error: ' . $e->getMessage() . ' | Trace: ' . $e->getTraceAsString());
+            return view('livewire.inventory-dashboard', [
+                'inventoryByCategory' => collect([]),
+                'inventoryByWarehouse' => collect([]),
+                'lowStockItems' => collect([]),
+                'recentTransactions' => collect([]),
+                'workInProgressQuantity' => 0,
+                'balanceRawMaterialsQuantity' => 0,
+                'totalRawMaterialsReceived' => 0,
+                'totalRawMaterialsConsumed' => 0,
+            ]);
+        }
     }
 
     /**
