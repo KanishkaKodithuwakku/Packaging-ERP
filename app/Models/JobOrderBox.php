@@ -39,6 +39,7 @@ class JobOrderBox extends Model
         'board_qty',
         'supplier_price',
         'supplier_id',
+        'notes',
     ];
 
     protected $casts = [
@@ -109,11 +110,11 @@ class JobOrderBox extends Model
             'width' => $this->width,
             'height' => $this->height
         ];
-        
+
         if ($this->dimension_type === 'INTERNAL') {
             // Convert adjustment to the same unit as input
             $adjustment = $this->getPlyAdjustmentInOriginalUnit();
-            
+
             $dimensions['length'] += $adjustment;
             $dimensions['width'] += $adjustment;
             $dimensions['height'] += $adjustment;
@@ -128,17 +129,17 @@ class JobOrderBox extends Model
     public function calculateReelSize($supplierId = null): float
     {
         $dimensions = $this->applyPlyAdjustments();
-        
+
         // Convert dimensions to inches based on input unit
         $widthInInches = $this->convertToInches($dimensions['width']);
         $heightInInches = $this->convertToInches($dimensions['height']);
-        
+
         // Formula: (W + H) in inches
         $reelSize = $widthInInches + $heightInInches;
-        
+
         // Add 0.75 waste (in inches)
         $reelSize += 0.75;
-        
+
         // Always apply standard rounding logic for reel sizes
         return $this->roundToNextReelSize($reelSize, $supplierId);
     }
@@ -152,10 +153,10 @@ class JobOrderBox extends Model
         // Use original dimensions without ply adjustments
         $lengthInInches = $this->convertToInches($this->length);
         $widthInInches = $this->convertToInches($this->width);
-        
+
         // Formula: ((L + W) × 2) in inches
         $cutSize = ($lengthInInches + $widthInInches) * 2;
-        
+
         if ($this->dimension_type === 'EXTERNAL') {
             // Add 2 inches for external
             $cutSize += 2;
@@ -174,7 +175,7 @@ class JobOrderBox extends Model
     {
         // Standard rounding logic based on Excel sheet
         // Round to next available reel size: 13.50, 15.00, 17.00, 19.00, 21.00, 23.00, 25.00, 27.00, 29.00, 31.00, 33.00, 35.00, etc.
-        
+
         if ($size <= 13.50) {
             return 13.50;
         } elseif ($size <= 15.00) {

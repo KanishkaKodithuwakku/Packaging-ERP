@@ -27,6 +27,14 @@ class PurchaseOrderManagement extends Component
     public $phoneConfirmForm = [];
     public $displayFormat = 'reel_cuts';
     public $itemQuantities = [];
+    
+    // Filter modal and filters
+    public $showFilterModal = false;
+    public $filterSupplier = '';
+    public $filterStatus = '';
+    public $filterDateFrom = '';
+    public $filterDateTo = '';
+    public $search = '';
 
     protected $rules = [
         'form.supplier_id' => 'required',
@@ -56,9 +64,89 @@ class PurchaseOrderManagement extends Component
 
     public function loadPurchaseOrders()
     {
-        $this->purchaseOrders = PurchaseOrder::with(['supplier', 'jobOrder', 'items', 'grn'])
-            ->orderBy('created_at', 'desc')
+        $query = PurchaseOrder::with(['supplier', 'jobOrder', 'items', 'grn']);
+        
+        // Apply search filter
+        if ($this->search) {
+            $query->where(function($q) {
+                $q->where('po_number', 'like', '%' . $this->search . '%')
+                  ->orWhereHas('supplier', function($sq) {
+                      $sq->where('name', 'like', '%' . $this->search . '%')
+                         ->orWhere('code', 'like', '%' . $this->search . '%');
+                  })
+                  ->orWhereHas('jobOrder', function($jq) {
+                      $jq->where('supplier_po_number', 'like', '%' . $this->search . '%')
+                         ->orWhere('job_number', 'like', '%' . $this->search . '%');
+                  });
+            });
+        }
+        
+        // Apply supplier filter
+        if ($this->filterSupplier) {
+            $query->where('supplier_id', $this->filterSupplier);
+        }
+        
+        // Apply status filter
+        if ($this->filterStatus) {
+            $query->where('status', $this->filterStatus);
+        }
+        
+        // Apply date filters
+        if ($this->filterDateFrom) {
+            $query->where('date', '>=', $this->filterDateFrom);
+        }
+        
+        if ($this->filterDateTo) {
+            $query->where('date', '<=', $this->filterDateTo);
+        }
+        
+        $this->purchaseOrders = $query->orderBy('created_at', 'desc')
             ->get();
+    }
+    
+    public function updatedSearch()
+    {
+        $this->loadPurchaseOrders();
+    }
+    
+    public function updatedFilterSupplier()
+    {
+        $this->loadPurchaseOrders();
+    }
+    
+    public function updatedFilterStatus()
+    {
+        $this->loadPurchaseOrders();
+    }
+    
+    public function updatedFilterDateFrom()
+    {
+        $this->loadPurchaseOrders();
+    }
+    
+    public function updatedFilterDateTo()
+    {
+        $this->loadPurchaseOrders();
+    }
+    
+    public function openFilterModal()
+    {
+        $this->showFilterModal = true;
+    }
+
+    public function closeFilterModal()
+    {
+        $this->showFilterModal = false;
+    }
+
+    public function resetFilters()
+    {
+        $this->filterSupplier = '';
+        $this->filterStatus = '';
+        $this->filterDateFrom = '';
+        $this->filterDateTo = '';
+        $this->search = '';
+        $this->loadPurchaseOrders();
     }
 
     public function resetForm()
@@ -913,7 +1001,7 @@ class PurchaseOrderManagement extends Component
             'jobOrders' => JobOrder::with(['supplier', 'customer'])
                 ->where('status', 'confirmed')
                 ->get(),
-            'suppliers' => Supplier::all(),
+            'suppliers' => Supplier::where('is_active', true)->orderBy('name')->get(),
         ]);
     }
 }
