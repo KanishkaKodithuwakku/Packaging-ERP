@@ -258,7 +258,7 @@ Route::get('/uom-conversion-examples', function () {
 
 // Configuration Management
 Route::get('/configuration-management', \App\Livewire\ConfigurationManagement::class)
-    ->middleware(['auth', 'permission:view configuration'])
+    ->middleware(['auth'])
     ->name('configuration-management');
 
 // Purchase Order Creation
