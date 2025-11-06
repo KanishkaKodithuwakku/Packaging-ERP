@@ -6,33 +6,20 @@ use Livewire\Component;
 use App\Models\SystemConfiguration;
 use Carbon\Carbon;
 
-class ConfigurationManagement extends Component
+class DateFormatConfiguration extends Component
 {
-    public $configurations = [];
-    public $editingKey = null;
-    public $editingValue = '';
-    
-    // Date format properties
     public $dateFormat = 'd-m-Y';
     public $dateFormats = [];
 
     public function mount()
     {
-        $this->loadConfigurations();
-        $this->loadDateFormat();
-    }
-
-    public function loadConfigurations()
-    {
-        $this->configurations = SystemConfiguration::getByCategory('grn_processing');
-    }
-    
-    public function loadDateFormat()
-    {
+        // Get current date format from configuration
         $this->dateFormat = SystemConfiguration::getValue('date_format', 'd-m-Y');
+        
+        // Initialize date format options with examples
         $this->initializeDateFormats();
     }
-    
+
     public function initializeDateFormats()
     {
         $currentDate = Carbon::now();
@@ -60,14 +47,27 @@ class ConfigurationManagement extends Component
             ],
         ];
     }
-    
+
     public function updatedDateFormat()
     {
+        // Update examples when format changes in real-time
         $this->initializeDateFormats();
     }
     
+    public function getExamplesProperty()
+    {
+        $currentDate = Carbon::now();
+        $sampleDate = Carbon::parse('2024-01-15');
+        
+        return [
+            'today' => $currentDate->format($this->dateFormat),
+            'sample' => $sampleDate->format($this->dateFormat),
+        ];
+    }
+
     public function saveDateFormat()
     {
+        // Save date format to SystemConfiguration
         SystemConfiguration::setValue(
             'date_format',
             $this->dateFormat,
@@ -77,40 +77,14 @@ class ConfigurationManagement extends Component
         );
 
         session()->flash('success', 'Date format updated successfully! All dates will now display in the selected format.');
+        
+        // Refresh examples
         $this->initializeDateFormats();
-    }
-
-    public function editConfiguration($key)
-    {
-        $this->editingKey = $key;
-        $config = SystemConfiguration::where('key', $key)->first();
-        $this->editingValue = $config ? $config->value : '';
-    }
-
-    public function saveConfiguration()
-    {
-        if ($this->editingKey) {
-            $config = SystemConfiguration::where('key', $this->editingKey)->first();
-            
-            if ($config) {
-                $config->update(['value' => $this->editingValue]);
-                session()->flash('success', 'Configuration updated successfully!');
-            }
-            
-            $this->editingKey = null;
-            $this->editingValue = '';
-            $this->loadConfigurations();
-        }
-    }
-
-    public function cancelEdit()
-    {
-        $this->editingKey = null;
-        $this->editingValue = '';
     }
 
     public function render()
     {
-        return view('livewire.configuration-management');
+        return view('livewire.date-format-configuration');
     }
 }
+

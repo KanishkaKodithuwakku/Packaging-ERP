@@ -232,8 +232,7 @@ class PurchaseOrderManagement extends Component
                 return;
             }
 
-            // Ensure all pending quantity updates are saved
-            // This is mainly a safety measure since quantities are auto-saved on change
+            // Save all pending quantity updates
             foreach ($this->itemQuantities as $itemId => $quantity) {
                 $item = \App\Models\PurchaseOrderItem::find($itemId);
                 if ($item && $item->purchase_order_id === $this->selectedPurchaseOrder->id) {

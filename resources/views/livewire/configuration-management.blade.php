@@ -1,7 +1,7 @@
 <div>
     <div class="px-6 py-4">
-        <h1 class="text-2xl font-bold text-gray-900">GRN Processing Configuration</h1>
-        <p class="text-gray-600 mt-1">Configure default settings for GRN processing</p>
+        <h1 class="text-2xl font-bold text-gray-900">ERP System Configuration</h1>
+        <p class="text-gray-600 mt-1">Configure default settings for ERP processing</p>
 
         @if (session()->has('success'))
         <div class="mt-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
@@ -22,7 +22,7 @@
                             <h4 class="text-sm font-medium text-gray-900">{{ ucwords(str_replace('_', ' ', $config->key)) }}</h4>
                             <p class="text-sm text-gray-500 mt-1">{{ $config->description }}</p>
                         </div>
-                        
+
                         <div class="flex items-center space-x-3">
                             @if($editingKey === $config->key)
                                 <div class="flex items-center space-x-2">
@@ -37,14 +37,14 @@
                                             <option value="LIFO">LIFO (Last In, First Out)</option>
                                         </select>
                                     @else
-                                        <input type="text" wire:model="editingValue" 
+                                        <input type="text" wire:model="editingValue"
                                                class="px-3 py-1 border border-gray-300 rounded-md text-sm w-32">
                                     @endif
-                                    <button wire:click="saveConfiguration" 
+                                    <button wire:click="saveConfiguration"
                                             class="px-3 py-1 bg-green-600 text-white rounded-md text-sm hover:bg-green-700">
                                         Save
                                     </button>
-                                    <button wire:click="cancelEdit" 
+                                    <button wire:click="cancelEdit"
                                             class="px-3 py-1 bg-gray-300 text-gray-700 rounded-md text-sm hover:bg-gray-400">
                                         Cancel
                                     </button>
@@ -58,7 +58,7 @@
                                             {{ $config->value }}
                                         @endif
                                     </span>
-                                    <button wire:click="editConfiguration('{{ $config->key }}')" 
+                                    <button wire:click="editConfiguration('{{ $config->key }}')"
                                             class="px-3 py-1 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700">
                                         Edit
                                     </button>
@@ -68,6 +68,73 @@
                     </div>
                     @endforeach
                 </div>
+            </div>
+        </div>
+
+        <!-- Date Format Configuration -->
+        <div class="mt-6 bg-white shadow rounded-lg">
+            <div class="px-6 py-4 border-b border-gray-200">
+                <h3 class="text-lg font-medium text-gray-900">Date Format Configuration</h3>
+                <p class="text-sm text-gray-500 mt-1">Configure the date format for displaying dates throughout the system</p>
+            </div>
+
+            @if (session()->has('success') && str_contains(session('success'), 'Date format'))
+            <div class="mx-6 mt-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-5 text-green-600">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5Z" clip-rule="evenodd" />
+                </svg>
+                <span>{{ session('success') }}</span>
+            </div>
+            @endif
+
+            <div class="px-6 py-4">
+                <form wire:submit.prevent="saveDateFormat">
+                    <div class="space-y-6">
+                        <!-- Date Format Selection -->
+                        <div>
+                            <label for="dateFormat" class="block text-sm font-medium text-gray-700 mb-2">
+                                Select Date Format <span class="text-red-500">*</span>
+                            </label>
+                            <select
+                                id="dateFormat"
+                                wire:model.live="dateFormat"
+                                class="block w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm">
+                                @foreach($dateFormats as $format)
+                                    <option value="{{ $format['value'] }}">
+                                        {{ $format['label'] }} [{{ $format['example'] }}]
+                                    </option>
+                                @endforeach
+                            </select>
+                            <p class="mt-2 text-sm text-gray-500">
+                                Current format: <strong>{{ $dateFormat }}</strong>
+                            </p>
+                        </div>
+
+                        <!-- Preview Section -->
+                        <div class="bg-gray-50 border border-gray-200 rounded-md p-4 w-full max-w-xs">
+                            <h4 class="text-sm font-medium text-gray-900 mb-3">Preview</h4>
+                            <div class="space-y-2">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm text-gray-600">Today's Date:</span>
+                                    <span class="text-sm font-medium text-gray-900">
+                                        @if($dateFormat)
+                                            {{ \Carbon\Carbon::now()->format($dateFormat) }}
+                                        @endif
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Save Button -->
+                        <div class="flex justify-end space-x-3 pt-4 border-t">
+                            <button
+                                type="submit"
+                                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-md text-sm transition-colors">
+                                Save Date Format
+                            </button>
+                        </div>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
