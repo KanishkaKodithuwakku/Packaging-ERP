@@ -25,6 +25,13 @@ class InventoryDashboard extends Component
         'quantity' => '',
         'notes' => ''
     ];
+    
+    // Cache expensive calculations
+    private $cachedBalanceRawMaterials = null;
+    private $cachedTotalReceived = null;
+    private $cachedTotalConsumed = null;
+    private $cachedWIP = null;
+    private $cachedInventoryByCategory = null;
 
     public function mount()
     {
@@ -51,6 +58,11 @@ class InventoryDashboard extends Component
 
     public function getInventoryByCategory()
     {
+        // Return cached result if available and no filters applied
+        if ($this->cachedInventoryByCategory !== null && !$this->selectedWarehouse) {
+            return $this->cachedInventoryByCategory;
+        }
+        
         // Optimize: Use direct query without loading full models
         $query = Inventory::selectRaw('category, SUM(qty_available) as total_qty')
             ->groupBy('category');
@@ -68,6 +80,11 @@ class InventoryDashboard extends Component
                 $result->total_qty = $this->getBalanceRawMaterialsQuantity();
                 break;
             }
+        }
+        
+        // Cache if no filters
+        if (!$this->selectedWarehouse) {
+            $this->cachedInventoryByCategory = $results;
         }
         
         return $results;
@@ -117,13 +134,21 @@ class InventoryDashboard extends Component
 
     public function getWorkInProgressQuantity()
     {
+        // Return cached result if available
+        if ($this->cachedWIP !== null) {
+            return $this->cachedWIP;
+        }
+        
         // Optimize: Use database aggregation instead of loading all records
-        return \App\Models\ProductionOrderItem::whereHas('productionOrder', function($query) {
+        $result = \App\Models\ProductionOrderItem::whereHas('productionOrder', function($query) {
                 $query->whereIn('status', ['pending', 'in_production', 'ready_for_production']);
             })
             ->selectRaw('SUM(quantity - COALESCE(completed_quantity, 0)) as wip_quantity')
             ->whereRaw('quantity > COALESCE(completed_quantity, 0)')
             ->value('wip_quantity') ?? 0;
+        
+        $this->cachedWIP = $result;
+        return $result;
     }
 
     /**
@@ -132,10 +157,13 @@ class InventoryDashboard extends Component
      */
     public function getBalanceRawMaterialsQuantity()
     {
+        // Return cached result if available
+        if ($this->cachedBalanceRawMaterials !== null) {
+            return $this->cachedBalanceRawMaterials;
+        }
+        
         // Calculate from transactions to get accurate balance
-        $totalReceived = \App\Models\InventoryTransaction::where('category', 'RAW')
-            ->where('txn_type', 'receipt')
-            ->sum('qty');
+        $totalReceived = $this->getTotalRawMaterialsReceived();
         
         // Get consumed quantity (this method handles missing transactions by estimating from WIP+FG)
         $totalConsumed = $this->getTotalRawMaterialsConsumed();
@@ -144,7 +172,9 @@ class InventoryDashboard extends Component
         $balance = $totalReceived - $totalConsumed;
         
         // Ensure balance is not negative
-        return max(0, $balance);
+        $result = max(0, $balance);
+        $this->cachedBalanceRawMaterials = $result;
+        return $result;
     }
 
     /**
@@ -152,9 +182,17 @@ class InventoryDashboard extends Component
      */
     public function getTotalRawMaterialsReceived()
     {
-        return \App\Models\InventoryTransaction::where('category', 'RAW')
+        // Return cached result if available
+        if ($this->cachedTotalReceived !== null) {
+            return $this->cachedTotalReceived;
+        }
+        
+        $result = \App\Models\InventoryTransaction::where('category', 'RAW')
             ->where('txn_type', 'receipt')
             ->sum('qty');
+        
+        $this->cachedTotalReceived = $result;
+        return $result;
     }
 
     /**
@@ -164,8 +202,6 @@ class InventoryDashboard extends Component
      * 2. Raw materials linked to completed production orders (via Transaction ID in notes)
      * 3. If neither exists, estimates from WIP + FG
      */
-    private $cachedTotalConsumed = null;
-    
     public function getTotalRawMaterialsConsumed()
     {
         // Cache result to avoid recalculating multiple times

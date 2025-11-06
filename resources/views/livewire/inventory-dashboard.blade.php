@@ -38,7 +38,10 @@
                 <div class="bg-green-50 p-6 rounded-lg">
                     <h3 class="text-lg font-semibold text-green-800">Finished Goods</h3>
                     <p class="text-3xl font-bold text-green-600">
-                        {{ $inventoryByCategory->where('category', 'FG')->sum('total_qty') }}
+                        @php
+                            $fgQty = $inventoryByCategory->where('category', 'FG')->first();
+                            echo number_format($fgQty ? $fgQty->total_qty : 0, 2);
+                        @endphp
                     </p>
                 </div>
             </div>
