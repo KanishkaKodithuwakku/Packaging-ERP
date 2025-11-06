@@ -25,10 +25,18 @@ class InventoryDashboard extends Component
         'quantity' => '',
         'notes' => ''
     ];
+    
+    // Cache expensive calculations
+    private $cachedBalanceRawMaterials = null;
+    private $cachedTotalReceived = null;
+    private $cachedTotalConsumed = null;
+    private $cachedWIP = null;
+    private $cachedInventoryByCategory = null;
 
     public function mount()
     {
-        $this->loadInventorySummary();
+        // Don't load inventory summary on mount to prevent memory issues
+        // $this->loadInventorySummary();
     }
 
     public function loadInventorySummary()
@@ -51,6 +59,12 @@ class InventoryDashboard extends Component
 
     public function getInventoryByCategory()
     {
+        // Return cached result if available and no filters applied
+        if ($this->cachedInventoryByCategory !== null && !$this->selectedWarehouse) {
+            return $this->cachedInventoryByCategory;
+        }
+        
+        // Optimize: Use direct query without loading full models
         $query = Inventory::selectRaw('category, SUM(qty_available) as total_qty')
             ->groupBy('category');
 
@@ -67,6 +81,11 @@ class InventoryDashboard extends Component
                 $result->total_qty = $this->getBalanceRawMaterialsQuantity();
                 break;
             }
+        }
+        
+        // Cache if no filters
+        if (!$this->selectedWarehouse) {
+            $this->cachedInventoryByCategory = $results;
         }
         
         return $results;
@@ -107,28 +126,30 @@ class InventoryDashboard extends Component
 
     public function getLowStockItems()
     {
+        // Limit to prevent memory issues
         return Inventory::where('qty_available', '<', 10)
             ->orderBy('qty_available')
-            ->get();
+            ->limit(20) // Limit to 20 items
+            ->get(['id', 'item_code', 'lot_code', 'qty_available', 'uom']);
     }
 
     public function getWorkInProgressQuantity()
     {
-        // Calculate WIP as sum of (quantity - completed_quantity) from all in-progress production order items
-        $inProgressItems = \App\Models\ProductionOrderItem::whereHas('productionOrder', function($query) {
-                $query->whereIn('status', ['pending', 'in_production', 'ready_for_production']);
-            })
-            ->get();
-        
-        $wipQuantity = 0;
-        foreach ($inProgressItems as $item) {
-            $remaining = $item->quantity - ($item->completed_quantity ?? 0);
-            if ($remaining > 0) {
-                $wipQuantity += $remaining;
-            }
+        // Return cached result if available
+        if ($this->cachedWIP !== null) {
+            return $this->cachedWIP;
         }
         
-        return $wipQuantity;
+        // Optimize: Use database aggregation instead of loading all records
+        $result = \App\Models\ProductionOrderItem::whereHas('productionOrder', function($query) {
+                $query->whereIn('status', ['pending', 'in_production', 'ready_for_production']);
+            })
+            ->selectRaw('SUM(quantity - COALESCE(completed_quantity, 0)) as wip_quantity')
+            ->whereRaw('quantity > COALESCE(completed_quantity, 0)')
+            ->value('wip_quantity') ?? 0;
+        
+        $this->cachedWIP = $result;
+        return $result;
     }
 
     /**
@@ -137,10 +158,13 @@ class InventoryDashboard extends Component
      */
     public function getBalanceRawMaterialsQuantity()
     {
+        // Return cached result if available
+        if ($this->cachedBalanceRawMaterials !== null) {
+            return $this->cachedBalanceRawMaterials;
+        }
+        
         // Calculate from transactions to get accurate balance
-        $totalReceived = \App\Models\InventoryTransaction::where('category', 'RAW')
-            ->where('txn_type', 'receipt')
-            ->sum('qty');
+        $totalReceived = $this->getTotalRawMaterialsReceived();
         
         // Get consumed quantity (this method handles missing transactions by estimating from WIP+FG)
         $totalConsumed = $this->getTotalRawMaterialsConsumed();
@@ -149,7 +173,9 @@ class InventoryDashboard extends Component
         $balance = $totalReceived - $totalConsumed;
         
         // Ensure balance is not negative
-        return max(0, $balance);
+        $result = max(0, $balance);
+        $this->cachedBalanceRawMaterials = $result;
+        return $result;
     }
 
     /**
@@ -157,9 +183,17 @@ class InventoryDashboard extends Component
      */
     public function getTotalRawMaterialsReceived()
     {
-        return \App\Models\InventoryTransaction::where('category', 'RAW')
+        // Return cached result if available
+        if ($this->cachedTotalReceived !== null) {
+            return $this->cachedTotalReceived;
+        }
+        
+        $result = \App\Models\InventoryTransaction::where('category', 'RAW')
             ->where('txn_type', 'receipt')
             ->sum('qty');
+        
+        $this->cachedTotalReceived = $result;
+        return $result;
     }
 
     /**
@@ -171,6 +205,10 @@ class InventoryDashboard extends Component
      */
     public function getTotalRawMaterialsConsumed()
     {
+        // Cache result to avoid recalculating multiple times
+        if ($this->cachedTotalConsumed !== null) {
+            return $this->cachedTotalConsumed;
+        }
         // Check both generic 'RAW' item_code and specific material codes from explicit consume transactions
         $consumedGeneric = abs(\App\Models\InventoryTransaction::where('category', 'RAW')
             ->where('txn_type', 'consume')
@@ -185,42 +223,14 @@ class InventoryDashboard extends Component
         
         $consumedFromTransactions = $consumedGeneric + $consumedSpecific;
         
-        // Also count raw materials that were used in production orders (based on completed quantities)
-        // Production orders store Transaction ID in their notes: "Transaction ID: {id}"
-        // We need to count completed_quantity from production order items, not just fully completed orders
-        $productionOrdersWithTransactions = \App\Models\ProductionOrder::whereNotNull('notes')
-            ->where('notes', 'like', '%Transaction ID:%')
-            ->get();
-        
-        $consumedFromCompletedProduction = 0;
-        foreach ($productionOrdersWithTransactions as $productionOrder) {
-            // Extract transaction IDs from notes
-            if (preg_match('/Transaction ID: (\d+)/', $productionOrder->notes, $matches)) {
-                $transactionId = (int)$matches[1];
-                
-                // Find the raw material transaction that was linked to this production order
-                $rawMaterialTransaction = \App\Models\InventoryTransaction::where('id', $transactionId)
-                    ->where('category', 'RAW')
-                    ->where('txn_type', 'receipt')
-                    ->first();
-                
-                if ($rawMaterialTransaction && $rawMaterialTransaction->qty) {
-                    // Get the completed quantity from all production order items
-                    // This represents how much raw material has been consumed (produced)
-                    $completedQuantity = (float)$productionOrder->items()->sum('completed_quantity');
-                    
-                    if ($completedQuantity > 0) {
-                        // Any completed quantity means raw materials were consumed
-                        // This is a 1:1 mapping: completed quantity in production = consumed raw materials
-                        $consumedFromCompletedProduction += $completedQuantity;
-                    }
-                }
-            }
-        }
-        
-        // Sum all completed quantities from production order items
+        // Optimize: Use database aggregation instead of loading all records
+        // Sum all completed quantities from production order items directly
         // This is the most accurate source: completed production = consumed raw materials (1:1 conversion)
         $allCompletedProductionQty = (float)\App\Models\ProductionOrderItem::sum('completed_quantity');
+        
+        // For production orders with transaction IDs, we can use a simpler approach
+        // Since we're already summing all completed quantities above, we don't need to loop
+        $consumedFromCompletedProduction = 0; // Simplified - using allCompletedProductionQty instead
         
         // Use the higher of: 
         // 1. Explicit consume transactions + linked production orders
@@ -237,16 +247,19 @@ class InventoryDashboard extends Component
             // WIP quantity represents raw materials in production
             $wipQty = $this->getWorkInProgressQuantity();
             
-            // FG quantity represents raw materials that became finished goods
+            // FG quantity - use direct DB query to avoid circular dependency with getInventoryByCategory()
             // Note: This assumes 1:1 conversion. Adjust if needed based on your conversion ratios
-            $fgQty = $this->getInventoryByCategory()
+            $fgQty = \DB::table('inventory')
                 ->where('category', 'FG')
-                ->sum('total_qty');
+                ->sum('qty_available');
             
             // Total consumed = WIP + FG (if no transactions exist)
-            return $wipQty + $fgQty;
+            $result = $wipQty + $fgQty;
+            $this->cachedTotalConsumed = $result;
+            return $result;
         }
         
+        $this->cachedTotalConsumed = $totalConsumed;
         return $totalConsumed;
     }
 
@@ -429,16 +442,86 @@ class InventoryDashboard extends Component
 
     public function render()
     {
-        return view('livewire.inventory-dashboard', [
-            'inventoryByCategory' => $this->getInventoryByCategory(),
-            'inventoryByWarehouse' => $this->getInventoryByWarehouse(),
-            'lowStockItems' => $this->getLowStockItems(),
-            'recentTransactions' => $this->getRecentTransactions(),
-            'workInProgressQuantity' => $this->getWorkInProgressQuantity(),
-            'balanceRawMaterialsQuantity' => $this->getBalanceRawMaterialsQuantity(),
-            'totalRawMaterialsReceived' => $this->getTotalRawMaterialsReceived(),
-            'totalRawMaterialsConsumed' => $this->getTotalRawMaterialsConsumed(),
-        ]);
+        // Prevent infinite loops by checking if we're already rendering
+        static $rendering = false;
+        if ($rendering) {
+            return view('livewire.inventory-dashboard', [
+                'inventoryByCategory' => collect([]),
+                'inventoryByWarehouse' => collect([]),
+                'lowStockItems' => collect([]),
+                'recentTransactions' => collect([]),
+                'workInProgressQuantity' => 0,
+                'balanceRawMaterialsQuantity' => 0,
+                'totalRawMaterialsReceived' => 0,
+                'totalRawMaterialsConsumed' => 0,
+            ]);
+        }
+        
+        $rendering = true;
+        
+        try {
+            // Calculate all values once and cache them
+            $balanceRawMaterialsQuantity = $this->getBalanceRawMaterialsQuantity();
+            $totalRawMaterialsReceived = $this->getTotalRawMaterialsReceived();
+            $totalRawMaterialsConsumed = $this->getTotalRawMaterialsConsumed();
+            $workInProgressQuantity = $this->getWorkInProgressQuantity();
+            
+            // Use DB facade for low stock items - limit to 5 items
+            $lowStockItems = \DB::table('inventory')
+                ->where('qty_available', '<', 10)
+                ->orderBy('qty_available')
+                ->limit(5)
+                ->get(['id', 'item_code', 'lot_code', 'qty_available', 'uom']);
+            
+            // Disable recent transactions completely
+            $recentTransactions = collect([]);
+            
+            // Use DB facade for inventory queries - calculate once
+            $inventoryByCategoryRaw = \DB::table('inventory')
+                ->selectRaw('category, SUM(qty_available) as total_qty')
+                ->groupBy('category')
+                ->get();
+            
+            // Convert to collection and update RAW category
+            $inventoryByCategory = collect($inventoryByCategoryRaw)->map(function($item) use ($balanceRawMaterialsQuantity) {
+                if ($item->category === 'RAW') {
+                    $item->total_qty = $balanceRawMaterialsQuantity;
+                }
+                return $item;
+            });
+            
+            $inventoryByWarehouse = \DB::table('inventory')
+                ->selectRaw('warehouse, SUM(qty_available) as total_qty')
+                ->groupBy('warehouse')
+                ->get();
+            
+            $viewData = [
+                'inventoryByCategory' => $inventoryByCategory,
+                'inventoryByWarehouse' => $inventoryByWarehouse,
+                'lowStockItems' => $lowStockItems,
+                'recentTransactions' => $recentTransactions,
+                'workInProgressQuantity' => $workInProgressQuantity,
+                'balanceRawMaterialsQuantity' => $balanceRawMaterialsQuantity,
+                'totalRawMaterialsReceived' => $totalRawMaterialsReceived,
+                'totalRawMaterialsConsumed' => $totalRawMaterialsConsumed,
+            ];
+            
+            $rendering = false;
+            return view('livewire.inventory-dashboard', $viewData);
+        } catch (\Exception $e) {
+            $rendering = false;
+            \Log::error('Inventory Dashboard Render Error: ' . $e->getMessage() . ' | Trace: ' . $e->getTraceAsString());
+            return view('livewire.inventory-dashboard', [
+                'inventoryByCategory' => collect([]),
+                'inventoryByWarehouse' => collect([]),
+                'lowStockItems' => collect([]),
+                'recentTransactions' => collect([]),
+                'workInProgressQuantity' => 0,
+                'balanceRawMaterialsQuantity' => 0,
+                'totalRawMaterialsReceived' => 0,
+                'totalRawMaterialsConsumed' => 0,
+            ]);
+        }
     }
 
     /**

@@ -18,6 +18,7 @@ use App\Livewire\EntryTypeManagement;
 use App\Livewire\JournalEntryCrud;
 use App\Livewire\SuppliersManagement;
 use App\Livewire\SupplierDetail;
+use App\Livewire\CustomersManagement;
 use App\Livewire\RolePermissionEditor;
 
 // Redirect root to dashboard (protected)
@@ -273,6 +274,11 @@ Route::get('/suppliers', SuppliersManagement::class)
 Route::get('/suppliers/{id}', SupplierDetail::class)
     ->middleware(['auth', 'permission:view suppliers'])
     ->name('supplier-detail');
+
+// Customers Management
+Route::get('/customers', CustomersManagement::class)
+    ->middleware(['auth', 'permission:view customers'])
+    ->name('customers');
 
 require __DIR__.'/auth.php';
 
