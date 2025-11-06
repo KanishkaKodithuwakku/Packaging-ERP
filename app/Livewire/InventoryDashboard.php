@@ -35,7 +35,8 @@ class InventoryDashboard extends Component
 
     public function mount()
     {
-        $this->loadInventorySummary();
+        // Don't load inventory summary on mount to prevent memory issues
+        // $this->loadInventorySummary();
     }
 
     public function loadInventorySummary()
@@ -246,11 +247,11 @@ class InventoryDashboard extends Component
             // WIP quantity represents raw materials in production
             $wipQty = $this->getWorkInProgressQuantity();
             
-            // FG quantity represents raw materials that became finished goods
+            // FG quantity - use direct DB query to avoid circular dependency with getInventoryByCategory()
             // Note: This assumes 1:1 conversion. Adjust if needed based on your conversion ratios
-            $fgQty = $this->getInventoryByCategory()
+            $fgQty = \DB::table('inventory')
                 ->where('category', 'FG')
-                ->sum('total_qty');
+                ->sum('qty_available');
             
             // Total consumed = WIP + FG (if no transactions exist)
             $result = $wipQty + $fgQty;
@@ -441,40 +442,53 @@ class InventoryDashboard extends Component
 
     public function render()
     {
-        // Temporarily increase memory limit
-        $originalMemoryLimit = ini_get('memory_limit');
-        ini_set('memory_limit', '2048M');
+        // Prevent infinite loops by checking if we're already rendering
+        static $rendering = false;
+        if ($rendering) {
+            return view('livewire.inventory-dashboard', [
+                'inventoryByCategory' => collect([]),
+                'inventoryByWarehouse' => collect([]),
+                'lowStockItems' => collect([]),
+                'recentTransactions' => collect([]),
+                'workInProgressQuantity' => 0,
+                'balanceRawMaterialsQuantity' => 0,
+                'totalRawMaterialsReceived' => 0,
+                'totalRawMaterialsConsumed' => 0,
+            ]);
+        }
+        
+        $rendering = true;
         
         try {
-            // Use DB facade directly to avoid Eloquent overhead
+            // Calculate all values once and cache them
             $balanceRawMaterialsQuantity = $this->getBalanceRawMaterialsQuantity();
             $totalRawMaterialsReceived = $this->getTotalRawMaterialsReceived();
             $totalRawMaterialsConsumed = $this->getTotalRawMaterialsConsumed();
             $workInProgressQuantity = $this->getWorkInProgressQuantity();
             
-            // Use DB facade for low stock items
+            // Use DB facade for low stock items - limit to 5 items
             $lowStockItems = \DB::table('inventory')
                 ->where('qty_available', '<', 10)
                 ->orderBy('qty_available')
-                ->limit(10)
+                ->limit(5)
                 ->get(['id', 'item_code', 'lot_code', 'qty_available', 'uom']);
             
             // Disable recent transactions completely
             $recentTransactions = collect([]);
             
-            // Use DB facade for inventory queries
-            $inventoryByCategory = \DB::table('inventory')
+            // Use DB facade for inventory queries - calculate once
+            $inventoryByCategoryRaw = \DB::table('inventory')
                 ->selectRaw('category, SUM(qty_available) as total_qty')
                 ->groupBy('category')
                 ->get();
             
-            // For RAW category, show the balance
-            foreach ($inventoryByCategory as $result) {
-                if ($result->category === 'RAW') {
-                    $result->total_qty = $balanceRawMaterialsQuantity;
-                    break;
+            // Convert to collection and update RAW category
+            $inventoryByCategory = collect($inventoryByCategoryRaw)->map(function($item) use ($balanceRawMaterialsQuantity) {
+                if ($item->category === 'RAW') {
+                    $item->total_qty = $balanceRawMaterialsQuantity;
                 }
-            }
+                return $item;
+            });
             
             $inventoryByWarehouse = \DB::table('inventory')
                 ->selectRaw('warehouse, SUM(qty_available) as total_qty')
@@ -492,14 +506,10 @@ class InventoryDashboard extends Component
                 'totalRawMaterialsConsumed' => $totalRawMaterialsConsumed,
             ];
             
-            // Restore memory limit
-            ini_set('memory_limit', $originalMemoryLimit);
-            
+            $rendering = false;
             return view('livewire.inventory-dashboard', $viewData);
         } catch (\Exception $e) {
-            // Restore memory limit
-            ini_set('memory_limit', $originalMemoryLimit);
-            
+            $rendering = false;
             \Log::error('Inventory Dashboard Render Error: ' . $e->getMessage() . ' | Trace: ' . $e->getTraceAsString());
             return view('livewire.inventory-dashboard', [
                 'inventoryByCategory' => collect([]),
