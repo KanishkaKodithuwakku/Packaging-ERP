@@ -67,9 +67,9 @@
                                 <a wire:click.stop="viewSupplier({{ $supplier->id }})" class="text-blue-600 hover:underline">{{ $supplier->name }}</a>
                             </div>
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $supplier->code }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $supplier->phone }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $supplier->email }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $supplier->code }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $supplier->phone }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $supplier->email }}</td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             @php
                             $statusColors = [
