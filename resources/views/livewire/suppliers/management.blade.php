@@ -305,6 +305,17 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Row 3: Mobile Number -->
+                        <div class="flex gap-4" style="gap: 70px !important;">
+                            <div class="flex items-center gap-3 flex-1">
+                                <label class="block text-sm font-medium text-gray-700 mb-1 " style="min-width: 68px;">Mobile<br> Number</label>
+                                <div class="flex-1">
+                                    <input type="text" wire:model.defer="contactForm.mobile" {{ $isViewMode ? 'readonly' : '' }} class="block w-[300px] px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 {{ $isViewMode ? 'bg-gray-100 cursor-not-allowed' : '' }}" />
+                                    @error('contactForm.mobile') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     @endif
 

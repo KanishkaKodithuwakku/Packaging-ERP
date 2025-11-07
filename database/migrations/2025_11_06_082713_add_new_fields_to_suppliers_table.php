@@ -22,6 +22,7 @@ return new class extends Migration
             $table->string('contact_last_name')->nullable()->after('contact_first_name');
             $table->string('contact_email')->nullable()->after('contact_last_name');
             $table->string('contact_phone')->nullable()->after('contact_email');
+            $table->string('contact_mobile')->nullable()->after('contact_phone');
         });
     }
 
@@ -39,6 +40,7 @@ return new class extends Migration
                 'contact_last_name',
                 'contact_email',
                 'contact_phone',
+                'contact_mobile',
             ]);
         });
     }
