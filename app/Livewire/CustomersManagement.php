@@ -15,15 +15,44 @@ class CustomersManagement extends Component
     public string $search = '';
     public bool $showModal = false;
     public ?int $editingId = null;
+    public bool $isViewMode = false;
+    public string $activeTab = 'general';
+    public bool $showDeleteConfirmModal = false;
+    public ?int $customerToDelete = null;
+
+    // General Info Tab (no code field)
     public array $form = [
-        'code' => '',
         'name' => '',
         'address' => '',
-        'contact_person' => '',
         'phone' => '',
         'email' => '',
+        'website' => '',
+        'notes' => '',
+        'status' => 'active',
+    ];
+
+    // Primary Contact Tab
+    public array $contactForm = [
+        'first_name' => '',
+        'last_name' => '',
+        'email' => '',
+        'phone' => '',
+        'mobile' => '',
+    ];
+
+    // Credit Limit Tab
+    public array $creditLimitForm = [
+        'credit_limit_period' => '',
+        'credit_limit_amount' => '',
+    ];
+
+    // Finance Tab
+    public array $financeForm = [
+        'account_receivable' => '',
+        'sales_revenue' => '',
         'currency' => 'LKR',
-        'is_active' => true,
+        'tax' => '',
+        'bank' => '',
     ];
 
     public function updatingSearch()
@@ -34,99 +63,218 @@ class CustomersManagement extends Component
     public function openModal(?int $id = null)
     {
         $this->editingId = $id;
+        $this->isViewMode = false;
+        $this->activeTab = 'general';
         if ($id) {
             $customer = Customer::findOrFail($id);
             $this->form = [
-                'code' => $customer->code ?? '',
                 'name' => $customer->name,
-                'address' => $customer->address ?? '',
-                'contact_person' => $customer->contact_person ?? '',
                 'phone' => $customer->phone ?? '',
                 'email' => $customer->email ?? '',
+                'address' => $customer->address ?? '',
+                'website' => $customer->website ?? '',
+                'notes' => $customer->notes ?? '',
+                'status' => $customer->status ?? 'active',
+            ];
+
+            // Load contact info if exists
+            $this->contactForm = [
+                'first_name' => $customer->contact_first_name ?? '',
+                'last_name' => $customer->contact_last_name ?? '',
+                'email' => $customer->contact_email ?? '',
+                'phone' => $customer->contact_phone ?? '',
+                'mobile' => $customer->contact_mobile ?? '',
+            ];
+
+            // Load credit limit info
+            $this->creditLimitForm = [
+                'credit_limit_period' => $customer->credit_limit_period ?? '',
+                'credit_limit_amount' => $customer->credit_limit_amount ?? '',
+            ];
+
+            // Load finance info
+            $this->financeForm = [
+                'account_receivable' => $customer->account_receivable ?? '',
+                'sales_revenue' => $customer->sales_revenue ?? '',
                 'currency' => $customer->currency ?? 'LKR',
-                'is_active' => $customer->is_active ?? true,
+                'tax' => $customer->tax ?? '',
+                'bank' => $customer->bank ?? '',
             ];
         } else {
             $this->form = [
-                'code' => '',
-                'name' => '',
-                'address' => '',
-                'contact_person' => '',
-                'phone' => '',
-                'email' => '',
-                'currency' => 'LKR',
-                'is_active' => true,
+                'name' => '', 'phone' => '', 'email' => '',
+                'address' => '', 'website' => '', 'notes' => '', 'status' => 'active'
+            ];
+            $this->contactForm = [
+                'first_name' => '', 'last_name' => '', 'email' => '', 'phone' => '', 'mobile' => ''
+            ];
+            $this->creditLimitForm = [
+                'credit_limit_period' => '', 'credit_limit_amount' => ''
+            ];
+            $this->financeForm = [
+                'account_receivable' => '', 'sales_revenue' => '', 'currency' => 'LKR', 'tax' => '', 'bank' => ''
             ];
         }
+        $this->showModal = true;
+    }
+
+    public function viewCustomer($id)
+    {
+        $this->editingId = $id;
+        $this->isViewMode = true;
+        $this->activeTab = 'general';
+        $customer = Customer::findOrFail($id);
+        $this->form = [
+            'name' => $customer->name,
+            'phone' => $customer->phone ?? '',
+            'email' => $customer->email ?? '',
+            'address' => $customer->address ?? '',
+            'website' => $customer->website ?? '',
+            'notes' => $customer->notes ?? '',
+            'status' => $customer->status ?? 'active',
+        ];
+
+        // Load contact info if exists
+        $this->contactForm = [
+            'first_name' => $customer->contact_first_name ?? '',
+            'last_name' => $customer->contact_last_name ?? '',
+            'email' => $customer->contact_email ?? '',
+            'phone' => $customer->contact_phone ?? '',
+            'mobile' => $customer->contact_mobile ?? '',
+        ];
+
+        // Load credit limit info
+        $this->creditLimitForm = [
+            'credit_limit_period' => $customer->credit_limit_period ?? '',
+            'credit_limit_amount' => $customer->credit_limit_amount ?? '',
+        ];
+
+        // Load finance info
+        $this->financeForm = [
+            'account_receivable' => $customer->account_receivable ?? '',
+            'sales_revenue' => $customer->sales_revenue ?? '',
+            'currency' => $customer->currency ?? 'LKR',
+            'tax' => $customer->tax ?? '',
+            'bank' => $customer->bank ?? '',
+        ];
+
         $this->showModal = true;
     }
 
     public function closeModal()
     {
         $this->showModal = false;
-        $this->resetForm();
+        $this->isViewMode = false;
+        $this->activeTab = 'general';
     }
 
-    public function resetForm()
+    public function setActiveTab($tab)
     {
-        $this->form = [
-            'code' => '',
-            'name' => '',
-            'address' => '',
-            'contact_person' => '',
-            'phone' => '',
-            'email' => '',
-            'currency' => 'LKR',
-            'is_active' => true,
-        ];
-        $this->editingId = null;
+        $this->activeTab = $tab;
+    }
+
+    private function generateCustomerCode()
+    {
+        // Get all customers with CUST prefix codes
+        $customers = Customer::whereNotNull('code')
+            ->where('code', 'like', 'CUST%')
+            ->get();
+
+        $maxNumber = 0;
+        
+        foreach ($customers as $customer) {
+            // Extract number from code (e.g., CUST001 -> 1)
+            $codeNumber = (int) substr($customer->code, 4);
+            if ($codeNumber > $maxNumber) {
+                $maxNumber = $codeNumber;
+            }
+        }
+
+        // Increment and format as CUST001, CUST002, etc.
+        $nextNumber = $maxNumber + 1;
+        return 'CUST' . str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
     }
 
     public function save()
     {
-        $rules = [
-            'form.name' => 'required|string|max:255',
-            'form.email' => 'required|email|max:255|unique:customers,email',
-            'form.phone' => 'nullable|string|max:50',
-            'form.address' => 'nullable|string',
-        ];
-
-        // Add code validation if code field exists
-        if (isset($this->form['code'])) {
-            if ($this->editingId) {
-                $rules['form.code'] = 'nullable|string|max:50|unique:customers,code,' . $this->editingId;
-            } else {
-                $rules['form.code'] = 'nullable|string|max:50|unique:customers,code';
-            }
-        }
-
-        // Add email unique validation for updates
+        // Build email validation rules
+        $emailRules = 'required|email|max:255';
         if ($this->editingId) {
-            $rules['form.email'] = 'required|email|max:255|unique:customers,email,' . $this->editingId;
-        }
-
-        $validated = $this->validate($rules)['form'];
-
-        // Ensure is_active is boolean
-        if (isset($validated['is_active'])) {
-            $validated['is_active'] = (bool) $validated['is_active'];
-        }
-
-        if ($this->editingId) {
-            Customer::where('id', $this->editingId)->update($validated);
-            session()->flash('success', 'Customer updated successfully!');
+            $emailRules .= '|unique:customers,email,' . $this->editingId;
         } else {
-            Customer::create($validated);
-            session()->flash('success', 'Customer created successfully!');
+            $emailRules .= '|unique:customers,email';
+        }
+
+        $validated = $this->validate([
+            'form.name' => 'required|string|max:255',
+            'form.phone' => 'nullable|string|max:50',
+            'form.email' => $emailRules,
+            'form.website' => 'nullable|url|max:255',
+            'form.address' => 'nullable|string',
+            'form.notes' => 'nullable|string',
+            'form.status' => 'required|string',
+            'contactForm.first_name' => 'nullable|string|max:255',
+            'contactForm.last_name' => 'nullable|string|max:255',
+            'contactForm.email' => 'nullable|email|max:255',
+            'contactForm.phone' => 'nullable|string|max:50',
+            'contactForm.mobile' => 'nullable|string|max:50',
+            'creditLimitForm.credit_limit_period' => 'nullable|string|max:255',
+            'creditLimitForm.credit_limit_amount' => 'nullable|numeric|min:0',
+            'financeForm.account_receivable' => 'nullable|string|max:255',
+            'financeForm.sales_revenue' => 'nullable|string|max:255',
+            'financeForm.currency' => 'nullable|string|max:3',
+            'financeForm.tax' => 'nullable|string|max:255',
+            'financeForm.bank' => 'nullable|string|max:255',
+        ]);
+
+        $customerData = array_merge($validated['form'], [
+            'contact_first_name' => $validated['contactForm']['first_name'] ?? null,
+            'contact_last_name' => $validated['contactForm']['last_name'] ?? null,
+            'contact_email' => $validated['contactForm']['email'] ?? null,
+            'contact_phone' => $validated['contactForm']['phone'] ?? null,
+            'contact_mobile' => $validated['contactForm']['mobile'] ?? null,
+            'credit_limit_period' => $validated['creditLimitForm']['credit_limit_period'] ?? null,
+            'credit_limit_amount' => $validated['creditLimitForm']['credit_limit_amount'] ?? null,
+            'account_receivable' => $validated['financeForm']['account_receivable'] ?? null,
+            'sales_revenue' => $validated['financeForm']['sales_revenue'] ?? null,
+            'currency' => $validated['financeForm']['currency'] ?? 'LKR',
+            'tax' => $validated['financeForm']['tax'] ?? null,
+            'bank' => $validated['financeForm']['bank'] ?? null,
+        ]);
+
+        if ($this->editingId) {
+            $customer = Customer::where('id', $this->editingId)->first();
+            $customer->update($customerData);
+            session()->flash('success', 'Customer updated successfully');
+        } else {
+            // Auto-generate customer code
+            $customerData['code'] = $this->generateCustomerCode();
+            Customer::create($customerData);
+            session()->flash('success', 'Customer added successfully');
         }
 
         $this->closeModal();
     }
 
+    public function openDeleteConfirmModal($id)
+    {
+        $this->customerToDelete = $id;
+        $this->showDeleteConfirmModal = true;
+    }
+
+    public function closeDeleteConfirmModal()
+    {
+        $this->showDeleteConfirmModal = false;
+        $this->customerToDelete = null;
+    }
+
     public function delete($id)
     {
         Customer::where('id', $id)->delete();
-        session()->flash('success', 'Customer deleted successfully!');
+        session()->flash('success', 'Customer deleted');
+
+        // Close modal
+        $this->closeDeleteConfirmModal();
     }
 
     public function render()
@@ -135,7 +283,6 @@ class CustomersManagement extends Component
             ->when($this->search, function ($q) {
                 $q->where('name', 'like', "%{$this->search}%")
                   ->orWhere('email', 'like', "%{$this->search}%")
-                  ->orWhere('code', 'like', "%{$this->search}%")
                   ->orWhere('phone', 'like', "%{$this->search}%");
             })
             ->orderBy('name')
@@ -146,4 +293,3 @@ class CustomersManagement extends Component
         ]);
     }
 }
-
