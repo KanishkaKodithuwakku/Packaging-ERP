@@ -21,37 +21,68 @@
         </div>
     @endif
 
-    <div class="bg-white rounded-lg shadow-sm">
-        <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-            <h1 class="text-2xl font-bold">Suppliers</h1>
-            <div class="space-x-2">
-                <input type="text" wire:model.debounce.300ms="search" placeholder="Search suppliers..."
-                       class="px-3 py-1.5 border rounded-md" />
-                <button wire:click="openModal" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md">Add Supplier</button>
+    <!-- Header -->
+    <div class="px-6 py-4 mb-8">
+        <h1 class="text-3xl font-bold text-gray-900">Suppliers</h1>
+        <p class="mt-2 text-gray-600">Manage supplier information and details for purchase order generation.</p>
+    </div>
+
+    <!-- Suppliers Table -->
+    <div class="bg-white shadow rounded-lg">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-medium text-gray-900">All Suppliers</h3>
+                <div class="flex items-center space-x-4">
+                    <input type="text" wire:model.live="search" placeholder="Search suppliers..."
+                        class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[200px]">
+                    <button wire:click="openModal"
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                        </svg>
+                        Add Supplier
+                    </button>
+                </div>
             </div>
         </div>
 
-        <div class="p-6">
+        <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Code</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
-                    @foreach($suppliers as $supplier)
+                    @forelse($suppliers as $supplier)
                     <tr wire:click="viewSupplier({{ $supplier->id }})" class="cursor-pointer hover:bg-gray-50">
-                        <td class="px-6 py-3 text-sm text-gray-900">
-                            <a wire:click.stop="viewSupplier({{ $supplier->id }})" class="text-blue-600 hover:underline">{{ $supplier->name }}</a>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm font-medium text-gray-900">
+                                <a wire:click.stop="viewSupplier({{ $supplier->id }})" class="text-blue-600 hover:underline">{{ $supplier->name }}</a>
+                            </div>
                         </td>
-                        <td class="px-6 py-3 text-sm text-gray-900">{{ $supplier->code }}</td>
-                        <td class="px-6 py-3 text-sm text-gray-900">{{ $supplier->phone }}</td>
-                        <td class="px-6 py-3 text-sm text-gray-900">{{ $supplier->email }}</td>
-                        <td class="px-6 py-3 text-sm" wire:click.stop>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $supplier->code }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $supplier->phone }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $supplier->email }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            @php
+                            $statusColors = [
+                                'active' => 'bg-green-100 text-green-800',
+                                'inactive' => 'bg-red-100 text-red-800',
+                            ];
+                            $statusColor = $statusColors[$supplier->status ?? 'active'] ?? 'bg-gray-100 text-gray-800';
+                            @endphp
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $statusColor }}">
+                                {{ ucfirst($supplier->status ?? 'active') }}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm" wire:click.stop>
                             <div class="flex items-center space-x-2">
                                 <button wire:click="openModal({{ $supplier->id }})" class="text-indigo-600 hover:text-indigo-900 flex items-center" title="Edit">
                                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -66,12 +97,31 @@
                             </div>
                         </td>
                     </tr>
-                    @endforeach
+                    @empty
+                    <tr>
+                        <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+                            <div class="flex flex-col items-center justify-center">
+                                <svg class="h-12 w-12 text-gray-400" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z">
+                                    </path>
+                                </svg>
+                                <h3 class="mt-2 text-sm font-medium text-gray-900 text-center">No suppliers</h3>
+                                <p class="mt-1 text-sm text-gray-500 text-center">Get started by adding a new supplier.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    @endforelse
                 </tbody>
             </table>
-
-            <div class="mt-4">{{ $suppliers->links() }}</div>
         </div>
+
+        @if($suppliers->hasPages())
+        <div class="px-6 py-4 border-t border-gray-200">
+            {{ $suppliers->links() }}
+        </div>
+        @endif
     </div>
 
     @if($showModal)
