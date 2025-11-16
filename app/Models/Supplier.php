@@ -21,6 +21,7 @@ class Supplier extends Model
         'contact_last_name',
         'contact_email',
         'contact_phone',
+        'contact_mobile',
         'currency',
         'display_format',
         'is_active',

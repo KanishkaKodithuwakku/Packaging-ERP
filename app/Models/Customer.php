@@ -14,12 +14,21 @@ class Customer extends Model
         'contact_person',
         'phone',
         'email',
+        'website',
+        'notes',
+        'status',
+        'contact_first_name',
+        'contact_last_name',
+        'contact_email',
+        'contact_phone',
+        'contact_mobile',
+        'account_receivable',
+        'sales_revenue',
         'currency',
-        'is_active',
-    ];
-
-    protected $casts = [
-        'is_active' => 'boolean',
+        'tax',
+        'bank',
+        'credit_limit_period',
+        'credit_limit_amount',
     ];
 
     /**
