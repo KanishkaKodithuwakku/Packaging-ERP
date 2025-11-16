@@ -353,7 +353,7 @@
                         Chart of Accounts
                     </a> --}}
 
-                    <a href="https://uat.finance.kingspack.com.lk/wzusers/login" target="_blank"
+                    <a href="https://acc.inbizsys.com.lk/wzusers/login" target="_blank"
                     class="group flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-600 hover:bg-gray-200 hover:text-gray-900 transition-colors duration-200 {{ request()->routeIs('accounting.chart-of-accounts') ? 'bg-gray-200 text-gray-900' : '' }}">
                     <svg class="mr-3 h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
