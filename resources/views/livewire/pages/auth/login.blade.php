@@ -97,7 +97,7 @@ new #[Layout('layouts.guest')] class extends Component
 
             <div class="flex flex-col items-center max-w-xs z-10">
                 <a href="#" class="block mb-4">
-                    <img src="{{ asset('src/images/logo/auth-logo.png') }}" alt="Logo" />
+                    <img src="{{ asset('src/images/logo/logo-dark.png') }}" alt="Logo" />
                 </a>
 
             </div>
