@@ -39,6 +39,7 @@ class SuppliersManagement extends Component
         'last_name' => '',
         'email' => '',
         'phone' => '',
+        'mobile' => '',
     ];
 
     // Finance Tab (view only, no database)
@@ -84,6 +85,7 @@ class SuppliersManagement extends Component
                 'last_name' => $supplier->contact_last_name ?? '',
                 'email' => $supplier->contact_email ?? '',
                 'phone' => $supplier->contact_phone ?? '',
+                'mobile' => $supplier->contact_mobile ?? '',
             ];
 
             // Load reel sizes
@@ -99,7 +101,7 @@ class SuppliersManagement extends Component
                 'address' => '', 'website' => '', 'notes' => '', 'status' => 'active'
             ];
             $this->contactForm = [
-                'first_name' => '', 'last_name' => '', 'email' => '', 'phone' => ''
+                'first_name' => '', 'last_name' => '', 'email' => '', 'phone' => '', 'mobile' => ''
             ];
             $this->reelSizes = [];
         }
@@ -130,6 +132,7 @@ class SuppliersManagement extends Component
             'last_name' => $supplier->contact_last_name ?? '',
             'email' => $supplier->contact_email ?? '',
             'phone' => $supplier->contact_phone ?? '',
+            'mobile' => $supplier->contact_mobile ?? '',
         ];
 
         // Load reel sizes
@@ -229,6 +232,7 @@ class SuppliersManagement extends Component
             'contactForm.last_name' => 'nullable|string|max:255',
             'contactForm.email' => 'nullable|email|max:255',
             'contactForm.phone' => 'nullable|string|max:50',
+            'contactForm.mobile' => 'nullable|string|max:50',
         ]);
 
         $supplierData = array_merge($validated['form'], [
@@ -236,6 +240,7 @@ class SuppliersManagement extends Component
             'contact_last_name' => $validated['contactForm']['last_name'] ?? null,
             'contact_email' => $validated['contactForm']['email'] ?? null,
             'contact_phone' => $validated['contactForm']['phone'] ?? null,
+            'contact_mobile' => $validated['contactForm']['mobile'] ?? null,
         ]);
 
         if ($this->editingId) {
