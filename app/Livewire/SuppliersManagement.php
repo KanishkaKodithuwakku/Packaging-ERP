@@ -235,12 +235,27 @@ class SuppliersManagement extends Component
             'contactForm.mobile' => 'nullable|string|max:50',
         ]);
 
-        $supplierData = array_merge($validated['form'], [
-            'contact_first_name' => $validated['contactForm']['first_name'] ?? null,
-            'contact_last_name' => $validated['contactForm']['last_name'] ?? null,
-            'contact_email' => $validated['contactForm']['email'] ?? null,
-            'contact_phone' => $validated['contactForm']['phone'] ?? null,
-            'contact_mobile' => $validated['contactForm']['mobile'] ?? null,
+        // Convert empty strings to null for nullable fields to avoid unique constraint violations
+        $formData = $validated['form'];
+        if (isset($formData['email']) && $formData['email'] === '') {
+            $formData['email'] = null;
+        }
+        if (isset($formData['website']) && $formData['website'] === '') {
+            $formData['website'] = null;
+        }
+        if (isset($formData['phone']) && $formData['phone'] === '') {
+            $formData['phone'] = null;
+        }
+        if (isset($formData['code']) && $formData['code'] === '') {
+            $formData['code'] = null;
+        }
+
+        $supplierData = array_merge($formData, [
+            'contact_first_name' => !empty($validated['contactForm']['first_name']) ? $validated['contactForm']['first_name'] : null,
+            'contact_last_name' => !empty($validated['contactForm']['last_name']) ? $validated['contactForm']['last_name'] : null,
+            'contact_email' => !empty($validated['contactForm']['email']) ? $validated['contactForm']['email'] : null,
+            'contact_phone' => !empty($validated['contactForm']['phone']) ? $validated['contactForm']['phone'] : null,
+            'contact_mobile' => !empty($validated['contactForm']['mobile']) ? $validated['contactForm']['mobile'] : null,
         ]);
 
         if ($this->editingId) {
