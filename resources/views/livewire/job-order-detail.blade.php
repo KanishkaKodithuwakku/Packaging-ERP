@@ -144,7 +144,7 @@
                             @error('form.supplier_id') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                             @else
                             <div class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-900">
-                                {{ $jobOrder->supplier->name }} ({{ $jobOrder->supplier->code }})
+                                {{ $jobOrder->supplier->name ?? 'N/A' }} ({{ $jobOrder->supplier->code ?? 'N/A' }})
                             </div>
                             @endif
                         </div>
@@ -214,7 +214,7 @@
                             @error('form.customer_id') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                             @else
                             <div class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-900">
-                                {{ $jobOrder->customer->name }} ({{ $jobOrder->customer->code }})
+                                {{ $jobOrder->customer->name ?? 'N/A' }} ({{ $jobOrder->customer->code ?? 'N/A' }})
                             </div>
                             @endif
                         </div>
