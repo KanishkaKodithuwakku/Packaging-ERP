@@ -2,8 +2,15 @@
 
 namespace App\Livewire;
 
+use App\Models\JobOrder;
+use App\Models\JobOrderBox;
+use App\Models\JobOrderDivider;
+use App\Models\PurchaseOrder;
+use App\Models\ProductionOrder;
 use App\Models\Supplier;
 use App\Models\SupplierReelSize;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -219,35 +226,71 @@ class SuppliersManagement extends Component
 
     public function save()
     {
-        $validated = $this->validate([
-            'form.name' => 'required|string|max:255',
-            'form.code' => 'nullable|string|max:50',
-            'form.phone' => 'nullable|string|max:50',
-            'form.email' => 'nullable|email|max:255',
-            'form.website' => 'nullable|url|max:255',
-            'form.address' => 'nullable|string',
-            'form.notes' => 'nullable|string',
-            'form.status' => 'required|string',
-            'contactForm.first_name' => 'nullable|string|max:255',
-            'contactForm.last_name' => 'nullable|string|max:255',
-            'contactForm.email' => 'nullable|email|max:255',
-            'contactForm.phone' => 'nullable|string|max:50',
-            'contactForm.mobile' => 'nullable|string|max:50',
-        ]);
+        try {
+            // Build unique validation rules for general info fields
+            $excludeId = $this->editingId;
 
-        // Convert empty strings to null for nullable fields to avoid unique constraint violations
-        $formData = $validated['form'];
-        if (isset($formData['email']) && $formData['email'] === '') {
-            $formData['email'] = null;
+            $uniqueRules = [
+                'form.name' => [
+                    'required',
+                    'string',
+                    'max:255',
+                    $excludeId
+                        ? Rule::unique('suppliers', 'name')->ignore($excludeId)
+                        : Rule::unique('suppliers', 'name'),
+                ],
+                'form.code' => [
+                    'required',
+                    'string',
+                    'max:50',
+                    $excludeId
+                        ? Rule::unique('suppliers', 'code')->ignore($excludeId)
+                        : Rule::unique('suppliers', 'code'),
+                ],
+                'form.address' => [
+                    'required',
+                    'string',
+                    $excludeId
+                        ? Rule::unique('suppliers', 'address')->ignore($excludeId)
+                        : Rule::unique('suppliers', 'address'),
+                ],
+                'form.phone' => [
+                    'required',
+                    'string',
+                    'max:50',
+                    $excludeId
+                        ? Rule::unique('suppliers', 'phone')->ignore($excludeId)
+                        : Rule::unique('suppliers', 'phone'),
+                ],
+                'form.email' => [
+                    'required',
+                    'email',
+                    'max:255',
+                    $excludeId
+                        ? Rule::unique('suppliers', 'email')->ignore($excludeId)
+                        : Rule::unique('suppliers', 'email'),
+                ],
+            ];
+
+            $validated = $this->validate(array_merge($uniqueRules, [
+                'form.website' => 'nullable|url|max:255',
+                'form.notes' => 'nullable|string',
+                'form.status' => 'required|string',
+                'contactForm.first_name' => 'nullable|string|max:255',
+                'contactForm.last_name' => 'nullable|string|max:255',
+                'contactForm.email' => 'nullable|email|max:255',
+                'contactForm.phone' => 'nullable|string|max:50',
+                'contactForm.mobile' => 'nullable|string|max:50',
+            ]));
+        } catch (ValidationException $e) {
+            session()->flash('error', 'Please check some fields are empty or have duplicate values.');
+            throw $e;
         }
+
+        // Convert empty strings to null for nullable fields
+        $formData = $validated['form'];
         if (isset($formData['website']) && $formData['website'] === '') {
             $formData['website'] = null;
-        }
-        if (isset($formData['phone']) && $formData['phone'] === '') {
-            $formData['phone'] = null;
-        }
-        if (isset($formData['code']) && $formData['code'] === '') {
-            $formData['code'] = null;
         }
 
         $supplierData = array_merge($formData, [
@@ -317,6 +360,12 @@ class SuppliersManagement extends Component
 
     public function openDeleteConfirmModal($id)
     {
+        // Check if supplier is in use
+        if ($this->isSupplierInUse($id)) {
+            session()->flash('error', 'This supplier is in use and cannot be deleted.');
+            return;
+        }
+
         $this->supplierToDelete = $id;
         $this->showDeleteConfirmModal = true;
     }
@@ -329,11 +378,56 @@ class SuppliersManagement extends Component
 
     public function delete($id)
     {
-        Supplier::where('id', $id)->delete();
+        $supplier = Supplier::find($id);
+
+        if (!$supplier) {
+            session()->flash('error', 'Supplier not found.');
+            $this->closeDeleteConfirmModal();
+            return;
+        }
+
+        // Check if supplier is in use
+        if ($this->isSupplierInUse($id)) {
+            session()->flash('error', 'This supplier is in use and cannot be deleted.');
+            $this->closeDeleteConfirmModal();
+            return;
+        }
+
+        $supplier->delete();
         session()->flash('success', 'Supplier deleted');
 
         // Close modal
         $this->closeDeleteConfirmModal();
+    }
+
+    private function isSupplierInUse($supplierId): bool
+    {
+        // Check if supplier is used in job orders
+        if (JobOrder::where('supplier_id', $supplierId)->exists()) {
+            return true;
+        }
+
+        // Check if supplier is used in purchase orders
+        if (PurchaseOrder::where('supplier_id', $supplierId)->exists()) {
+            return true;
+        }
+
+        // Check if supplier is used in production orders
+        if (ProductionOrder::where('supplier_id', $supplierId)->exists()) {
+            return true;
+        }
+
+        // Check if supplier is used in job order boxes
+        if (JobOrderBox::where('supplier_id', $supplierId)->exists()) {
+            return true;
+        }
+
+        // Check if supplier is used in job order dividers
+        if (JobOrderDivider::where('supplier_id', $supplierId)->exists()) {
+            return true;
+        }
+
+        return false;
     }
 
     public function render()
@@ -345,6 +439,12 @@ class SuppliersManagement extends Component
             })
             ->orderBy('name')
             ->paginate(10);
+
+        // Add in-use status to each supplier
+        $suppliers->getCollection()->transform(function ($supplier) {
+            $supplier->is_in_use = $this->isSupplierInUse($supplier->id);
+            return $supplier;
+        });
 
         return view('livewire.suppliers.management', [
             'suppliers' => $suppliers,
