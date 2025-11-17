@@ -89,11 +89,20 @@
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                                     </svg>
                                 </button>
-                                <button wire:click.stop="openDeleteConfirmModal({{ $supplier->id }})" class="text-red-600 hover:text-red-900 flex items-center" title="Delete">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                    </svg>
-                                </button>
+                                @if(isset($supplier->is_in_use) && $supplier->is_in_use)
+                                    <button disabled class="text-gray-400 cursor-not-allowed flex items-center" title="This supplier is in use">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                        </svg>
+                                    </button>
+                                    <span class="text-xs text-orange-600" title="This supplier is in use"></span>
+                                @else
+                                    <button wire:click.stop="openDeleteConfirmModal({{ $supplier->id }})" class="text-red-600 hover:text-red-900 flex items-center" title="Delete">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                        </svg>
+                                    </button>
+                                @endif
                             </div>
                         </td>
                     </tr>
@@ -194,7 +203,7 @@
                                 </div>
                             </div>
                             <div class="flex items-center gap-3 flex-1">
-                                <label class="block text-sm font-medium text-gray-700 mb-1 " style="min-width: 70px;">Code</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1 " style="min-width: 70px;">Code <span class="text-red-500">*</span></label>
                                 <div class="flex-1">
                                     <input type="text" wire:model.defer="form.code" {{ $isViewMode ? 'readonly' : '' }} class="block w-[250px] px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 {{ $isViewMode ? 'bg-gray-100 cursor-not-allowed' : '' }}" />
                                     @error('form.code') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
@@ -205,7 +214,7 @@
                         <!-- Row 2: Address (Full Width) -->
                         <div class="flex ">
                             <div class="flex items-start " style="width: 100%;">
-                                <label class="block text-sm font-medium text-gray-700 mb-1" style="min-width: 152px; padding-top: 6px;">Address</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1" style="min-width: 152px; padding-top: 6px;">Address <span class="text-red-500">*</span></label>
                                 <div class="flex-1">
                                     <textarea wire:model.defer="form.address" rows="3" {{ $isViewMode ? 'readonly' : '' }} class="block w-[250px] px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 {{ $isViewMode ? 'bg-gray-100 cursor-not-allowed' : '' }}"></textarea>
                                     @error('form.address') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
@@ -217,14 +226,14 @@
                         <!-- Row 3: Company Phone Number, Company Email -->
                         <div class="flex gap-4" style="gap: 70px !important;">
                             <div class="flex items-center gap-3 flex-1">
-                                <label class="block text-sm font-medium text-gray-700 mb-1 w-1/4" style="min-width: 140px;">Company Phone Number</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1 w-1/4" style="min-width: 140px;">Company Phone Number <span class="text-red-500">*</span></label>
                                 <div class="flex-1">
                                     <input type="text" wire:model.defer="form.phone" {{ $isViewMode ? 'readonly' : '' }} class="block w-[250px] px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 {{ $isViewMode ? 'bg-gray-100 cursor-not-allowed' : '' }}" />
                                     @error('form.phone') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                                 </div>
                             </div>
                             <div class="flex items-center gap-3 flex-1">
-                                <label class="block text-sm font-medium text-gray-700 mb-1 " style="min-width: 70px;">Company <br> Email</label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1 " style="min-width: 70px;">Company <br> Email <span class="text-red-500">*</span></label>
                                 <div class="flex-1">
                                     <input type="email" wire:model.defer="form.email" {{ $isViewMode ? 'readonly' : '' }} class="block w-[250px] px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 {{ $isViewMode ? 'bg-gray-100 cursor-not-allowed' : '' }}" />
                                     @error('form.email') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
