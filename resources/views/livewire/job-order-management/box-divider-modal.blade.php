@@ -41,3 +41,8 @@
         </div>
     </div>
 @endif
+
+<!-- Edit Divider Modal -->
+@if($showEditDividerModal)
+    @include('livewire.job-order-management.edit-divider-modal')
+@endif
