@@ -347,8 +347,20 @@
                             </div>
                         </div>
 
-                        <!-- Row 2: Bank -->
-                        <div class="flex gap-4">
+                        <!-- Row 2: Currency, Bank -->
+                        <div class="flex gap-4" style="gap: 70px !important;">
+                            <div class="flex items-center gap-3 flex-1">
+                                <label class="block text-sm font-medium text-gray-700 mb-1 " style="min-width: 80px;">Currency</label>
+                                <div class="flex-1">
+                                    <select wire:model.defer="financeForm.currency" {{ $isViewMode ? 'disabled' : '' }} class="block w-[300px] px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 {{ $isViewMode ? 'bg-gray-100 cursor-not-allowed' : '' }}">
+                                        <option value="LKR">LKR</option>
+                                        <option value="USD">USD</option>
+                                        <option value="EUR">EUR</option>
+                                        <option value="GBP">GBP</option>
+                                        <option value="INR">INR</option>
+                                    </select>
+                                </div>
+                            </div>
                             <div class="flex items-center gap-3 flex-1">
                                 <label class="block text-sm font-medium text-gray-700 mb-1 " style="min-width: 80px;">Bank</label>
                                 <div class="flex-1">
