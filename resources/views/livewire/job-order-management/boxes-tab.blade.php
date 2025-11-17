@@ -275,11 +275,33 @@
         <div class="mt-6">
             <div class="flex justify-between items-center mb-3">
                 <h5 class="text-md font-medium text-gray-700">Calculated Fields</h5>
-                {{-- <button type="button"
-                        wire:click="forceCalculation"
-                        class="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600">
-                    Recalculate
-                </button> --}}
+                <div class="flex flex-col items-end gap-2">
+                    <button type="button"
+                            wire:click="saveCalculatedFields"
+                            class="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors">
+                        Save Changes
+                    </button>
+                    @if (session()->has('success'))
+                        <div class="bg-green-100 border border-green-400 text-green-700 px-3 py-1.5 rounded text-xs">
+                            <div class="flex items-center">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                {{ session('success') }}
+                            </div>
+                        </div>
+                    @endif
+                    @if (session()->has('error'))
+                        <div class="bg-red-100 border border-red-400 text-red-700 px-3 py-1.5 rounded text-xs">
+                            <div class="flex items-center">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                {{ session('error') }}
+                            </div>
+                        </div>
+                    @endif
+                </div>
             </div>
             {{-- Debug Info --}}
             {{-- <div class="mb-4 p-2 bg-yellow-100 text-xs">
@@ -293,18 +315,36 @@
                     <div class="flex items-center gap-3 flex-1">
                         <label class="block text-sm font-medium text-gray-700 mb-1 w-1/4">Reel Size <span class="text-red-500">*</span></label>
                         <div class="flex-1">
-                            <div class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-900">
-                                {{ $calculatedReelSize ? number_format($calculatedReelSize, 2) . ' inches' : 'Enter dimensions' }}
+                            <div class="flex items-center gap-2">
+                                <input type="number"
+                                       step="0.01"
+                                       wire:model.live="boxForm.reel_size"
+                                       class="block flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                       placeholder="{{ $calculatedReelSize ? number_format($calculatedReelSize, 2) . ' (calculated)' : '0.00' }}">
+                                <span class="text-xs text-gray-500 whitespace-nowrap">inches</span>
                             </div>
+                            @if($calculatedReelSize && empty($boxForm['reel_size'] ?? ''))
+                                <p class="text-xs text-blue-600 mt-1">Caculated: {{ number_format($calculatedReelSize, 2) }}</p>
+                            @endif
+                            @error('boxForm.reel_size') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                     </div>
 
                     <div class="flex items-center gap-3 flex-1">
                         <label class="block text-sm font-medium text-gray-700 mb-1 w-1/4">Cut Size <span class="text-red-500">*</span></label>
                         <div class="flex-1">
-                            <div class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-900">
-                                {{ $calculatedCutSize ? number_format($calculatedCutSize, 2) . ' inches' : 'Enter dimensions' }}
+                            <div class="flex items-center gap-2">
+                                <input type="number"
+                                       step="0.01"
+                                       wire:model.live="boxForm.cut_size"
+                                       class="block flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                       placeholder="{{ $calculatedCutSize ? number_format($calculatedCutSize, 2) . ' (calculated)' : '0.00' }}">
+                                <span class="text-xs text-gray-500 whitespace-nowrap">inches</span>
                             </div>
+                            @if($calculatedCutSize && empty($boxForm['cut_size'] ?? ''))
+                                <p class="text-xs text-blue-600 mt-1">Calculated: {{ number_format($calculatedCutSize, 2) }}</p>
+                            @endif
+                            @error('boxForm.cut_size') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                     </div>
 
@@ -322,9 +362,15 @@
                     <div class="flex items-center gap-3 flex-1">
                         <label class="block text-sm font-medium text-gray-700 mb-1 w-1/4">Board Qty <span class="text-red-500">*</span></label>
                         <div class="flex-1">
-                            <div class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-900">
-                                {{ $calculatedBoardQty ?: 'Enter order qty and no of ups' }}
-                            </div>
+                            <input type="number"
+                                   step="0.01"
+                                   wire:model.live="boxForm.board_qty"
+                                   class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                   placeholder="{{ $calculatedBoardQty ? $calculatedBoardQty . ' (calculated)' : '0' }}">
+                            @if($calculatedBoardQty && empty($boxForm['board_qty'] ?? ''))
+                                <p class="text-xs text-blue-600 mt-1">Calculated: {{ $calculatedBoardQty }}</p>
+                            @endif
+                            @error('boxForm.board_qty') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                     </div>
                 </div>
