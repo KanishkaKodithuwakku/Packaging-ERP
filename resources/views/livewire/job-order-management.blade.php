@@ -89,13 +89,13 @@
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap" wire:navigate
                             href="{{ route('job-order-detail', $jobOrder->id) }}">
-                                <div class="text-sm text-gray-900">{{ $jobOrder->supplier->name }}</div>
-                                <div class="text-xs text-gray-500">{{ $jobOrder->supplier->code }}</div>
+                                <div class="text-sm text-gray-900">{{ $jobOrder->supplier->name ?? 'N/A' }}</div>
+                                <div class="text-xs text-gray-500">{{ $jobOrder->supplier->code ?? '' }}</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap" wire:navigate
                             href="{{ route('job-order-detail', $jobOrder->id) }}">
-                                <div class="text-sm text-gray-900">{{ $jobOrder->customer->name }}</div>
-                                <div class="text-xs text-gray-500">{{ $jobOrder->customer->code }}</div>
+                                <div class="text-sm text-gray-900">{{ $jobOrder->customer->name ?? 'N/A' }}</div>
+                                <div class="text-xs text-gray-500">{{ $jobOrder->customer->code ?? '' }}</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900" wire:navigate
                             href="{{ route('job-order-detail', $jobOrder->id) }}">
