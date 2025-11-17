@@ -227,19 +227,38 @@ class CustomersManagement extends Component
             'financeForm.bank' => 'nullable|string|max:255',
         ]);
 
-        $customerData = array_merge($validated['form'], [
-            'contact_first_name' => $validated['contactForm']['first_name'] ?? null,
-            'contact_last_name' => $validated['contactForm']['last_name'] ?? null,
-            'contact_email' => $validated['contactForm']['email'] ?? null,
-            'contact_phone' => $validated['contactForm']['phone'] ?? null,
-            'contact_mobile' => $validated['contactForm']['mobile'] ?? null,
-            'credit_limit_period' => $validated['creditLimitForm']['credit_limit_period'] ?? null,
-            'credit_limit_amount' => $validated['creditLimitForm']['credit_limit_amount'] ?? null,
-            'account_receivable' => $validated['financeForm']['account_receivable'] ?? null,
-            'sales_revenue' => $validated['financeForm']['sales_revenue'] ?? null,
+        // Convert empty strings to null for nullable fields to avoid database errors
+        $formData = $validated['form'];
+        if (isset($formData['email']) && $formData['email'] === '') {
+            $formData['email'] = null;
+        }
+        if (isset($formData['website']) && $formData['website'] === '') {
+            $formData['website'] = null;
+        }
+        if (isset($formData['phone']) && $formData['phone'] === '') {
+            $formData['phone'] = null;
+        }
+
+        $creditLimitAmount = $validated['creditLimitForm']['credit_limit_amount'] ?? null;
+        if ($creditLimitAmount === '' || $creditLimitAmount === null) {
+            $creditLimitAmount = null;
+        } else {
+            $creditLimitAmount = (float) $creditLimitAmount;
+        }
+
+        $customerData = array_merge($formData, [
+            'contact_first_name' => !empty($validated['contactForm']['first_name']) ? $validated['contactForm']['first_name'] : null,
+            'contact_last_name' => !empty($validated['contactForm']['last_name']) ? $validated['contactForm']['last_name'] : null,
+            'contact_email' => !empty($validated['contactForm']['email']) ? $validated['contactForm']['email'] : null,
+            'contact_phone' => !empty($validated['contactForm']['phone']) ? $validated['contactForm']['phone'] : null,
+            'contact_mobile' => !empty($validated['contactForm']['mobile']) ? $validated['contactForm']['mobile'] : null,
+            'credit_limit_period' => !empty($validated['creditLimitForm']['credit_limit_period']) ? $validated['creditLimitForm']['credit_limit_period'] : null,
+            'credit_limit_amount' => $creditLimitAmount,
+            'account_receivable' => !empty($validated['financeForm']['account_receivable']) ? $validated['financeForm']['account_receivable'] : null,
+            'sales_revenue' => !empty($validated['financeForm']['sales_revenue']) ? $validated['financeForm']['sales_revenue'] : null,
             'currency' => $validated['financeForm']['currency'] ?? 'LKR',
-            'tax' => $validated['financeForm']['tax'] ?? null,
-            'bank' => $validated['financeForm']['bank'] ?? null,
+            'tax' => !empty($validated['financeForm']['tax']) ? $validated['financeForm']['tax'] : null,
+            'bank' => !empty($validated['financeForm']['bank']) ? $validated['financeForm']['bank'] : null,
         ]);
 
         if ($this->editingId) {
