@@ -75,6 +75,9 @@ class JobOrderManagement extends Component
         'fsc_claim' => '100%',
         'no_of_ups' => '',
         'supplier_price' => '',
+        'reel_size' => '',
+        'cut_size' => '',
+        'board_qty' => '',
         'notes' => ''
     ];
 
@@ -103,6 +106,16 @@ class JobOrderManagement extends Component
     public $currentJobOrderId = null;
     public $boxes = [];
     public $dividers = [];
+
+    // Box editing state
+    public $editingBoxIndex = null;
+    public $showEditBoxModal = false;
+    public $editingBoxData = [];
+
+    // Divider editing state
+    public $editingDividerIndex = null;
+    public $showEditDividerModal = false;
+    public $editingDividerData = [];
 
     protected $messages = [
         'form.po_date.required' => 'Please fill PO date',
@@ -331,6 +344,12 @@ class JobOrderManagement extends Component
             'boxForm' => $this->boxForm
         ]);
 
+        // Don't trigger calculations if user is manually editing calculated fields
+        if (in_array($field, ['reel_size', 'cut_size', 'board_qty'])) {
+            // User is manually editing, don't recalculate
+            return;
+        }
+
         if (in_array($field, ['length', 'width', 'height', 'ply', 'unit', 'dimension_type'])) {
             $this->calculateDimensions();
             $this->dispatch('$refresh');
@@ -404,6 +423,15 @@ class JobOrderManagement extends Component
                 'reel_size' => $this->calculatedReelSize,
                 'cut_size' => $this->calculatedCutSize
             ]);
+
+            // Auto-populate form fields with calculated values if they're empty (don't overwrite manual edits)
+            // Check if value is null, empty string, or 0 (but not if user entered 0 explicitly)
+            if ((!isset($this->boxForm['reel_size']) || $this->boxForm['reel_size'] === '' || $this->boxForm['reel_size'] === null) && $this->calculatedReelSize > 0) {
+                $this->boxForm['reel_size'] = $this->calculatedReelSize;
+            }
+            if ((!isset($this->boxForm['cut_size']) || $this->boxForm['cut_size'] === '' || $this->boxForm['cut_size'] === null) && $this->calculatedCutSize > 0) {
+                $this->boxForm['cut_size'] = $this->calculatedCutSize;
+            }
         } else {
             $this->calculatedReelSize = 0;
             $this->calculatedCutSize = 0;
@@ -515,8 +543,116 @@ class JobOrderManagement extends Component
     {
         if ($this->boxForm['order_qty'] && $this->boxForm['no_of_ups'] && $this->boxForm['no_of_ups'] > 0) {
             $this->calculatedBoardQty = ceil($this->boxForm['order_qty'] / $this->boxForm['no_of_ups']);
+            // Auto-populate form field with calculated value if it's empty (don't overwrite manual edits)
+            // Check if value is null, empty string, or 0 (but not if user entered 0 explicitly)
+            if ((!isset($this->boxForm['board_qty']) || $this->boxForm['board_qty'] === '' || $this->boxForm['board_qty'] === null) && $this->calculatedBoardQty > 0) {
+                $this->boxForm['board_qty'] = $this->calculatedBoardQty;
+            }
         } else {
             $this->calculatedBoardQty = 0;
+        }
+    }
+
+    public function saveCalculatedFields()
+    {
+        // Recalculate dimensions if needed
+        if ($this->boxForm['length'] && $this->boxForm['width'] && $this->boxForm['height']) {
+            $this->calculateDimensions();
+        }
+
+        // Recalculate board qty if needed
+        if ($this->boxForm['order_qty'] && $this->boxForm['no_of_ups']) {
+            $this->calculateBoardQty();
+        }
+
+        // Use manual values if entered, otherwise use calculated values
+        // Only overwrite if field is truly empty (null, empty string, or not set)
+        if ((!isset($this->boxForm['reel_size']) || $this->boxForm['reel_size'] === '' || $this->boxForm['reel_size'] === null) && $this->calculatedReelSize > 0) {
+            $this->boxForm['reel_size'] = $this->calculatedReelSize;
+        }
+        if ((!isset($this->boxForm['cut_size']) || $this->boxForm['cut_size'] === '' || $this->boxForm['cut_size'] === null) && $this->calculatedCutSize > 0) {
+            $this->boxForm['cut_size'] = $this->calculatedCutSize;
+        }
+        if ((!isset($this->boxForm['board_qty']) || $this->boxForm['board_qty'] === '' || $this->boxForm['board_qty'] === null) && $this->calculatedBoardQty > 0) {
+            $this->boxForm['board_qty'] = $this->calculatedBoardQty;
+        }
+
+        // Validate the calculated fields
+        $this->validate([
+            'boxForm.reel_size' => 'required|numeric|min:0',
+            'boxForm.cut_size' => 'required|numeric|min:0',
+            'boxForm.board_qty' => 'required|numeric|min:0',
+        ], [
+            'boxForm.reel_size.required' => 'Reel Size is required',
+            'boxForm.reel_size.numeric' => 'Reel Size must be a number',
+            'boxForm.cut_size.required' => 'Cut Size is required',
+            'boxForm.cut_size.numeric' => 'Cut Size must be a number',
+            'boxForm.board_qty.required' => 'Board Qty is required',
+            'boxForm.board_qty.numeric' => 'Board Qty must be a number',
+        ]);
+
+        // Ensure values are properly formatted as floats
+        $this->boxForm['reel_size'] = (float) $this->boxForm['reel_size'];
+        $this->boxForm['cut_size'] = (float) $this->boxForm['cut_size'];
+        $this->boxForm['board_qty'] = (float) $this->boxForm['board_qty'];
+
+        session()->flash('success', 'Calculated fields saved successfully.');
+    }
+
+    public function calculateBoardQtyForEdit()
+    {
+        if (isset($this->editingBoxData['order_qty']) && isset($this->editingBoxData['no_of_ups']) &&
+            $this->editingBoxData['order_qty'] && $this->editingBoxData['no_of_ups'] && $this->editingBoxData['no_of_ups'] > 0) {
+            $calculated = ceil($this->editingBoxData['order_qty'] / $this->editingBoxData['no_of_ups']);
+            // Auto-populate board_qty with calculated value (formatted to 2 decimal places)
+            $this->editingBoxData['board_qty'] = number_format($calculated, 2, '.', '');
+        }
+    }
+
+    public function updatedEditingBoxData($value, $field)
+    {
+        // Calculate Board Qty when order_qty or no_of_ups changes
+        if (in_array($field, ['order_qty', 'no_of_ups'])) {
+            $this->calculateBoardQtyForEdit();
+        }
+
+        // Calculate dimensions when length, width, height, unit, dimension_type, or ply changes
+        if (in_array($field, ['length', 'width', 'height', 'unit', 'dimension_type', 'ply'])) {
+            $this->calculateDimensionsForEdit();
+        }
+    }
+
+    public function calculateDimensionsForEdit()
+    {
+        if (isset($this->editingBoxData['length']) && isset($this->editingBoxData['width']) && isset($this->editingBoxData['height']) &&
+            $this->editingBoxData['length'] && $this->editingBoxData['width'] && $this->editingBoxData['height']) {
+
+            $length = (float) $this->editingBoxData['length'];
+            $width = (float) $this->editingBoxData['width'];
+            $height = (float) $this->editingBoxData['height'];
+            $unit = $this->editingBoxData['unit'] ?? 'CM';
+            $type = $this->editingBoxData['dimension_type'] ?? 'INTERNAL';
+
+            // Convert to inches
+            $lengthInches = $this->convertToInches($length, $unit);
+            $widthInches = $this->convertToInches($width, $unit);
+            $heightInches = $this->convertToInches($height, $unit);
+
+            // Calculate reel size: (W + H) + 0.75
+            $reelSize = $widthInches + $heightInches + 0.75;
+            $calculatedReelSize = $this->roundToNextReelSize($reelSize, $this->form['supplier_id'] ?? null);
+
+            // Calculate cut size: ((L + W) * 2) + addition
+            $cutSize = ($lengthInches + $widthInches) * 2;
+            if ($type === 'EXTERNAL') {
+                $cutSize += 2; // EXTERNAL adds 2 inches
+            } else {
+                $cutSize += 2.5; // INTERNAL adds 2.5 inches
+            }
+
+            // Auto-populate form fields with calculated values (formatted to 2 decimal places)
+            $this->editingBoxData['reel_size'] = number_format($calculatedReelSize, 2, '.', '');
+            $this->editingBoxData['cut_size'] = number_format($cutSize, 2, '.', '');
         }
     }
 
@@ -557,6 +693,16 @@ class JobOrderManagement extends Component
                 'boxForm.flute' => 'required',
                 'boxForm.fsc_claim' => 'required',
                 'boxForm.no_of_colours' => 'required|integer|min:0',
+                'boxForm.reel_size' => 'required|numeric|min:0',
+                'boxForm.cut_size' => 'required|numeric|min:0',
+                'boxForm.board_qty' => 'required|numeric|min:0',
+            ], [
+                'boxForm.reel_size.required' => 'Reel Size is required. Please enter a value or click "Save Changes" to use calculated value.',
+                'boxForm.reel_size.numeric' => 'Reel Size must be a number',
+                'boxForm.cut_size.required' => 'Cut Size is required. Please enter a value or click "Save Changes" to use calculated value.',
+                'boxForm.cut_size.numeric' => 'Cut Size must be a number',
+                'boxForm.board_qty.required' => 'Board Qty is required. Please enter a value or click "Save Changes" to use calculated value.',
+                'boxForm.board_qty.numeric' => 'Board Qty must be a number',
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             \Log::error('Box validation failed', ['errors' => $e->errors()]);
@@ -590,9 +736,10 @@ class JobOrderManagement extends Component
             'no_of_ups' => $this->boxForm['no_of_ups'],
             'supplier_price' => $this->boxForm['supplier_price'],
             'notes' => !empty($this->boxForm['notes']) ? $this->boxForm['notes'] : null,
-            'reel_size' => $this->calculatedReelSize,
-            'cut_size' => $this->calculatedCutSize,
-            'board_qty' => $this->calculatedBoardQty,
+            // Use manual values if entered (check for null/empty, not just falsy), otherwise use calculated values
+            'reel_size' => (isset($this->boxForm['reel_size']) && $this->boxForm['reel_size'] !== '' && $this->boxForm['reel_size'] !== null) ? (float) $this->boxForm['reel_size'] : (($this->calculatedReelSize > 0) ? $this->calculatedReelSize : 0),
+            'cut_size' => (isset($this->boxForm['cut_size']) && $this->boxForm['cut_size'] !== '' && $this->boxForm['cut_size'] !== null) ? (float) $this->boxForm['cut_size'] : (($this->calculatedCutSize > 0) ? $this->calculatedCutSize : 0),
+            'board_qty' => (isset($this->boxForm['board_qty']) && $this->boxForm['board_qty'] !== '' && $this->boxForm['board_qty'] !== null) ? (float) $this->boxForm['board_qty'] : (($this->calculatedBoardQty > 0) ? $this->calculatedBoardQty : 0),
         ];
 
         $this->resetBoxForm();
@@ -640,12 +787,209 @@ class JobOrderManagement extends Component
     {
         unset($this->boxes[$index]);
         $this->boxes = array_values($this->boxes);
+        // Reset editing if the removed box was being edited
+        if ($this->editingBoxIndex === $index) {
+            $this->editingBoxIndex = null;
+            $this->editingBoxData = ['reel_size' => '', 'cut_size' => '', 'board_qty' => ''];
+        } elseif ($this->editingBoxIndex !== null && $this->editingBoxIndex > $index) {
+            // Adjust editing index if a box before the editing one was removed
+            $this->editingBoxIndex--;
+        }
+    }
+
+    public function editBox($index)
+    {
+        if (isset($this->boxes[$index])) {
+            $this->editingBoxIndex = $index;
+            $box = $this->boxes[$index];
+
+            // Populate all box data for editing with 2 decimal places for numeric values
+            $this->editingBoxData = [
+                'order_qty' => $box['order_qty'] ?? '',
+                'selling_price' => isset($box['selling_price']) && $box['selling_price'] !== '' ? number_format((float)$box['selling_price'], 2, '.', '') : '',
+                'activity' => $box['activity'] ?? '',
+                'printing_instruction' => $box['printing_instruction'] ?? '',
+                'no_of_colours' => $box['no_of_colours'] ?? '',
+                'stitched_glued' => isset($box['stitched_glued']) && $box['stitched_glued'] !== '' ? ucfirst(strtolower($box['stitched_glued'])) : '',
+                'sample_available' => $box['sample_available'] ?? false,
+                'sample_attached' => $box['sample_attached'] ?? false,
+                'length' => isset($box['length']) && $box['length'] !== '' ? number_format((float)$box['length'], 2, '.', '') : '',
+                'width' => isset($box['width']) && $box['width'] !== '' ? number_format((float)$box['width'], 2, '.', '') : '',
+                'height' => isset($box['height']) && $box['height'] !== '' ? number_format((float)$box['height'], 2, '.', '') : '',
+                'unit' => $box['unit'] ?? 'CM',
+                'dimension_type' => $box['dimension_type'] ?? 'INTERNAL',
+                'top_liner' => $box['top_liner'] ?? 'WHITE',
+                'ply' => $box['ply'] ?? '',
+                'combination_1' => $box['combination_1'] ?? '',
+                'combination_2' => $box['combination_2'] ?? '',
+                'combination_3' => $box['combination_3'] ?? '',
+                'combination_4' => $box['combination_4'] ?? '',
+                'combination_5' => $box['combination_5'] ?? '',
+                'flute' => $box['flute'] ?? 'B',
+                'fsc_claim' => $box['fsc_claim'] ?? '100%',
+                'no_of_ups' => $box['no_of_ups'] ?? '',
+                'supplier_price' => isset($box['supplier_price']) && $box['supplier_price'] !== '' ? number_format((float)$box['supplier_price'], 2, '.', '') : '',
+                'reel_size' => isset($box['reel_size']) && $box['reel_size'] !== '' ? number_format((float)$box['reel_size'], 2, '.', '') : '',
+                'cut_size' => isset($box['cut_size']) && $box['cut_size'] !== '' ? number_format((float)$box['cut_size'], 2, '.', '') : '',
+                'board_qty' => isset($box['board_qty']) && $box['board_qty'] !== '' ? number_format((float)$box['board_qty'], 2, '.', '') : '',
+                'notes' => $box['notes'] ?? ''
+            ];
+
+            $this->showEditBoxModal = true;
+        }
+    }
+
+    public function closeEditBoxModal()
+    {
+        $this->showEditBoxModal = false;
+        $this->editingBoxIndex = null;
+        $this->editingBoxData = [];
+    }
+
+    public function saveBox($index)
+    {
+        if (isset($this->boxes[$index])) {
+            // Validate the edited values
+            $this->validate([
+                'editingBoxData.order_qty' => 'required|integer|min:1',
+                'editingBoxData.selling_price' => 'required|numeric|min:0',
+                'editingBoxData.length' => 'required|numeric|min:0.01',
+                'editingBoxData.width' => 'required|numeric|min:0.01',
+                'editingBoxData.height' => 'required|numeric|min:0.01',
+                'editingBoxData.unit' => 'required',
+                'editingBoxData.dimension_type' => 'required',
+                'editingBoxData.top_liner' => 'required',
+                'editingBoxData.ply' => 'required',
+                'editingBoxData.flute' => 'required',
+                'editingBoxData.fsc_claim' => 'required',
+                'editingBoxData.no_of_colours' => 'required|integer|min:0',
+                'editingBoxData.reel_size' => 'required|numeric|min:0',
+                'editingBoxData.cut_size' => 'required|numeric|min:0',
+                'editingBoxData.board_qty' => 'required|numeric|min:0',
+            ]);
+
+            // Update all box data
+            $this->boxes[$index] = array_merge($this->boxes[$index], $this->editingBoxData);
+
+            // Convert boolean fields
+            $this->boxes[$index]['sample_available'] = $this->editingBoxData['sample_available'] === true || $this->editingBoxData['sample_available'] === 'Yes';
+            $this->boxes[$index]['sample_attached'] = $this->editingBoxData['sample_attached'] === true || $this->editingBoxData['sample_attached'] === 'Yes';
+
+            // Convert stitched_glued to lowercase to match database enum
+            if (isset($this->editingBoxData['stitched_glued']) && $this->editingBoxData['stitched_glued'] !== '') {
+                $this->boxes[$index]['stitched_glued'] = strtolower($this->editingBoxData['stitched_glued']);
+            }
+
+            // Ensure numeric fields are floats
+            $this->boxes[$index]['reel_size'] = (float) $this->editingBoxData['reel_size'];
+            $this->boxes[$index]['cut_size'] = (float) $this->editingBoxData['cut_size'];
+            $this->boxes[$index]['board_qty'] = (float) $this->editingBoxData['board_qty'];
+
+            // Close modal and reset
+            $this->closeEditBoxModal();
+
+            session()->flash('success', 'Box updated successfully.');
+        }
+    }
+
+    public function editDivider($index)
+    {
+        if (isset($this->dividers[$index])) {
+            $this->editingDividerIndex = $index;
+            $divider = $this->dividers[$index];
+
+            // Populate all divider data for editing
+            $this->editingDividerData = [
+                'combination_1' => $divider['combination_1'] ?? '',
+                'combination_2' => $divider['combination_2'] ?? '',
+                'combination_3' => $divider['combination_3'] ?? '',
+                'combination_4' => $divider['combination_4'] ?? '',
+                'combination_5' => $divider['combination_5'] ?? '',
+                'combination_6' => $divider['combination_6'] ?? '',
+                'combination_7' => $divider['combination_7'] ?? '',
+                'ply' => $divider['ply'] ?? '',
+                'quantity' => $divider['quantity'] ?? '',
+                'unit' => $divider['unit'] ?? 'CM',
+                'fsc_claim' => $divider['fsc_claim'] ?? '100%',
+                'supplier_price' => isset($divider['supplier_price']) && $divider['supplier_price'] !== '' ? number_format((float)$divider['supplier_price'], 2, '.', '') : '',
+            ];
+
+            $this->showEditDividerModal = true;
+        }
+    }
+
+    public function closeEditDividerModal()
+    {
+        $this->showEditDividerModal = false;
+        $this->editingDividerIndex = null;
+        $this->editingDividerData = [];
+    }
+
+    public function saveDivider($index)
+    {
+        if (isset($this->dividers[$index])) {
+            // Build validation rules based on PLY
+            $rules = [
+                'editingDividerData.quantity' => 'required|integer|min:1',
+                'editingDividerData.unit' => 'required',
+                'editingDividerData.ply' => 'required|in:3,5,7',
+                'editingDividerData.fsc_claim' => 'required',
+            ];
+
+            // Add combination fields validation based on PLY
+            $ply = $this->editingDividerData['ply'] ?? null;
+            if ($ply == '3') {
+                $rules['editingDividerData.combination_1'] = 'required|string';
+                $rules['editingDividerData.combination_2'] = 'required|string';
+                $rules['editingDividerData.combination_3'] = 'required|string';
+            } elseif ($ply == '5') {
+                $rules['editingDividerData.combination_1'] = 'required|string';
+                $rules['editingDividerData.combination_2'] = 'required|string';
+                $rules['editingDividerData.combination_3'] = 'required|string';
+                $rules['editingDividerData.combination_4'] = 'required|string';
+                $rules['editingDividerData.combination_5'] = 'required|string';
+            } elseif ($ply == '7') {
+                $rules['editingDividerData.combination_1'] = 'required|string';
+                $rules['editingDividerData.combination_2'] = 'required|string';
+                $rules['editingDividerData.combination_3'] = 'required|string';
+                $rules['editingDividerData.combination_4'] = 'required|string';
+                $rules['editingDividerData.combination_5'] = 'required|string';
+                $rules['editingDividerData.combination_6'] = 'required|string';
+                $rules['editingDividerData.combination_7'] = 'required|string';
+            }
+
+            // Validate the edited values
+            $this->validate($rules);
+
+            // Update all divider data
+            $this->dividers[$index] = array_merge($this->dividers[$index], $this->editingDividerData);
+
+            // Ensure numeric fields are properly formatted
+            $this->dividers[$index]['quantity'] = (int) $this->editingDividerData['quantity'];
+            if (!empty($this->editingDividerData['supplier_price'])) {
+                $this->dividers[$index]['supplier_price'] = (float) $this->editingDividerData['supplier_price'];
+            }
+
+            // Close modal and reset
+            $this->closeEditDividerModal();
+
+            session()->flash('success', 'Divider updated successfully.');
+        }
     }
 
     public function removeDivider($index)
     {
+        // Reset editing if the removed divider was being edited
+        if ($this->editingDividerIndex === $index) {
+            $this->closeEditDividerModal();
+        } elseif ($this->editingDividerIndex !== null && $this->editingDividerIndex > $index) {
+            // Adjust editing index if a divider before the editing one was removed
+            $this->editingDividerIndex--;
+        }
+
         unset($this->dividers[$index]);
         $this->dividers = array_values($this->dividers);
+        $this->activeTab = 'dividers';
     }
 
     public function saveJobOrder()
@@ -805,6 +1149,9 @@ class JobOrderManagement extends Component
             'fsc_claim' => '100%',
             'no_of_ups' => '',
             'supplier_price' => '',
+            'reel_size' => '',
+            'cut_size' => '',
+            'board_qty' => '',
             'notes' => ''
         ];
 
