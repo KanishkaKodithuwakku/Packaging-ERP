@@ -873,7 +873,7 @@ class JobOrderManagement extends Component
                           ->paginate(15);
 
         $suppliers = Supplier::where('is_active', true)->orderBy('name')->get();
-        $customers = Customer::where('is_active', true)->orderBy('name')->get();
+        $customers = Customer::where('status', 'active')->orderBy('name')->get();
 
         return view('livewire.job-order-management', [
             'jobOrders' => $jobOrders,
