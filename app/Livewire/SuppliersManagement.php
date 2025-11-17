@@ -49,11 +49,12 @@ class SuppliersManagement extends Component
         'mobile' => '',
     ];
 
-    // Finance Tab (view only, no database)
+    // Finance Tab
     public array $financeForm = [
         'payable_account' => '',
         'tax' => '',
         'bank' => '',
+        'currency' => 'LKR',
     ];
 
     // Reel Sizes
@@ -93,6 +94,14 @@ class SuppliersManagement extends Component
                 'email' => $supplier->contact_email ?? '',
                 'phone' => $supplier->contact_phone ?? '',
                 'mobile' => $supplier->contact_mobile ?? '',
+            ];
+
+            // Load finance info
+            $this->financeForm = [
+                'payable_account' => '',
+                'tax' => '',
+                'bank' => '',
+                'currency' => $supplier->currency ?? 'LKR',
             ];
 
             // Load reel sizes
@@ -140,6 +149,14 @@ class SuppliersManagement extends Component
             'email' => $supplier->contact_email ?? '',
             'phone' => $supplier->contact_phone ?? '',
             'mobile' => $supplier->contact_mobile ?? '',
+        ];
+
+        // Load finance info
+        $this->financeForm = [
+            'payable_account' => '',
+            'tax' => '',
+            'bank' => '',
+            'currency' => $supplier->currency ?? 'LKR',
         ];
 
         // Load reel sizes
@@ -281,6 +298,7 @@ class SuppliersManagement extends Component
                 'contactForm.email' => 'nullable|email|max:255',
                 'contactForm.phone' => 'nullable|string|max:50',
                 'contactForm.mobile' => 'nullable|string|max:50',
+                'financeForm.currency' => 'nullable|string|max:3',
             ]));
         } catch (ValidationException $e) {
             session()->flash('error', 'Please check some fields are empty or have duplicate values.');
@@ -299,6 +317,7 @@ class SuppliersManagement extends Component
             'contact_email' => !empty($validated['contactForm']['email']) ? $validated['contactForm']['email'] : null,
             'contact_phone' => !empty($validated['contactForm']['phone']) ? $validated['contactForm']['phone'] : null,
             'contact_mobile' => !empty($validated['contactForm']['mobile']) ? $validated['contactForm']['mobile'] : null,
+            'currency' => $validated['financeForm']['currency'] ?? 'LKR',
         ]);
 
         if ($this->editingId) {
