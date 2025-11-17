@@ -3,6 +3,10 @@
 namespace App\Livewire;
 
 use App\Models\Customer;
+use App\Models\CustomerOrder;
+use App\Models\JobOrder;
+use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -197,35 +201,65 @@ class CustomersManagement extends Component
 
     public function save()
     {
-        // Build email validation rules
-        $emailRules = 'required|email|max:255';
-        if ($this->editingId) {
-            $emailRules .= '|unique:customers,email,' . $this->editingId;
-        } else {
-            $emailRules .= '|unique:customers,email';
-        }
+        try {
+            // Build unique validation rules for general info fields
+            $excludeId = $this->editingId;
+            
+            $uniqueRules = [
+                'form.name' => [
+                    'required',
+                    'string',
+                    'max:255',
+                    $excludeId 
+                        ? Rule::unique('customers', 'name')->ignore($excludeId)
+                        : Rule::unique('customers', 'name'),
+                ],
+                'form.address' => [
+                    'required',
+                    'string',
+                    $excludeId 
+                        ? Rule::unique('customers', 'address')->ignore($excludeId)
+                        : Rule::unique('customers', 'address'),
+                ],
+                'form.phone' => [
+                    'required',
+                    'string',
+                    'max:50',
+                    $excludeId 
+                        ? Rule::unique('customers', 'phone')->ignore($excludeId)
+                        : Rule::unique('customers', 'phone'),
+                ],
+                'form.email' => [
+                    'required',
+                    'email',
+                    'max:255',
+                    $excludeId 
+                        ? Rule::unique('customers', 'email')->ignore($excludeId)
+                        : Rule::unique('customers', 'email'),
+                ],
+            ];
 
-        $validated = $this->validate([
-            'form.name' => 'required|string|max:255',
-            'form.phone' => 'nullable|string|max:50',
-            'form.email' => $emailRules,
-            'form.website' => 'nullable|url|max:255',
-            'form.address' => 'nullable|string',
-            'form.notes' => 'nullable|string',
-            'form.status' => 'required|string',
-            'contactForm.first_name' => 'nullable|string|max:255',
-            'contactForm.last_name' => 'nullable|string|max:255',
-            'contactForm.email' => 'nullable|email|max:255',
-            'contactForm.phone' => 'nullable|string|max:50',
-            'contactForm.mobile' => 'nullable|string|max:50',
-            'creditLimitForm.credit_limit_period' => 'nullable|string|max:255',
-            'creditLimitForm.credit_limit_amount' => 'nullable|numeric|min:0',
-            'financeForm.account_receivable' => 'nullable|string|max:255',
-            'financeForm.sales_revenue' => 'nullable|string|max:255',
-            'financeForm.currency' => 'nullable|string|max:3',
-            'financeForm.tax' => 'nullable|string|max:255',
-            'financeForm.bank' => 'nullable|string|max:255',
-        ]);
+            $validated = $this->validate(array_merge($uniqueRules, [
+                'form.website' => 'nullable|url|max:255',
+                'form.notes' => 'nullable|string',
+                'form.status' => 'required|string',
+                'contactForm.first_name' => 'nullable|string|max:255',
+                'contactForm.last_name' => 'nullable|string|max:255',
+                'contactForm.email' => 'nullable|email|max:255',
+                'contactForm.phone' => 'nullable|string|max:50',
+                'contactForm.mobile' => 'nullable|string|max:50',
+                'creditLimitForm.credit_limit_period' => 'nullable|string|max:255',
+                'creditLimitForm.credit_limit_amount' => 'nullable|numeric|min:0',
+                'financeForm.account_receivable' => 'nullable|string|max:255',
+                'financeForm.sales_revenue' => 'nullable|string|max:255',
+                'financeForm.currency' => 'nullable|string|max:3',
+                'financeForm.tax' => 'nullable|string|max:255',
+                'financeForm.bank' => 'nullable|string|max:255',
+            ]));
+        } catch (ValidationException $e) {
+            session()->flash('error', 'Please check some fields are empty or have duplicate values.');
+            throw $e;
+        }
 
         $customerData = array_merge($validated['form'], [
             'contact_first_name' => $validated['contactForm']['first_name'] ?? null,
@@ -258,6 +292,12 @@ class CustomersManagement extends Component
 
     public function openDeleteConfirmModal($id)
     {
+        // Check if customer is in use
+        if ($this->isCustomerInUse($id)) {
+            session()->flash('error', 'This customer is in use and cannot be deleted.');
+            return;
+        }
+        
         $this->customerToDelete = $id;
         $this->showDeleteConfirmModal = true;
     }
@@ -270,11 +310,41 @@ class CustomersManagement extends Component
 
     public function delete($id)
     {
-        Customer::where('id', $id)->delete();
+        $customer = Customer::find($id);
+        
+        if (!$customer) {
+            session()->flash('error', 'Customer not found.');
+            $this->closeDeleteConfirmModal();
+            return;
+        }
+
+        // Check if customer is in use
+        if ($this->isCustomerInUse($id)) {
+            session()->flash('error', 'This customer is in use and cannot be deleted.');
+            $this->closeDeleteConfirmModal();
+            return;
+        }
+
+        $customer->delete();
         session()->flash('success', 'Customer deleted');
 
         // Close modal
         $this->closeDeleteConfirmModal();
+    }
+
+    private function isCustomerInUse($customerId): bool
+    {
+        // Check if customer is used in job orders
+        if (JobOrder::where('customer_id', $customerId)->exists()) {
+            return true;
+        }
+
+        // Check if customer is used in customer orders
+        if (CustomerOrder::where('customer_id', $customerId)->exists()) {
+            return true;
+        }
+
+        return false;
     }
 
     public function render()
@@ -287,6 +357,12 @@ class CustomersManagement extends Component
             })
             ->orderBy('name')
             ->paginate(10);
+
+        // Add in-use status to each customer
+        $customers->getCollection()->transform(function ($customer) {
+            $customer->is_in_use = $this->isCustomerInUse($customer->id);
+            return $customer;
+        });
 
         return view('livewire.customers.management', [
             'customers' => $customers,
