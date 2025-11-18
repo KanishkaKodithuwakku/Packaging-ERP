@@ -24,6 +24,7 @@
                                     class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                                 <option value="100%">100%</option>
                                 <option value="MIX">MIX</option>
+                                <option value="No Claim">No Claim</option>
                             </select>
                             @error('editingDividerData.fsc_claim') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
