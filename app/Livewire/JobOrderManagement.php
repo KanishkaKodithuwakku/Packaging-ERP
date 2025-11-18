@@ -716,7 +716,7 @@ class JobOrderManagement extends Component
             'activity' => $this->boxForm['activity'],
             'printing_instruction' => $this->boxForm['printing_instruction'],
             'no_of_colours' => $this->boxForm['no_of_colours'],
-            'stitched_glued' => $this->boxForm['stitched_glued'],
+            'stitched_glued' => ($this->boxForm['stitched_glued'] === 'None' || $this->boxForm['stitched_glued'] === '') ? null : strtolower($this->boxForm['stitched_glued']),
             'sample_available' => $this->boxForm['sample_available'] === 'Yes',
             'sample_attached' => $this->boxForm['sample_attached'] === 'Yes',
             'length' => $this->boxForm['length'],
@@ -810,7 +810,7 @@ class JobOrderManagement extends Component
                 'activity' => $box['activity'] ?? '',
                 'printing_instruction' => $box['printing_instruction'] ?? '',
                 'no_of_colours' => $box['no_of_colours'] ?? '',
-                'stitched_glued' => isset($box['stitched_glued']) && $box['stitched_glued'] !== '' ? ucfirst(strtolower($box['stitched_glued'])) : '',
+                'stitched_glued' => isset($box['stitched_glued']) && $box['stitched_glued'] !== '' && $box['stitched_glued'] !== null ? ucfirst(strtolower($box['stitched_glued'])) : 'None',
                 'sample_available' => $box['sample_available'] ?? false,
                 'sample_attached' => $box['sample_attached'] ?? false,
                 'length' => isset($box['length']) && $box['length'] !== '' ? number_format((float)$box['length'], 2, '.', '') : '',
@@ -875,9 +875,11 @@ class JobOrderManagement extends Component
             $this->boxes[$index]['sample_available'] = $this->editingBoxData['sample_available'] === true || $this->editingBoxData['sample_available'] === 'Yes';
             $this->boxes[$index]['sample_attached'] = $this->editingBoxData['sample_attached'] === true || $this->editingBoxData['sample_attached'] === 'Yes';
 
-            // Convert stitched_glued to lowercase to match database enum
-            if (isset($this->editingBoxData['stitched_glued']) && $this->editingBoxData['stitched_glued'] !== '') {
+            // Convert stitched_glued to lowercase to match database enum, or null if None
+            if (isset($this->editingBoxData['stitched_glued']) && $this->editingBoxData['stitched_glued'] !== '' && $this->editingBoxData['stitched_glued'] !== 'None') {
                 $this->boxes[$index]['stitched_glued'] = strtolower($this->editingBoxData['stitched_glued']);
+            } else {
+                $this->boxes[$index]['stitched_glued'] = null;
             }
 
             // Ensure numeric fields are floats
