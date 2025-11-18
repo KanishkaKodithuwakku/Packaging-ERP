@@ -340,7 +340,7 @@ class JobOrderDetail extends Component
                 'activity' => $this->boxForm['activity'],
                 'printing_instruction' => $this->boxForm['printing_instruction'],
                 'no_of_colours' => (int)$this->boxForm['no_of_colours'],
-                'stitched_glued' => $this->boxForm['stitched_glued'],
+                'stitched_glued' => ($this->boxForm['stitched_glued'] === 'None' || $this->boxForm['stitched_glued'] === '') ? null : strtolower($this->boxForm['stitched_glued']),
                 'sample_available' => $this->boxForm['sample_available'] === 'Yes',
                 'sample_attached' => $this->boxForm['sample_attached'] === 'Yes',
                 'length' => $this->boxForm['length'],
@@ -476,7 +476,7 @@ class JobOrderDetail extends Component
                 'activity' => $box['activity'] ?? '',
                 'printing_instruction' => $box['printing_instruction'] ?? '',
                 'no_of_colours' => $box['no_of_colours'] ?? '',
-                'stitched_glued' => isset($box['stitched_glued']) && $box['stitched_glued'] !== '' ? ucfirst(strtolower($box['stitched_glued'])) : '',
+                'stitched_glued' => isset($box['stitched_glued']) && $box['stitched_glued'] !== '' && $box['stitched_glued'] !== null ? ucfirst(strtolower($box['stitched_glued'])) : 'None',
                 'sample_available' => $box['sample_available'] ?? false ? 'Yes' : 'No',
                 'sample_attached' => $box['sample_attached'] ?? false ? 'Yes' : 'No',
                 'length' => isset($box['length']) && $box['length'] !== '' ? number_format((float)$box['length'], 2, '.', '') : '',
@@ -644,7 +644,7 @@ class JobOrderDetail extends Component
                     $jobOrderBox->activity = $this->editingBoxData['activity'];
                     $jobOrderBox->printing_instruction = $this->editingBoxData['printing_instruction'];
                     $jobOrderBox->no_of_colours = (int) $this->editingBoxData['no_of_colours'];
-                    $jobOrderBox->stitched_glued = strtolower($this->editingBoxData['stitched_glued']);
+                    $jobOrderBox->stitched_glued = ($this->editingBoxData['stitched_glued'] === 'None' || $this->editingBoxData['stitched_glued'] === '') ? null : strtolower($this->editingBoxData['stitched_glued']);
                     $jobOrderBox->sample_available = $this->editingBoxData['sample_available'] === 'Yes';
                     $jobOrderBox->sample_attached = $this->editingBoxData['sample_attached'] === 'Yes';
                     $jobOrderBox->length = (float) $this->editingBoxData['length'];
