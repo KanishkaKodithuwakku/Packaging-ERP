@@ -49,10 +49,8 @@
                             <select wire:model="boxForm.printing_instruction"
                                     class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                                 <option value="">Select...</option>
-                                <option value="No Printing">No Printing</option>
-                                <option value="Single Color">Single Color</option>
-                                <option value="Multi Color">Multi Color</option>
-                                <option value="Full Color">Full Color</option>
+                                <option value="Printed">Printed</option>
+                                <option value="UnPrinted">UnPrinted</option>
                             </select>
                             @error('boxForm.printing_instruction') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
@@ -79,6 +77,7 @@
                             <select wire:model="boxForm.stitched_glued"
                                     class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                                 <option value="">Select...</option>
+                                <option value="None">None</option>
                                 <option value="Stitched">Stitched</option>
                                 <option value="Glued">Glued</option>
                             </select>
@@ -214,6 +213,7 @@
                         <div class="flex-1">
                             <select wire:model="boxForm.fsc_claim"
                                     class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                <option value="No Claim">No Claim</option>
                                 <option value="100%">100%</option>
                                 <option value="MIX">MIX</option>
                             </select>
