@@ -95,10 +95,20 @@ class JobOrderDetail extends Component
     public $showEditBoxModal = false;
     public $editingBoxData = [];
 
+    // Box viewing state
+    public $viewingBoxIndex = null;
+    public $showViewBoxModal = false;
+    public $viewingBoxData = [];
+
     // Divider editing state
     public $editingDividerIndex = null;
     public $showEditDividerModal = false;
     public $editingDividerData = [];
+
+    // Divider viewing state
+    public $viewingDividerIndex = null;
+    public $showViewDividerModal = false;
+    public $viewingDividerData = [];
 
     public function mount($id, $edit = false)
     {
@@ -514,6 +524,57 @@ class JobOrderDetail extends Component
         $this->editingBoxData = [];
     }
 
+    public function viewBox($index)
+    {
+        if (isset($this->boxes[$index])) {
+            $this->viewingBoxIndex = $index;
+            $box = $this->boxes[$index];
+            
+            // Populate all box data for viewing
+            $this->viewingBoxData = [
+                'order_qty' => number_format($box['order_qty'] ?? 0),
+                'selling_price' => isset($box['selling_price']) && $box['selling_price'] !== '' ? number_format((float)$box['selling_price'], 2) : '-',
+                'activity' => $box['activity'] ?? '-',
+                'printing_instruction' => $box['printing_instruction'] ?? '-',
+                'no_of_colours' => $box['no_of_colours'] ?? '-',
+                'stitched_glued' => isset($box['stitched_glued']) && $box['stitched_glued'] !== '' && $box['stitched_glued'] !== null ? ucfirst(strtolower($box['stitched_glued'])) : '-',
+                'sample_available' => $box['sample_available'] ?? false ? 'Yes' : 'No',
+                'sample_attached' => $box['sample_attached'] ?? false ? 'Yes' : 'No',
+                'length' => isset($box['length']) ? number_format((float)$box['length'], 3) : '-',
+                'width' => isset($box['width']) ? number_format((float)$box['width'], 3) : '-',
+                'height' => isset($box['height']) ? number_format((float)$box['height'], 3) : '-',
+                'unit' => $box['unit'] ?? 'CM',
+                'dimension_type' => $box['dimension_type'] ?? '-',
+                'top_liner' => $box['top_liner'] ?? '-',
+                'ply' => $box['ply'] ?? '-',
+                'combination_1' => $box['combination_1'] ?? '-',
+                'combination_2' => $box['combination_2'] ?? '-',
+                'combination_3' => $box['combination_3'] ?? '-',
+                'combination_4' => $box['combination_4'] ?? '-',
+                'combination_5' => $box['combination_5'] ?? '-',
+                'combination_6' => $box['combination_6'] ?? '-',
+                'combination_7' => $box['combination_7'] ?? '-',
+                'flute' => $box['flute'] ?? '-',
+                'fsc_claim' => $box['fsc_claim'] ?? '-',
+                'no_of_ups' => $box['no_of_ups'] ?? '-',
+                'supplier_price' => isset($box['supplier_price']) && $box['supplier_price'] !== '' ? number_format((float)$box['supplier_price'], 2) : '-',
+                'reel_size' => isset($box['reel_size']) && $box['reel_size'] !== '' ? number_format((float)$box['reel_size'], 3) : '-',
+                'cut_size' => isset($box['cut_size']) && $box['cut_size'] !== '' ? number_format((float)$box['cut_size'], 3) : '-',
+                'board_qty' => isset($box['board_qty']) && $box['board_qty'] !== '' ? number_format((float)$box['board_qty'], 3) : '-',
+                'notes' => $box['notes'] ?? '-'
+            ];
+            
+            $this->showViewBoxModal = true;
+        }
+    }
+
+    public function closeViewBoxModal()
+    {
+        $this->showViewBoxModal = false;
+        $this->viewingBoxIndex = null;
+        $this->viewingBoxData = [];
+    }
+
     public function calculateBoardQtyForEdit()
     {
         if (isset($this->editingBoxData['order_qty']) && isset($this->editingBoxData['no_of_ups']) && 
@@ -750,6 +811,39 @@ class JobOrderDetail extends Component
             
             $this->showEditDividerModal = true;
         }
+    }
+
+    public function viewDivider($index)
+    {
+        if (isset($this->dividers[$index])) {
+            $this->viewingDividerIndex = $index;
+            $divider = $this->dividers[$index];
+            
+            // Populate all divider data for viewing
+            $this->viewingDividerData = [
+                'combination_1' => $divider['combination_1'] ?? '-',
+                'combination_2' => $divider['combination_2'] ?? '-',
+                'combination_3' => $divider['combination_3'] ?? '-',
+                'combination_4' => $divider['combination_4'] ?? '-',
+                'combination_5' => $divider['combination_5'] ?? '-',
+                'combination_6' => $divider['combination_6'] ?? '-',
+                'combination_7' => $divider['combination_7'] ?? '-',
+                'ply' => $divider['ply'] ?? '-',
+                'quantity' => number_format($divider['quantity'] ?? 0),
+                'unit' => $divider['unit'] ?? 'CM',
+                'fsc_claim' => $divider['fsc_claim'] ?? '-',
+                'supplier_price' => isset($divider['supplier_price']) && $divider['supplier_price'] !== '' ? number_format((float)$divider['supplier_price'], 2) : '-',
+            ];
+            
+            $this->showViewDividerModal = true;
+        }
+    }
+
+    public function closeViewDividerModal()
+    {
+        $this->showViewDividerModal = false;
+        $this->viewingDividerIndex = null;
+        $this->viewingDividerData = [];
     }
 
     public function closeEditDividerModal()
