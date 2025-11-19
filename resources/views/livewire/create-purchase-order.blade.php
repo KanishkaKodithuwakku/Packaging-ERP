@@ -208,7 +208,7 @@
                                                     foreach($selectedItems as $selectedItem) {
                                                         if($selectedItem['id'] === $item['id']) {
                                                             $isSelected = true;
-                                                            $selectedQty = $selectedItem['selected_qty'];
+                                                            $selectedQty = $selectedItem['board_qty'];
                                                             break;
                                                         }
                                                     }
@@ -319,7 +319,7 @@
                                                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">#</th>
                                                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Item Name</th>
                                                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
-                                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Qty</th>
+                                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Board Qty</th>
                                                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
                                             </tr>
                                         </thead>
@@ -330,15 +330,21 @@
                                                 <td class="px-4 py-2 text-sm font-medium text-gray-900">{{ $item['type'] }}</td>
                                                 <td class="px-4 py-2 text-sm text-gray-600">{{ $item['description'] }}</td>
                                                 <td class="px-4 py-2 text-sm">
-                                                    <input type="number"
-                                                           wire:model.live="selectedItems.{{ $index }}.selected_qty"
-                                                           wire:change="updateSelectedQuantity('{{ $item['id'] }}', $event.target.value)"
-                                                           min="1"
-                                                           max="{{ $item['available_qty'] }}"
-                                                           step="1"
-                                                           class="w-20 px-2 py-1 border border-gray-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500 {{ $item['selected_qty'] > $item['available_qty'] ? 'border-red-500 bg-red-50' : '' }}"
-                                                           title="Available: {{ $item['available_qty'] }}"
-                                                           oninput="if(this.value > {{ $item['available_qty'] }}) { this.value = {{ $item['available_qty'] }}; } if(this.value < 1) { this.value = 1; }">
+                                                    @if($item['type'] === 'BOX')
+                                                        {{-- For BOX items, board_qty is read-only and comes from database --}}
+                                                        <span class="text-gray-900">{{ $item['board_qty'] }}</span>
+                                                    @else
+                                                        {{-- For DIVIDER items, purchase_qty is editable --}}
+                                                        <input type="number"
+                                                               wire:model.live="selectedItems.{{ $index }}.purchase_qty"
+                                                               wire:change="updateSelectedQuantity('{{ $item['id'] }}', $event.target.value)"
+                                                               min="1"
+                                                               max="{{ $item['available_qty'] }}"
+                                                               step="1"
+                                                               class="w-20 px-2 py-1 border border-gray-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500 {{ ($item['purchase_qty'] ?? $item['board_qty']) > $item['available_qty'] ? 'border-red-500 bg-red-50' : '' }}"
+                                                               title="Available: {{ $item['available_qty'] }}"
+                                                               oninput="if(this.value > {{ $item['available_qty'] }}) { this.value = {{ $item['available_qty'] }}; } if(this.value < 1) { this.value = 1; }">
+                                                    @endif
                                                 </td>
                                                 <td class="px-4 py-2 text-sm">
                                                     <button wire:click="removeItem('{{ $item['id'] }}')"
@@ -394,7 +400,7 @@
                                 $supplierData = $itemsBySupplier[$supplier['id']];
                                 $itemCount = count($supplierData['items']);
                                 $totalValue = collect($supplierData['items'])->sum(function($item) {
-                                    return $item['selected_qty'] * $item['unit_cost'];
+                                    return $item['board_qty'] * $item['unit_cost'];
                                 });
                             @endphp
                             <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors {{ $selectedSupplierId == $supplier['id'] ? 'border-blue-500 bg-blue-50' : '' }}"
@@ -495,10 +501,22 @@
                                     <div class="flex justify-between items-center text-sm border-b border-gray-100 pb-2">
                                         <div>
                                             <div class="font-medium">{{ $item['description'] }}</div>
-                                            <div class="text-gray-600">Qty: {{ $item['selected_qty'] }} | {{ $this->getCurrencySymbol() }}{{ number_format($item['unit_cost'], 2) }} each</div>
+                                            <div class="text-gray-600">
+                                                @php
+                                                    $purchaseQty = $item['purchase_qty'] ?? $item['available_qty'];
+                                                @endphp
+                                                @if($item['type'] === 'BOX')
+                                                    Board Qty: {{ number_format($item['board_qty']) }} (Purchase: {{ number_format($purchaseQty) }}) | {{ $this->getCurrencySymbol() }}{{ number_format($item['unit_cost'], 2) }} each
+                                                @else
+                                                    Qty: {{ number_format($item['board_qty']) }} (Purchase: {{ number_format($purchaseQty) }}) | {{ $this->getCurrencySymbol() }}{{ number_format($item['unit_cost'], 2) }} each
+                                                @endif
+                                            </div>
                                         </div>
-                                        <div class="text-right">
-                                            <div class="font-medium">{{ $this->getCurrencySymbol() }}{{ number_format($item['selected_qty'] * $item['unit_cost'], 2) }}</div>
+                                            <div class="text-right">
+                                            @php
+                                                $purchaseQty = $item['purchase_qty'] ?? $item['board_qty'];
+                                            @endphp
+                                            <div class="font-medium">{{ $this->getCurrencySymbol() }}{{ number_format($purchaseQty * $item['unit_cost'], 2) }}</div>
                                         </div>
                                     </div>
                                 @endforeach

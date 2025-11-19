@@ -10,6 +10,7 @@ use App\Models\JobOrderDivider;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class JobOrderManagement extends Component
 {
@@ -1222,7 +1223,13 @@ class JobOrderManagement extends Component
                           ->paginate(15);
 
         $suppliers = Supplier::where('is_active', true)->orderBy('name')->get();
-        $customers = Customer::where('status', 'active')->orderBy('name')->get();
+        
+        // Check if status column exists, otherwise get all customers
+        $customers = Customer::query();
+        if (Schema::hasColumn('customers', 'status')) {
+            $customers->where('status', 'active');
+        }
+        $customers = $customers->orderBy('name')->get();
 
         return view('livewire.job-order-management', [
             'jobOrders' => $jobOrders,
