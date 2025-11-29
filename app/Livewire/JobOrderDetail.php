@@ -600,6 +600,7 @@ class JobOrderDetail extends Component
                 'notes' => $box['notes'] ?? '-'
             ];
             
+            // Show the detailed modal
             $this->showViewBoxModal = true;
         }
     }
@@ -871,6 +872,7 @@ class JobOrderDetail extends Component
                 'supplier_price' => isset($divider['supplier_price']) && $divider['supplier_price'] !== '' ? number_format((float)$divider['supplier_price'], 2) : '-',
             ];
             
+            // Show the detailed modal
             $this->showViewDividerModal = true;
         }
     }
@@ -1002,43 +1004,7 @@ class JobOrderDetail extends Component
         }
     }
 
-    /**
-     * View a single box in a read-only modal
-     */
-    public function viewBox($index)
-    {
-        if (!isset($this->boxes[$index])) {
-            return;
-        }
 
-        $this->boxViewData = $this->boxes[$index];
-        $this->showBoxViewModal = true;
-    }
-
-    public function closeBoxViewModal()
-    {
-        $this->showBoxViewModal = false;
-        $this->boxViewData = null;
-    }
-
-    /**
-     * View a single divider in a read-only modal
-     */
-    public function viewDivider($index)
-    {
-        if (!isset($this->dividers[$index])) {
-            return;
-        }
-
-        $this->dividerViewData = $this->dividers[$index];
-        $this->showDividerViewModal = true;
-    }
-
-    public function closeDividerViewModal()
-    {
-        $this->showDividerViewModal = false;
-        $this->dividerViewData = null;
-    }
 
     public function saveJobOrder()
     {
