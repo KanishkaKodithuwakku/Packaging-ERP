@@ -6,6 +6,255 @@
     </div>
     @endif
 
+    <!-- Divider View Modal -->
+    @if($showDividerViewModal && $dividerViewData)
+    <div class="fixed inset-0 bg-gray-700 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-16 mx-auto p-6 border w-11/12 md:w-2/3 lg:w-1/2 shadow-xl rounded-lg bg-white">
+            <div class="mt-3">
+                <!-- Modal Header -->
+                <div class="flex items-center justify-between pb-4 border-b border-gray-200">
+                    <h3 class="text-2xl font-semibold text-gray-900">Divider Details</h3>
+                    <button wire:click="closeDividerViewModal" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="mt-5 space-y-4 text-base leading-relaxed">
+                    <div class="flex">
+                        <span class="w-44 font-semibold text-gray-700">Quantity</span>
+                        <span class="text-gray-900 font-medium">
+                            {{ number_format($dividerViewData['quantity'] ?? 0) }}
+                        </span>
+                    </div>
+                    <div class="flex">
+                        <span class="w-44 font-semibold text-gray-700">Ply</span>
+                        <span class="text-gray-900">{{ $dividerViewData['ply'] ?? '-' }}</span>
+                    </div>
+                    <div class="flex">
+                        <span class="w-44 font-semibold text-gray-700">Supplier Price</span>
+                        <span class="text-gray-900">
+                            {{ isset($dividerViewData['supplier_price']) ? number_format($dividerViewData['supplier_price'], 2) : '-' }}
+                        </span>
+                    </div>
+                    <div class="flex">
+                        <span class="w-44 font-semibold text-gray-700">Combinations</span>
+                        <span class="text-gray-900">
+                            {{ implode(' / ', array_filter([
+                                $dividerViewData['combination_1'] ?? null,
+                                $dividerViewData['combination_2'] ?? null,
+                                $dividerViewData['combination_3'] ?? null,
+                                $dividerViewData['combination_4'] ?? null,
+                                $dividerViewData['combination_5'] ?? null,
+                                $dividerViewData['combination_6'] ?? null,
+                                $dividerViewData['combination_7'] ?? null,
+                            ])) ?: '-' }}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="mt-8 flex justify-end">
+                    <button wire:click="closeDividerViewModal"
+                            class="px-5 py-2.5 bg-gray-600 text-white text-sm font-medium rounded-md hover:bg-gray-700">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    <!-- Box View Modal -->
+    @if($showBoxViewModal && $boxViewData)
+    <div class="fixed inset-0 bg-gray-700 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-16 mx-auto p-6 border w-11/12 md:w-2/3 lg:w-1/2 shadow-xl rounded-lg bg-white">
+            <div class="mt-3">
+                <!-- Modal Header -->
+                <div class="flex items-center justify-between pb-4 border-b border-gray-200">
+                    <h3 class="text-2xl font-semibold text-gray-900">Box Details</h3>
+                    <button wire:click="closeBoxViewModal" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="mt-5 grid grid-cols-1 md:grid-cols-2 gap-8 text-base leading-relaxed">
+                    <!-- Left: Details -->
+                    <div class="space-y-4">
+                        <!-- Basic Information -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3">
+                            <div class="flex">
+                                <span class="w-44 font-semibold text-gray-700">Order Quantity</span>
+                                <span class="text-gray-900">
+                                    {{ number_format($boxViewData['order_qty'] ?? 0) }}
+                                </span>
+                            </div>
+                            <div class="flex">
+                                <span class="w-44 font-semibold text-gray-700">Selling Price</span>
+                                <span class="text-gray-900">
+                                    {{ isset($boxViewData['selling_price']) ? number_format($boxViewData['selling_price'], 2) : '-' }}
+                                </span>
+                            </div>
+                            <div class="flex">
+                                <span class="w-44 font-semibold text-gray-700">Activity</span>
+                                <span class="text-gray-900">{{ $boxViewData['activity'] ?? '-' }}</span>
+                            </div>
+                            <div class="flex">
+                                <span class="w-44 font-semibold text-gray-700">Printing Instruction</span>
+                                <span class="text-gray-900">{{ $boxViewData['printing_instruction'] ?? '-' }}</span>
+                            </div>
+                            <div class="flex">
+                                <span class="w-44 font-semibold text-gray-700">No. of Colours</span>
+                                <span class="text-gray-900">
+                                    {{ number_format($boxViewData['no_of_colours'] ?? 0) }}
+                                </span>
+                            </div>
+                            <div class="flex">
+                                <span class="w-44 font-semibold text-gray-700">Stitched / Glued</span>
+                                <span class="text-gray-900">{{ $boxViewData['stitched_glued'] ?? '-' }}</span>
+                            </div>
+                            <div class="flex">
+                                <span class="w-44 font-semibold text-gray-700">Sample Available</span>
+                                <span class="text-gray-900">
+                                    {{ ($boxViewData['sample_available'] ?? false) ? 'Yes' : 'No' }}
+                                </span>
+                            </div>
+                            <div class="flex">
+                                <span class="w-44 font-semibold text-gray-700">Sample Attached</span>
+                                <span class="text-gray-900">
+                                    {{ ($boxViewData['sample_attached'] ?? false) ? 'Yes' : 'No' }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Dimensions & Material -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3 mt-4">
+                            <div class="flex">
+                                <span class="w-44 font-semibold text-gray-700">Dimensions</span>
+                                <span class="text-gray-900">
+                                    {{ number_format($boxViewData['length'] ?? 0, 3) }} x
+                                    {{ number_format($boxViewData['width'] ?? 0, 3) }} x
+                                    {{ number_format($boxViewData['height'] ?? 0, 3) }}
+                                    {{ $boxViewData['unit'] ?? '' }}
+                                </span>
+                            </div>
+                            <div class="flex">
+                                <span class="w-44 font-semibold text-gray-700">Dimension Type</span>
+                                <span class="text-gray-900">
+                                    {{ $boxViewData['dimension_type'] ?? '-' }}
+                                </span>
+                            </div>
+                            <div class="flex">
+                                <span class="w-44 font-semibold text-gray-700">Top Liner</span>
+                                <span class="text-gray-900">{{ $boxViewData['top_liner'] ?? '-' }}</span>
+                            </div>
+                            <div class="flex">
+                                <span class="w-44 font-semibold text-gray-700">Ply</span>
+                                <span class="text-gray-900">{{ $boxViewData['ply'] ?? '-' }}</span>
+                            </div>
+                            <div class="flex">
+                                <span class="w-44 font-semibold text-gray-700">Flute</span>
+                                <span class="text-gray-900">{{ $boxViewData['flute'] ?? '-' }}</span>
+                            </div>
+                            <div class="flex">
+                                <span class="w-44 font-semibold text-gray-700">FSC Claim</span>
+                                <span class="text-gray-900">{{ $boxViewData['fsc_claim'] ?? '-' }}</span>
+                            </div>
+                            <div class="flex">
+                                <span class="w-44 font-semibold text-gray-700">No. of Ups</span>
+                                <span class="text-gray-900">
+                                    {{ number_format($boxViewData['no_of_ups'] ?? 0) }}
+                                </span>
+                            </div>
+                            <div class="flex">
+                                <span class="w-44 font-semibold text-gray-700">Supplier Price</span>
+                                <span class="text-gray-900">
+                                    {{ isset($boxViewData['supplier_price']) ? number_format($boxViewData['supplier_price'], 2) : '-' }}
+                                </span>
+                            </div>
+                            <div class="flex">
+                                <span class="w-44 font-semibold text-gray-700">Reel Size</span>
+                                <span class="text-gray-900">
+                                    {{ isset($boxViewData['reel_size']) ? number_format($boxViewData['reel_size'], 3) : '-' }}
+                                </span>
+                            </div>
+                            <div class="flex">
+                                <span class="w-44 font-semibold text-gray-700">Cut Size</span>
+                                <span class="text-gray-900">
+                                    {{ isset($boxViewData['cut_size']) ? number_format($boxViewData['cut_size'], 3) : '-' }}
+                                </span>
+                            </div>
+                            <div class="flex">
+                                <span class="w-44 font-semibold text-gray-700">Board Qty</span>
+                                <span class="text-gray-900 font-medium">
+                                    {{ number_format($boxViewData['board_qty'] ?? $boxViewData['order_qty'] ?? 0) }}
+                                </span>
+                            </div>
+                            <div class="flex">
+                                <span class="w-44 font-semibold text-gray-700">Combinations</span>
+                                <span class="text-gray-900">
+                                    {{ implode(' / ', array_filter([
+                                        $boxViewData['combination_1'] ?? null,
+                                        $boxViewData['combination_2'] ?? null,
+                                        $boxViewData['combination_3'] ?? null,
+                                        $boxViewData['combination_4'] ?? null,
+                                        $boxViewData['combination_5'] ?? null,
+                                        $boxViewData['combination_6'] ?? null,
+                                        $boxViewData['combination_7'] ?? null,
+                                    ])) ?: '-' }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Box schematic (2D with dimension arrows) -->
+                    <div class="flex items-center justify-center">
+                        <svg viewBox="0 0 220 150" class="w-56 h-40 text-gray-700">
+                            <!-- Front rectangle -->
+                            <rect x="40" y="40" width="130" height="70" fill="#F9FAFB" stroke="#4B5563" stroke-width="2"/>
+
+                            <!-- Length arrow (horizontal, bottom) -->
+                            <line x1="40" y1="120" x2="170" y2="120" stroke="#4B5563" stroke-width="1.5"/>
+                            <line x1="40" y1="116" x2="40" y2="124" stroke="#4B5563" stroke-width="1.5"/>
+                            <line x1="170" y1="116" x2="170" y2="124" stroke="#4B5563" stroke-width="1.5"/>
+                            <text x="105" y="135" text-anchor="middle" class="fill-current text-xs">
+                                L {{ number_format($boxViewData['length'] ?? 0, 0) }} {{ $boxViewData['unit'] ?? '' }}
+                            </text>
+
+                            <!-- Width arrow (horizontal, top) -->
+                            <line x1="40" y1="30" x2="170" y2="30" stroke="#9CA3AF" stroke-width="1"/>
+                            <line x1="40" y1="26" x2="40" y2="34" stroke="#9CA3AF" stroke-width="1"/>
+                            <line x1="170" y1="26" x2="170" y2="34" stroke="#9CA3AF" stroke-width="1"/>
+                            <text x="105" y="22" text-anchor="middle" class="fill-current text-[11px] text-gray-500">
+                                W {{ number_format($boxViewData['width'] ?? 0, 0) }} {{ $boxViewData['unit'] ?? '' }}
+                            </text>
+
+                            <!-- Height arrow (vertical, right side) -->
+                            <line x1="190" y1="40" x2="190" y2="110" stroke="#4B5563" stroke-width="1.5"/>
+                            <line x1="186" y1="40" x2="194" y2="40" stroke="#4B5563" stroke-width="1.5"/>
+                            <line x1="186" y1="110" x2="194" y2="110" stroke="#4B5563" stroke-width="1.5"/>
+                            <text x="195" y="78" class="fill-current text-xs">
+                                H {{ number_format($boxViewData['height'] ?? 0, 0) }} {{ $boxViewData['unit'] ?? '' }}
+                            </text>
+                        </svg>
+                    </div>
+                </div>
+
+                <div class="mt-8 flex justify-end">
+                    <button wire:click="closeBoxViewModal"
+                            class="px-5 py-2.5 bg-gray-600 text-white text-sm font-medium rounded-md hover:bg-gray-700">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+
     @if (session()->has('error'))
     <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
         {{ session('error') }}
@@ -506,7 +755,7 @@
                             <div class="text-xs text-gray-500">{{ $box['dimension_type'] }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{
-                            number_format($box['order_qty']) }}</td>
+                            number_format($box['board_qty'] ?? $box['order_qty']) }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $box['ply'] }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {{ number_format($box['reel_size'] ?? 0, 3) }}
@@ -990,9 +1239,9 @@
                                         <!-- Debug: Format is {{ $printDisplayFormat }} -->
                                     </td>
                                     <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900"></td>
-                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">{{ number_format($box['order_qty']) }}</td>
+                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">{{ number_format($box['board_qty'] ?? $box['order_qty']) }}</td>
                                     <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">{{ number_format($box['supplier_price'] ?? 0, 2) }}</td>
-                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">{{ number_format(($box['supplier_price'] ?? 0) * $box['order_qty'], 2) }}</td>
+                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">{{ number_format(($box['supplier_price'] ?? 0) * ($box['board_qty'] ?? $box['order_qty']), 2) }}</td>
                                     <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900"></td>
                                 </tr>
                                 @endforeach

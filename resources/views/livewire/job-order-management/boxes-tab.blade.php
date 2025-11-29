@@ -13,7 +13,8 @@
                         <label class="block text-sm font-medium text-gray-700 mb-1 w-1/4">Order <br>Qty <span class="text-red-500">*</span></label>
                         <div class="flex-1">
                             <input type="number"
-                                   wire:model.live="boxForm.order_qty"
+                                   wire:model="boxForm.order_qty"
+                                   wire:change="calculateBoardQty"
                                    class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                                    placeholder="1000">
                             @error('boxForm.order_qty') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
@@ -125,7 +126,7 @@
                         <div class="flex-1">
                             <input type="number"
                                    step="0.01"
-                                   wire:model.live="boxForm.length"
+                                   wire:model.live.debounce.500ms="boxForm.length"
                                    class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                                    placeholder="0.00">
                             @error('boxForm.length') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
@@ -137,7 +138,7 @@
                         <div class="flex-1">
                             <input type="number"
                                    step="0.01"
-                                   wire:model.live="boxForm.width"
+                                   wire:model.live.debounce.500ms="boxForm.width"
                                    class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                                    placeholder="0.00">
                             @error('boxForm.width') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
@@ -149,7 +150,7 @@
                         <div class="flex-1">
                             <input type="number"
                                    step="0.01"
-                                   wire:model.live="boxForm.height"
+                                   wire:model.live.debounce.500ms="boxForm.height"
                                    class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                                    placeholder="0.00">
                             @error('boxForm.height') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
@@ -352,7 +353,8 @@
                         <label class="block text-sm font-medium text-gray-700 mb-1 w-1/4">No of Ups <span class="text-red-500">*</span></label>
                         <div class="flex-1">
                             <input type="number"
-                                   wire:model.live="boxForm.no_of_ups"
+                                   wire:model="boxForm.no_of_ups"
+                                   wire:change="calculateBoardQty"
                                    class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                                    placeholder="0">
                             @error('boxForm.no_of_ups') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror

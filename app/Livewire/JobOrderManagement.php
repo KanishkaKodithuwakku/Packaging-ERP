@@ -321,20 +321,20 @@ class JobOrderManagement extends Component
 
     public function updatedBoxFormLength($value)
     {
+        \Log::info('updatedBoxFormLength called', ['value' => $value, 'boxForm' => $this->boxForm]);
         $this->calculateDimensions();
-        $this->dispatch('$refresh');
     }
 
     public function updatedBoxFormWidth($value)
     {
+        \Log::info('updatedBoxFormWidth called', ['value' => $value, 'boxForm' => $this->boxForm]);
         $this->calculateDimensions();
-        $this->dispatch('$refresh');
     }
 
     public function updatedBoxFormHeight($value)
     {
+        \Log::info('updatedBoxFormHeight called', ['value' => $value, 'boxForm' => $this->boxForm]);
         $this->calculateDimensions();
-        $this->dispatch('$refresh');
     }
 
     public function updatedBoxForm($value, $field)
@@ -353,13 +353,13 @@ class JobOrderManagement extends Component
 
         if (in_array($field, ['length', 'width', 'height', 'ply', 'unit', 'dimension_type'])) {
             $this->calculateDimensions();
-            $this->dispatch('$refresh');
         }
 
         if (in_array($field, ['order_qty', 'no_of_ups'])) {
             $this->calculateBoardQty();
         }
     }
+    
 
     public function resetCombinationFields()
     {
@@ -370,7 +370,25 @@ class JobOrderManagement extends Component
 
     public function calculateDimensions()
     {
-        if ($this->boxForm['length'] && $this->boxForm['width'] && $this->boxForm['height']) {
+        \Log::info('=== calculateDimensions CALLED ===', [
+            'boxForm' => $this->boxForm,
+            'length' => $this->boxForm['length'] ?? 'not set',
+            'width' => $this->boxForm['width'] ?? 'not set',
+            'height' => $this->boxForm['height'] ?? 'not set'
+        ]);
+        
+        // Check if all required dimensions are provided and numeric
+        $length = isset($this->boxForm['length']) && $this->boxForm['length'] !== '' && $this->boxForm['length'] !== null ? (float) $this->boxForm['length'] : null;
+        $width = isset($this->boxForm['width']) && $this->boxForm['width'] !== '' && $this->boxForm['width'] !== null ? (float) $this->boxForm['width'] : null;
+        $height = isset($this->boxForm['height']) && $this->boxForm['height'] !== '' && $this->boxForm['height'] !== null ? (float) $this->boxForm['height'] : null;
+        
+        \Log::info('Parsed values', [
+            'length' => $length,
+            'width' => $width,
+            'height' => $height
+        ]);
+        
+        if ($length !== null && $width !== null && $height !== null && $length > 0 && $width > 0 && $height > 0) {
             // Calculate dimensions directly in Livewire
             $length = (float) $this->boxForm['length'];
             $width = (float) $this->boxForm['width'];
@@ -436,6 +454,9 @@ class JobOrderManagement extends Component
         } else {
             $this->calculatedReelSize = 0;
             $this->calculatedCutSize = 0;
+            $this->boxForm['reel_size'] = '';
+            $this->boxForm['cut_size'] = '';
+            \Log::info('Calculation skipped - missing or invalid dimensions');
         }
     }
 
@@ -551,6 +572,10 @@ class JobOrderManagement extends Component
             }
         } else {
             $this->calculatedBoardQty = 0;
+            // Clear board_qty if inputs are invalid
+            if (empty($orderQty) || empty($noOfUps)) {
+                $this->boxForm['board_qty'] = '';
+            }
         }
     }
 
