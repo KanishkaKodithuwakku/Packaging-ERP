@@ -64,8 +64,9 @@ class CreatePurchaseOrder extends Component
 
     public function loadJobOrders()
     {
+        // Only show confirmed job orders when creating a purchase order
         $this->jobOrders = JobOrder::with(['supplier', 'boxes.supplier', 'dividers.supplier', 'customer'])
-            ->where('status', '!=', 'completed')
+            ->where('status', 'confirmed')
             ->where(function($query) {
                 $query->whereHas('boxes', function($q) {
                     $q->where('order_qty', '>', 0);
@@ -202,6 +203,7 @@ class CreatePurchaseOrder extends Component
                         'item_id' => $item['item_id'],
                         'description' => $item['description'],
                         'unit' => $item['unit'],
+                        'job_order_number' => $item['job_order_number'],
                         'available_qty' => $item['remaining_qty'],
                         'selected_qty' => $item['remaining_qty'], // Use full available quantity as default
                         'supplier_id' => $item['supplier_id'],
@@ -329,6 +331,7 @@ class CreatePurchaseOrder extends Component
                 Log::info('Box details', [
                     'box_id' => $box->id,
                     'order_qty' => $box->order_qty,
+                    'board_qty' => $box->board_qty,
                     'remaining_qty' => $remainingQty
                 ]);
                 
@@ -402,8 +405,8 @@ class CreatePurchaseOrder extends Component
             })
             ->sum('quantity');
             
-        // Use correct column name based on item type
-        $originalQty = $item instanceof JobOrderBox ? $item->order_qty : $item->quantity;
+        // Use board_qty for boxes instead of order_qty, quantity for dividers
+        $originalQty = $item instanceof JobOrderBox ? ($item->board_qty ?? $item->order_qty) : $item->quantity;
         return max(0, $originalQty - $purchasedQty);
     }
 

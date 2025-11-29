@@ -72,7 +72,10 @@ class JobOrderManagement extends Component
         'flute' => 'B',
         'fsc_claim' => '100%',
         'no_of_ups' => '',
-        'supplier_price' => ''
+        'supplier_price' => '',
+        'board_qty' => '',
+        'reel_size' => '',
+        'cut_size' => ''
     ];
     
     // Divider form data
@@ -125,6 +128,7 @@ class JobOrderManagement extends Component
         
         // Force calculation when modal opens
         $this->calculateDimensions();
+        $this->calculateBoardQty();
         
         \Log::info('Create modal opened', [
             'form' => $this->form
@@ -299,39 +303,36 @@ class JobOrderManagement extends Component
 
     public function updatedBoxFormLength($value)
     {
+        \Log::info('updatedBoxFormLength called', ['value' => $value, 'boxForm' => $this->boxForm]);
         $this->calculateDimensions();
-        $this->dispatch('$refresh');
     }
 
     public function updatedBoxFormWidth($value)
     {
+        \Log::info('updatedBoxFormWidth called', ['value' => $value, 'boxForm' => $this->boxForm]);
         $this->calculateDimensions();
-        $this->dispatch('$refresh');
     }
 
     public function updatedBoxFormHeight($value)
     {
+        \Log::info('updatedBoxFormHeight called', ['value' => $value, 'boxForm' => $this->boxForm]);
         $this->calculateDimensions();
-        $this->dispatch('$refresh');
     }
 
     public function updatedBoxForm($value, $field)
     {
-        \Log::info('=== BOX FORM FIELD CHANGED ===', [
-            'field' => $field,
-            'value' => $value,
-            'boxForm' => $this->boxForm
-        ]);
+        \Log::info('updatedBoxForm called', ['field' => $field, 'value' => $value, 'boxForm' => $this->boxForm]);
         
-        if (in_array($field, ['length', 'width', 'height', 'ply', 'unit', 'dimension_type'])) {
+        // Let specific methods handle length, width, height to avoid duplicate calls
+        if (in_array($field, ['ply', 'unit', 'dimension_type'])) {
             $this->calculateDimensions();
-            $this->dispatch('$refresh');
         }
         
         if (in_array($field, ['order_qty', 'no_of_ups'])) {
             $this->calculateBoardQty();
         }
     }
+    
 
     public function resetCombinationFields()
     {
@@ -342,13 +343,28 @@ class JobOrderManagement extends Component
 
     public function calculateDimensions()
     {
-        if ($this->boxForm['length'] && $this->boxForm['width'] && $this->boxForm['height']) {
+        \Log::info('=== calculateDimensions CALLED ===', [
+            'boxForm' => $this->boxForm,
+            'length' => $this->boxForm['length'] ?? 'not set',
+            'width' => $this->boxForm['width'] ?? 'not set',
+            'height' => $this->boxForm['height'] ?? 'not set'
+        ]);
+        
+        // Check if all required dimensions are provided and numeric
+        $length = isset($this->boxForm['length']) && $this->boxForm['length'] !== '' && $this->boxForm['length'] !== null ? (float) $this->boxForm['length'] : null;
+        $width = isset($this->boxForm['width']) && $this->boxForm['width'] !== '' && $this->boxForm['width'] !== null ? (float) $this->boxForm['width'] : null;
+        $height = isset($this->boxForm['height']) && $this->boxForm['height'] !== '' && $this->boxForm['height'] !== null ? (float) $this->boxForm['height'] : null;
+        
+        \Log::info('Parsed values', [
+            'length' => $length,
+            'width' => $width,
+            'height' => $height
+        ]);
+        
+        if ($length !== null && $width !== null && $height !== null && $length > 0 && $width > 0 && $height > 0) {
             // Calculate dimensions directly in Livewire
-            $length = (float) $this->boxForm['length'];
-            $width = (float) $this->boxForm['width'];
-            $height = (float) $this->boxForm['height'];
-            $unit = $this->boxForm['unit'];
-            $type = $this->boxForm['dimension_type'];
+            $unit = $this->boxForm['unit'] ?? 'CM';
+            $type = $this->boxForm['dimension_type'] ?? 'INTERNAL';
             
             // Debug input values
             \Log::info('Calculation input values', [
@@ -396,9 +412,26 @@ class JobOrderManagement extends Component
                 'reel_size' => $this->calculatedReelSize,
                 'cut_size' => $this->calculatedCutSize
             ]);
+            
+            // Always update calculated values when dimensions change
+            // Set as numeric values (round to 2 decimals) - number inputs work better with numbers
+            $this->boxForm['reel_size'] = (float) round($this->calculatedReelSize, 2);
+            $this->boxForm['cut_size'] = (float) round($this->calculatedCutSize, 2);
+            
+            \Log::info('Values set in boxForm', [
+                'reel_size' => $this->boxForm['reel_size'],
+                'cut_size' => $this->boxForm['cut_size'],
+                'calculatedReelSize' => $this->calculatedReelSize,
+                'calculatedCutSize' => $this->calculatedCutSize,
+                'boxForm_reel_size' => $this->boxForm['reel_size'] ?? 'NOT SET',
+                'boxForm_cut_size' => $this->boxForm['cut_size'] ?? 'NOT SET'
+            ]);
         } else {
             $this->calculatedReelSize = 0;
             $this->calculatedCutSize = 0;
+            $this->boxForm['reel_size'] = '';
+            $this->boxForm['cut_size'] = '';
+            \Log::info('Calculation skipped - missing or invalid dimensions');
         }
     }
     
@@ -505,10 +538,20 @@ class JobOrderManagement extends Component
 
     public function calculateBoardQty()
     {
-        if ($this->boxForm['order_qty'] && $this->boxForm['no_of_ups'] && $this->boxForm['no_of_ups'] > 0) {
-            $this->calculatedBoardQty = ceil($this->boxForm['order_qty'] / $this->boxForm['no_of_ups']);
+        $orderQty = (float)($this->boxForm['order_qty'] ?? 0);
+        $noOfUps = (float)($this->boxForm['no_of_ups'] ?? 0);
+        
+        if ($orderQty > 0 && $noOfUps > 0) {
+            $calculated = ceil($orderQty / $noOfUps);
+            $this->calculatedBoardQty = $calculated;
+            // Always set calculated value in boxForm
+            $this->boxForm['board_qty'] = $calculated;
         } else {
             $this->calculatedBoardQty = 0;
+            // Clear board_qty if inputs are invalid
+            if (empty($orderQty) || empty($noOfUps)) {
+                $this->boxForm['board_qty'] = '';
+            }
         }
     }
 
@@ -778,7 +821,10 @@ class JobOrderManagement extends Component
             'flute' => 'B',
             'fsc_claim' => '100%',
             'no_of_ups' => '',
-            'supplier_price' => ''
+            'supplier_price' => '',
+            'board_qty' => '',
+            'reel_size' => '',
+            'cut_size' => ''
         ];
         
         $this->calculatedReelSize = 0;

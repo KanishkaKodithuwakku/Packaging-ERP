@@ -153,7 +153,7 @@
                                     {{ number_format($box['length'], 3) }}x{{ number_format($box['width'], 3) }}x{{ number_format($box['height'], 3) }} {{ $box['unit'] }}
                                     <div class="text-xs text-gray-500">{{ $box['dimension_type'] }}</div>
                                 </td>
-                                <td class="px-4 py-4 text-sm text-gray-900">{{ number_format($box['order_qty']) }}</td>
+                                <td class="px-4 py-4 text-sm text-gray-900">{{ number_format($box['board_qty'] ?? $box['order_qty']) }}</td>
                                 <td class="px-4 py-4 text-sm text-gray-900">{{ $box['ply'] }}</td>
                                 <td class="px-4 py-4 text-sm text-gray-900">{{ number_format($box['reel_size'], 3) }}</td>
                                 <td class="px-4 py-4 text-sm text-gray-900">{{ number_format($box['cut_size'], 3) }}</td>

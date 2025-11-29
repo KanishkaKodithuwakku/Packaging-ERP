@@ -13,7 +13,8 @@
                         <label class="block text-sm font-medium text-gray-700 mb-1 w-1/4">Order <br>Qty <span class="text-red-500">*</span></label>
                         <div class="flex-1">
                             <input type="number"
-                                   wire:model.live="boxForm.order_qty"
+                                   wire:model="boxForm.order_qty"
+                                   wire:change="calculateBoardQty"
                                    class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                                    placeholder="1000">
                             @error('boxForm.order_qty') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
@@ -125,7 +126,7 @@
                         <div class="flex-1">
                             <input type="number"
                                    step="0.01"
-                                   wire:model.live="boxForm.length"
+                                   wire:model.live.debounce.500ms="boxForm.length"
                                    class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                                    placeholder="0.00">
                             @error('boxForm.length') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
@@ -137,7 +138,7 @@
                         <div class="flex-1">
                             <input type="number"
                                    step="0.01"
-                                   wire:model.live="boxForm.width"
+                                   wire:model.live.debounce.500ms="boxForm.width"
                                    class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                                    placeholder="0.00">
                             @error('boxForm.width') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
@@ -149,7 +150,7 @@
                         <div class="flex-1">
                             <input type="number"
                                    step="0.01"
-                                   wire:model.live="boxForm.height"
+                                   wire:model.live.debounce.500ms="boxForm.height"
                                    class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                                    placeholder="0.00">
                             @error('boxForm.height') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
@@ -292,18 +293,30 @@
                     <div class="flex items-center gap-3 flex-1">
                         <label class="block text-sm font-medium text-gray-700 mb-1 w-1/4">Reel Size <span class="text-red-500">*</span></label>
                         <div class="flex-1">
-                            <div class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-900">
-                                {{ $calculatedReelSize ? number_format($calculatedReelSize, 2) . ' inches' : 'Enter dimensions' }}
+                            <div class="flex items-center gap-2">
+                                <input type="number"
+                                       step="0.01"
+                                       wire:model.live="boxForm.reel_size"
+                                       class="block flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                       placeholder="Auto-calculated">
+                                <span class="text-xs text-gray-500 whitespace-nowrap">inches</span>
                             </div>
+                            @error('boxForm.reel_size') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                     </div>
 
                     <div class="flex items-center gap-3 flex-1">
                         <label class="block text-sm font-medium text-gray-700 mb-1 w-1/4">Cut Size <span class="text-red-500">*</span></label>
                         <div class="flex-1">
-                            <div class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-900">
-                                {{ $calculatedCutSize ? number_format($calculatedCutSize, 2) . ' inches' : 'Enter dimensions' }}
+                            <div class="flex items-center gap-2">
+                                <input type="number"
+                                       step="0.01"
+                                       wire:model.live="boxForm.cut_size"
+                                       class="block flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                       placeholder="Auto-calculated">
+                                <span class="text-xs text-gray-500 whitespace-nowrap">inches</span>
                             </div>
+                            @error('boxForm.cut_size') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                     </div>
 
@@ -311,7 +324,8 @@
                         <label class="block text-sm font-medium text-gray-700 mb-1 w-1/4">No of Ups <span class="text-red-500">*</span></label>
                         <div class="flex-1">
                             <input type="number"
-                                   wire:model.live="boxForm.no_of_ups"
+                                   wire:model="boxForm.no_of_ups"
+                                   wire:change="calculateBoardQty"
                                    class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                                    placeholder="0">
                             @error('boxForm.no_of_ups') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
@@ -321,9 +335,11 @@
                     <div class="flex items-center gap-3 flex-1">
                         <label class="block text-sm font-medium text-gray-700 mb-1 w-1/4">Board Qty <span class="text-red-500">*</span></label>
                         <div class="flex-1">
-                            <div class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-900">
-                                {{ $calculatedBoardQty ?: 'Enter order qty and no of ups' }}
-                            </div>
+                            <input type="number"
+                                   wire:model.live="boxForm.board_qty"
+                                   class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                   placeholder="Enter order qty and no of ups">
+                            @error('boxForm.board_qty') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
                     </div>
                 </div>

@@ -19,6 +19,13 @@ class JobOrderDetail extends Component
     public $isEditMode = false;
     public $hasPurchaseOrder = false;
     public $showPrintPreviewModal = false;
+
+    // View box modal
+    public $showBoxViewModal = false;
+    public $boxViewData = null;
+    // View divider modal
+    public $showDividerViewModal = false;
+    public $dividerViewData = null;
     public $printDisplayFormat = 'dimensions';
     
     // Form data
@@ -67,6 +74,7 @@ class JobOrderDetail extends Component
         'fsc_claim' => '100%',
         'no_of_ups' => '',
         'supplier_price' => '',
+        'board_qty' => '',
     ];
     
     // Divider form
@@ -218,11 +226,31 @@ class JobOrderDetail extends Component
     public function updatedBoxFormOrderQty()
     {
         $this->calculateDimensions();
+        $this->calculateBoardQty();
     }
 
     public function updatedBoxFormNoOfUps()
     {
         $this->calculateDimensions();
+        $this->calculateBoardQty();
+    }
+    
+    public function calculateBoardQty()
+    {
+        $orderQty = (float)($this->boxForm['order_qty'] ?? 0);
+        $noOfUps = (float)($this->boxForm['no_of_ups'] ?? 0);
+        
+        if ($orderQty > 0 && $noOfUps > 0) {
+            $calculated = ceil($orderQty / $noOfUps);
+            $this->calculatedBoardQty = $calculated;
+            // Always set calculated value in boxForm
+            $this->boxForm['board_qty'] = $calculated;
+        } else {
+            $this->calculatedBoardQty = 0;
+            if (empty($orderQty) || empty($noOfUps)) {
+                $this->boxForm['board_qty'] = '';
+            }
+        }
     }
 
     public function updatedDividerFormPly($value)
@@ -255,6 +283,10 @@ class JobOrderDetail extends Component
             $this->calculatedCutSize = $box->calculateCutSize();
             $this->calculatedBoardQty = $box->calculateBoardQty();
             
+            // Set calculated values in boxForm so they appear in input fields
+            $this->boxForm['reel_size'] = (float) round($this->calculatedReelSize, 2);
+            $this->boxForm['cut_size'] = (float) round($this->calculatedCutSize, 2);
+            
             \Log::info('Calculations: ', [
                 'supplier_id' => $this->jobOrder->supplier_id,
                 'length' => $this->boxForm['length'],
@@ -266,8 +298,16 @@ class JobOrderDetail extends Component
                 'no_of_ups' => $this->boxForm['no_of_ups'],
                 'reel_size' => $this->calculatedReelSize,
                 'cut_size' => $this->calculatedCutSize,
-                'board_qty' => $this->calculatedBoardQty
+                'board_qty' => $this->calculatedBoardQty,
+                'boxForm_reel_size' => $this->boxForm['reel_size'],
+                'boxForm_cut_size' => $this->boxForm['cut_size']
             ]);
+        } else {
+            // Clear values if dimensions are missing
+            $this->calculatedReelSize = 0;
+            $this->calculatedCutSize = 0;
+            $this->boxForm['reel_size'] = '';
+            $this->boxForm['cut_size'] = '';
         }
     }
 
@@ -496,6 +536,44 @@ class JobOrderDetail extends Component
             \Log::error('Error removing divider: ' . $e->getMessage());
             session()->flash('error', 'Error removing divider: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * View a single box in a read-only modal
+     */
+    public function viewBox($index)
+    {
+        if (!isset($this->boxes[$index])) {
+            return;
+        }
+
+        $this->boxViewData = $this->boxes[$index];
+        $this->showBoxViewModal = true;
+    }
+
+    public function closeBoxViewModal()
+    {
+        $this->showBoxViewModal = false;
+        $this->boxViewData = null;
+    }
+
+    /**
+     * View a single divider in a read-only modal
+     */
+    public function viewDivider($index)
+    {
+        if (!isset($this->dividers[$index])) {
+            return;
+        }
+
+        $this->dividerViewData = $this->dividers[$index];
+        $this->showDividerViewModal = true;
+    }
+
+    public function closeDividerViewModal()
+    {
+        $this->showDividerViewModal = false;
+        $this->dividerViewData = null;
     }
 
     public function saveJobOrder()

@@ -77,7 +77,6 @@
                                                    {{ $isDisabled ? 'disabled' : '' }}
                                                    class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 {{ $isDisabled ? 'opacity-50' : '' }}">
                                             <div>
-                                                <h4 class="font-semibold text-gray-900">{{ $jobOrder->job_order_number }}</h4>
                                                 <p class="text-sm text-gray-600">
                                                     <span class="font-medium">Customer:</span> {{ $jobOrder->customer->name ?? 'No Customer' }}
                                                 </p>
@@ -90,6 +89,12 @@
                                                 </p>
                                                 <p class="text-sm text-gray-500">Status: {{ ucfirst($jobOrder->status) }}</p>
                                             </div>
+                                        </div>
+                                        <div class="flex-1 flex justify-center items-center">
+                                            <p class="text-sm text-gray-600">
+                                                <span class="font-medium">Job Order Number:</span> 
+                                                <span class="font-semibold text-gray-900">{{ $jobOrder->job_order_number ?? $jobOrder->job_number }}</span>
+                                            </p>
                                         </div>
                                         <div class="text-right">
                                             <p class="text-sm text-gray-600">{{ $jobOrder->boxes->count() }} Boxes, {{ $jobOrder->dividers->count() }} Dividers</p>
@@ -194,9 +199,9 @@
                                         <thead class="bg-gray-50">
                                             <tr>
                                                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">#</th>
+                                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Job Order</th>
                                                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Item Name</th>
                                                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
-                                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Job Order</th>
                                                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Available Qty</th>
                                                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
                                             </tr>
@@ -216,9 +221,9 @@
                                                 @endphp
                                                 <tr class="hover:bg-gray-50 {{ $isSelected ? 'bg-green-50' : '' }}">
                                                     <td class="px-4 py-2 text-sm font-medium text-gray-500">{{ $index + 1 }}</td>
+                                                    <td class="px-4 py-2 text-sm text-gray-600">{{ $item['job_order_number'] }}</td>
                                                     <td class="px-4 py-2 text-sm font-medium text-gray-900">{{ $item['type'] }}</td>
                                                     <td class="px-4 py-2 text-sm text-gray-600">{{ $item['description'] }}</td>
-                                                    <td class="px-4 py-2 text-sm text-gray-600">{{ $item['job_order_number'] }}</td>
                                                     <td class="px-4 py-2 text-sm text-gray-600">
                                                         {{ $item['remaining_qty'] }}
                                                         @if($isSelected)
@@ -318,6 +323,7 @@
                                         <thead class="bg-gray-50">
                                             <tr>
                                                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">#</th>
+                                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Job Order</th>
                                                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Item Name</th>
                                                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
                                                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Qty</th>
@@ -328,6 +334,7 @@
                                         @forelse($selectedItems as $index => $item)
                                             <tr class="hover:bg-gray-50">
                                                 <td class="px-4 py-2 text-sm font-medium text-gray-500">{{ $item['original_number'] ?? ($index + 1) }}</td>
+                                                <td class="px-4 py-2 text-sm text-gray-600">{{ $item['job_order_number'] ?? '' }}</td>
                                                 <td class="px-4 py-2 text-sm font-medium text-gray-900">{{ $item['type'] }}</td>
                                                 <td class="px-4 py-2 text-sm text-gray-600">{{ $item['description'] }}</td>
                                                 <td class="px-4 py-2 text-sm">
@@ -350,7 +357,7 @@
                                             </tr>
                                         @empty
                                             <tr>
-                                                <td colspan="5" class="px-4 py-8 text-center text-gray-500">
+                                                <td colspan="6" class="px-4 py-8 text-center text-gray-500">
                                                     No items selected
                                                 </td>
                                             </tr>
@@ -447,18 +454,6 @@
                         <button wire:click="goBack" class="text-gray-500 hover:text-gray-700">← Back</button>
                     </div>
                     
-                    <!-- Debug Info -->
-                    <div class="mb-4 p-3 bg-yellow-100 border border-yellow-300 rounded-md">
-                        <p class="text-sm text-yellow-800">
-                            <strong>Debug:</strong> Selected Job Order IDs: {{ implode(', ', $selectedJobOrderIds) }} | 
-                            Job Orders Count: {{ $jobOrders->count() }} | 
-                            Current Supplier ID: {{ $currentSelectedSupplierId }}
-                        </p>
-                        <p class="text-xs text-yellow-700 mt-1">
-                            Job Orders Data: {{ $jobOrders->map(function($jo) { return ['id' => $jo->id, 'job_number' => $jo->job_number, 'job_order_number' => $jo->job_order_number]; })->toJson() }}
-                        </p>
-                    </div>
-                    
                     <div class="grid md:grid-cols-2 gap-6">
                         <!-- Purchase Order Details -->
                         <div>
@@ -522,16 +517,6 @@
                         </div>
                     @endif
                     
-                    @if(!empty($validation['warnings']))
-                        <div class="mt-4 bg-yellow-50 border border-yellow-200 rounded-md p-4">
-                            <h4 class="text-sm font-medium text-yellow-800 mb-2">ℹ️ Information:</h4>
-                            <ul class="text-sm text-yellow-700 space-y-1">
-                                @foreach($validation['warnings'] as $warning)
-                                    <li>• {{ $warning }}</li>
-                                @endforeach
-                            </ul>
-                        </div>
-                    @endif
                     
                     <div class="mt-6 flex justify-end space-x-4">
                         <button wire:click="goBack" 
