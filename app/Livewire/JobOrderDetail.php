@@ -596,7 +596,7 @@ class JobOrderDetail extends Component
                 'supplier_price' => isset($box['supplier_price']) && $box['supplier_price'] !== '' ? number_format((float)$box['supplier_price'], 2) : '-',
                 'reel_size' => isset($box['reel_size']) && $box['reel_size'] !== '' ? number_format((float)$box['reel_size'], 3) : '-',
                 'cut_size' => isset($box['cut_size']) && $box['cut_size'] !== '' ? number_format((float)$box['cut_size'], 3) : '-',
-                'board_qty' => isset($box['board_qty']) && $box['board_qty'] !== '' ? number_format((float)$box['board_qty'], 3) : '-',
+                'board_qty' => isset($box['board_qty']) && $box['board_qty'] !== '' ? number_format((float)$box['board_qty'], 0) : '-',
                 'notes' => $box['notes'] ?? '-'
             ];
             
