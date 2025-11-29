@@ -617,8 +617,10 @@ class JobOrderDetail extends Component
         if (isset($this->editingBoxData['order_qty']) && isset($this->editingBoxData['no_of_ups']) && 
             $this->editingBoxData['order_qty'] && $this->editingBoxData['no_of_ups'] && $this->editingBoxData['no_of_ups'] > 0) {
             $calculated = ceil($this->editingBoxData['order_qty'] / $this->editingBoxData['no_of_ups']);
-            // Auto-populate board_qty with calculated value (formatted to 2 decimal places)
-            $this->editingBoxData['board_qty'] = number_format($calculated, 2, '.', '');
+            // Only auto-populate board_qty if it's empty or not set (don't overwrite user input)
+            if (empty($this->editingBoxData['board_qty']) || $this->editingBoxData['board_qty'] === '' || $this->editingBoxData['board_qty'] === null) {
+                $this->editingBoxData['board_qty'] = number_format($calculated, 2, '.', '');
+            }
         }
     }
 
@@ -695,9 +697,13 @@ class JobOrderDetail extends Component
             $calculatedReelSize = $box->calculateReelSize($supplierId);
             $calculatedCutSize = $box->calculateCutSize();
 
-            // Auto-populate form fields with calculated values (formatted to 2 decimal places)
-            $this->editingBoxData['reel_size'] = number_format($calculatedReelSize, 2, '.', '');
-            $this->editingBoxData['cut_size'] = number_format($calculatedCutSize, 2, '.', '');
+            // Only auto-populate if fields are empty (don't overwrite user input)
+            if (empty($this->editingBoxData['reel_size']) || $this->editingBoxData['reel_size'] === '' || $this->editingBoxData['reel_size'] === null) {
+                $this->editingBoxData['reel_size'] = number_format($calculatedReelSize, 2, '.', '');
+            }
+            if (empty($this->editingBoxData['cut_size']) || $this->editingBoxData['cut_size'] === '' || $this->editingBoxData['cut_size'] === null) {
+                $this->editingBoxData['cut_size'] = number_format($calculatedCutSize, 2, '.', '');
+            }
         }
     }
 
@@ -762,11 +768,10 @@ class JobOrderDetail extends Component
                     $jobOrderBox->flute = $this->editingBoxData['flute'];
                     $jobOrderBox->fsc_claim = $this->editingBoxData['fsc_claim'];
                     $jobOrderBox->no_of_ups = $this->editingBoxData['no_of_ups'];
-                    $jobOrderBox->supplier_price = $this->editingBoxData['supplier_price'] ?? null;
-                    $jobOrderBox->reel_size = (float) $this->editingBoxData['reel_size'];
-                    $jobOrderBox->cut_size = (float) $this->editingBoxData['cut_size'];
-                    $jobOrderBox->board_qty = (float) $this->editingBoxData['board_qty'];
-                    $jobOrderBox->notes = $this->editingBoxData['notes'] ?? null;
+                    $jobOrderBox->supplier_price = isset($this->editingBoxData['supplier_price']) && $this->editingBoxData['supplier_price'] !== '' ? (float) $this->editingBoxData['supplier_price'] : null;
+                    $jobOrderBox->reel_size = isset($this->editingBoxData['reel_size']) && $this->editingBoxData['reel_size'] !== '' ? (float) $this->editingBoxData['reel_size'] : null;
+                    $jobOrderBox->cut_size = isset($this->editingBoxData['cut_size']) && $this->editingBoxData['cut_size'] !== '' ? (float) $this->editingBoxData['cut_size'] : null;
+                    $jobOrderBox->board_qty = isset($this->editingBoxData['board_qty']) && $this->editingBoxData['board_qty'] !== '' ? (float) $this->editingBoxData['board_qty'] : null;
                     $jobOrderBox->save();
                 }
 
