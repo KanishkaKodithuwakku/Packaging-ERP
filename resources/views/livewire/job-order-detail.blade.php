@@ -393,7 +393,7 @@
                             @error('form.supplier_id') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                             @else
                             <div class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-900">
-                                {{ $jobOrder->supplier->name }} ({{ $jobOrder->supplier->code }})
+                                {{ $jobOrder->supplier->name ?? 'N/A' }} ({{ $jobOrder->supplier->code ?? 'N/A' }})
                             </div>
                             @endif
                         </div>
@@ -463,7 +463,7 @@
                             @error('form.customer_id') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                             @else
                             <div class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-900">
-                                {{ $jobOrder->customer->name }} ({{ $jobOrder->customer->code }})
+                                {{ $jobOrder->customer->name ?? 'N/A' }} ({{ $jobOrder->customer->code ?? 'N/A' }})
                             </div>
                             @endif
                         </div>
@@ -737,6 +737,7 @@
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PLY</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reel Size</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cut Size</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Board Qty</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                 </thead>
@@ -756,42 +757,48 @@
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{
                             number_format($box['board_qty'] ?? $box['order_qty']) }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $box['ply'] }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{
-                            number_format($box['reel_size'], 3) }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ number_format($box['cut_size'],
-                            3) }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {{ number_format($box['reel_size'] ?? 0, 3) }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {{ number_format($box['cut_size'] ?? 0, 3) }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {{ number_format($box['board_qty'] ?? 0, 3) }}
+                        </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             <div class="flex items-center space-x-2">
-                                <!-- View box button -->
                                 <button wire:click="viewBox({{ $index }})"
-                                        class="text-blue-600 hover:text-blue-900"
-                                        title="View Box">
+                                        class="text-green-600 hover:text-green-900"
+                                        title="View">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                                     </svg>
                                 </button>
-
-                                <!-- Delete box button (only for draft/pending) -->
                                 @if($jobOrder->status === 'draft' || $jobOrder->status === 'pending')
-                                <button wire:click="removeBox({{ $index }})"
-                                        class="text-red-600 hover:text-red-900"
-                                        title="Remove Box">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                    </svg>
-                                </button>
+                                    <button wire:click="editBox({{ $index }})"
+                                            class="text-blue-600 hover:text-blue-900"
+                                            title="Edit">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                        </svg>
+                                    </button>
+                                    <button wire:click="removeBox({{ $index }})"
+                                            class="text-red-600 hover:text-red-900"
+                                            title="Remove Box">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+                                            </path>
+                                        </svg>
+                                    </button>
                                 @else
-                                <span class="text-gray-400 cursor-not-allowed"
-                                      title="Cannot delete items from confirmed job orders">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                    </svg>
-                                </span>
+                                    <span class="text-gray-400 cursor-not-allowed" title="Cannot edit items from confirmed job orders">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                        </svg>
+                                    </span>
                                 @endif
                             </div>
                         </td>
@@ -813,38 +820,36 @@
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $divider['ply'] }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">-</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">-</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">-</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            <div class="flex items-center space-x-2">
-                                <!-- View divider button -->
-                                <button wire:click="viewDivider({{ $index }})"
-                                        class="text-blue-600 hover:text-blue-900"
-                                        title="View Divider">
+                            <div class="flex items-center gap-2">
+                                <button wire:click="viewDivider({{ $index }})" class="text-green-600 hover:text-green-900" title="View Divider">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.477 0 8.268 2.943 9.542 7-1.274 4.057-5.065 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                                     </svg>
                                 </button>
-
-                                <!-- Delete divider button (only for draft/pending) -->
                                 @if($jobOrder->status === 'draft' || $jobOrder->status === 'pending')
-                                <button wire:click="removeDivider({{ $index }})"
-                                        class="text-red-600 hover:text-red-900"
-                                        title="Remove Divider">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                    </svg>
-                                </button>
+                                    <button wire:click="editDivider({{ $index }})" class="text-blue-600 hover:text-blue-900" title="Edit Divider">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                        </svg>
+                                    </button>
+                                    <button wire:click="removeDivider({{ $index }})" class="text-red-600 hover:text-red-900" title="Remove Divider">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+                                            </path>
+                                        </svg>
+                                    </button>
                                 @else
-                                <span class="text-gray-400 cursor-not-allowed"
-                                      title="Cannot delete items from confirmed job orders">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                    </svg>
-                                </span>
+                                    <span class="text-gray-400 cursor-not-allowed" title="Cannot delete items from confirmed job orders">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+                                            </path>
+                                        </svg>
+                                    </span>
                                 @endif
                             </div>
                         </td>
@@ -915,6 +920,227 @@
                     @elseif($activeTab === 'dividers')
                     @include('livewire.job-order-management.dividers-tab')
                     @endif
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    <!-- View Box Modal -->
+    @if($showViewBoxModal)
+    <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <!-- Modal Header -->
+                <div class="flex justify-between items-center pb-4 border-b">
+                    <h3 class="text-lg font-medium text-gray-900">View Box Details</h3>
+                    <button wire:click="closeViewBoxModal" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Box Details -->
+                <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Left Column -->
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Order Quantity</label>
+                            <p class="mt-1 text-sm text-gray-900">{{ $viewingBoxData['order_qty'] ?? '-' }}</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Selling Price</label>
+                            <p class="mt-1 text-sm text-gray-900">{{ $viewingBoxData['selling_price'] ?? '-' }}</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Activity</label>
+                            <p class="mt-1 text-sm text-gray-900">{{ $viewingBoxData['activity'] ?? '-' }}</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Printing Instruction</label>
+                            <p class="mt-1 text-sm text-gray-900">{{ $viewingBoxData['printing_instruction'] ?? '-' }}</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">No. of Colours</label>
+                            <p class="mt-1 text-sm text-gray-900">{{ $viewingBoxData['no_of_colours'] ?? '-' }}</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Stitched/Glued</label>
+                            <p class="mt-1 text-sm text-gray-900">{{ $viewingBoxData['stitched_glued'] ?? '-' }}</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Sample Available</label>
+                            <p class="mt-1 text-sm text-gray-900">{{ $viewingBoxData['sample_available'] ?? '-' }}</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Sample Attached</label>
+                            <p class="mt-1 text-sm text-gray-900">{{ $viewingBoxData['sample_attached'] ?? '-' }}</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Dimensions</label>
+                            <p class="mt-1 text-sm text-gray-900">
+                                L: {{ $viewingBoxData['length'] ?? '-' }} × 
+                                W: {{ $viewingBoxData['width'] ?? '-' }} × 
+                                H: {{ $viewingBoxData['height'] ?? '-' }} {{ $viewingBoxData['unit'] ?? '' }}
+                            </p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Dimension Type</label>
+                            <p class="mt-1 text-sm text-gray-900">{{ $viewingBoxData['dimension_type'] ?? '-' }}</p>
+                        </div>
+                    </div>
+
+                    <!-- Right Column -->
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Top Liner</label>
+                            <p class="mt-1 text-sm text-gray-900">{{ $viewingBoxData['top_liner'] ?? '-' }}</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">PLY</label>
+                            <p class="mt-1 text-sm text-gray-900">{{ $viewingBoxData['ply'] ?? '-' }}</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Combinations</label>
+                            <div class="mt-1 text-sm text-gray-900 space-y-1">
+                                @if(!empty($viewingBoxData['combination_1']) && $viewingBoxData['combination_1'] !== '-') <p>Combination 1: {{ $viewingBoxData['combination_1'] }}</p> @endif
+                                @if(!empty($viewingBoxData['combination_2']) && $viewingBoxData['combination_2'] !== '-') <p>Combination 2: {{ $viewingBoxData['combination_2'] }}</p> @endif
+                                @if(!empty($viewingBoxData['combination_3']) && $viewingBoxData['combination_3'] !== '-') <p>Combination 3: {{ $viewingBoxData['combination_3'] }}</p> @endif
+                                @if(!empty($viewingBoxData['combination_4']) && $viewingBoxData['combination_4'] !== '-') <p>Combination 4: {{ $viewingBoxData['combination_4'] }}</p> @endif
+                                @if(!empty($viewingBoxData['combination_5']) && $viewingBoxData['combination_5'] !== '-') <p>Combination 5: {{ $viewingBoxData['combination_5'] }}</p> @endif
+                                @if(!empty($viewingBoxData['combination_6']) && $viewingBoxData['combination_6'] !== '-') <p>Combination 6: {{ $viewingBoxData['combination_6'] }}</p> @endif
+                                @if(!empty($viewingBoxData['combination_7']) && $viewingBoxData['combination_7'] !== '-') <p>Combination 7: {{ $viewingBoxData['combination_7'] }}</p> @endif
+                                @php
+                                    $hasCombinations = false;
+                                    for($i = 1; $i <= 7; $i++) {
+                                        if(!empty($viewingBoxData['combination_' . $i] ?? '') && ($viewingBoxData['combination_' . $i] ?? '') !== '-') {
+                                            $hasCombinations = true;
+                                            break;
+                                        }
+                                    }
+                                @endphp
+                                @if(!$hasCombinations) 
+                                    <p class="text-gray-500">-</p>
+                                @endif
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Flute</label>
+                            <p class="mt-1 text-sm text-gray-900">{{ $viewingBoxData['flute'] ?? '-' }}</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">FSC Claim</label>
+                            <p class="mt-1 text-sm text-gray-900">{{ $viewingBoxData['fsc_claim'] ?? '-' }}</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">No. of UPS</label>
+                            <p class="mt-1 text-sm text-gray-900">{{ $viewingBoxData['no_of_ups'] ?? '-' }}</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Supplier Price</label>
+                            <p class="mt-1 text-sm text-gray-900">{{ $viewingBoxData['supplier_price'] ?? '-' }}</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Reel Size</label>
+                            <p class="mt-1 text-sm text-gray-900">{{ $viewingBoxData['reel_size'] ?? '-' }}</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Cut Size</label>
+                            <p class="mt-1 text-sm text-gray-900">{{ $viewingBoxData['cut_size'] ?? '-' }}</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Board Qty</label>
+                            <p class="mt-1 text-sm text-gray-900">{{ $viewingBoxData['board_qty'] ?? '-' }}</p>
+                        </div>
+                        @if(!empty($viewingBoxData['notes']) && $viewingBoxData['notes'] !== '-')
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Notes</label>
+                            <p class="mt-1 text-sm text-gray-900">{{ $viewingBoxData['notes'] }}</p>
+                        </div>
+                        @endif
+                    </div>
+                </div>
+
+                <!-- Modal Footer -->
+                <div class="mt-6 flex justify-end">
+                    <button wire:click="closeViewBoxModal" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    <!-- View Divider Modal -->
+    @if($showViewDividerModal)
+    <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <!-- Modal Header -->
+                <div class="flex justify-between items-center pb-4 border-b">
+                    <h3 class="text-lg font-medium text-gray-900">View Divider Details</h3>
+                    <button wire:click="closeViewDividerModal" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Divider Details -->
+                <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Left Column -->
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Quantity</label>
+                            <p class="mt-1 text-sm text-gray-900">{{ $viewingDividerData['quantity'] ?? '-' }}</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Unit</label>
+                            <p class="mt-1 text-sm text-gray-900">{{ $viewingDividerData['unit'] ?? '-' }}</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">PLY</label>
+                            <p class="mt-1 text-sm text-gray-900">{{ $viewingDividerData['ply'] ?? '-' }}</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">FSC Claim</label>
+                            <p class="mt-1 text-sm text-gray-900">{{ $viewingDividerData['fsc_claim'] ?? '-' }}</p>
+                        </div>
+                    </div>
+
+                    <!-- Right Column -->
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Supplier Price</label>
+                            <p class="mt-1 text-sm text-gray-900">{{ $viewingDividerData['supplier_price'] ?? '-' }}</p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Combinations</label>
+                            <div class="mt-1 text-sm text-gray-900 space-y-1">
+                                @php
+                                    $hasDividerCombinations = false;
+                                    for($i = 1; $i <= 7; $i++) {
+                                        if(!empty($viewingDividerData['combination_' . $i] ?? '') && ($viewingDividerData['combination_' . $i] ?? '') !== '-') {
+                                            $hasDividerCombinations = true;
+                                            echo "<p>Combination {$i}: " . $viewingDividerData['combination_' . $i] . "</p>";
+                                        }
+                                    }
+                                    if(!$hasDividerCombinations) {
+                                        echo "<p class=\"text-gray-500\">-</p>";
+                                    }
+                                @endphp
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal Footer -->
+                <div class="mt-6 flex justify-end">
+                    <button wire:click="closeViewDividerModal" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md">
+                        Close
+                    </button>
                 </div>
             </div>
         </div>
@@ -1081,6 +1307,16 @@
             }
         }
     </style>
+
+    <!-- Edit Box Modal -->
+    @if($showEditBoxModal)
+        @include('livewire.job-order-management.edit-box-modal')
+    @endif
+
+    <!-- Edit Divider Modal -->
+    @if($showEditDividerModal)
+        @include('livewire.job-order-management.edit-divider-modal')
+    @endif
 
     @script
     <script>

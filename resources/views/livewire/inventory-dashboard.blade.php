@@ -38,7 +38,10 @@
                 <div class="bg-green-50 p-6 rounded-lg">
                     <h3 class="text-lg font-semibold text-green-800">Finished Goods</h3>
                     <p class="text-3xl font-bold text-green-600">
-                        {{ $inventoryByCategory->where('category', 'FG')->sum('total_qty') }}
+                        @php
+                            $fgQty = $inventoryByCategory->where('category', 'FG')->first();
+                            echo number_format($fgQty ? $fgQty->total_qty : 0, 2);
+                        @endphp
                     </p>
                 </div>
             </div>
@@ -94,80 +97,8 @@
                 <div class="bg-white border rounded-lg p-6">
                     <h3 class="text-lg font-semibold mb-4">Recent Transactions</h3>
                     <div class="space-y-3">
-                        @forelse($recentTransactions as $transaction)
-                            <div class="flex justify-between items-center p-3 bg-gray-50 rounded hover:bg-gray-100 transition-colors">
-                                <div class="flex-1">
-                                    <div class="flex items-center space-x-2">
-                                        <p class="font-medium text-gray-900">{{ $transaction->lot_code }}</p>
-                                        @if($transaction->category)
-                                            @php
-                                                $categoryColors = [
-                                                    'FG' => 'bg-green-100 text-green-800',
-                                                    'RAW' => 'bg-blue-100 text-blue-800',
-                                                    'WIP' => 'bg-yellow-100 text-yellow-800',
-                                                ];
-                                                $categoryColor = $categoryColors[$transaction->category] ?? 'bg-gray-100 text-gray-800';
-                                            @endphp
-                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium {{ $categoryColor }}">
-                                                {{ $transaction->category }}
-                                            </span>
-                                        @endif
-                                        @if($transaction->getJobOrder())
-                                            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                                📋 {{ $transaction->getJobOrder()->job_number }}
-                                            </span>
-                                        @endif
-                                    </div>
-                                    <p class="text-sm text-gray-600 mt-1">{{ ucfirst($transaction->txn_type) }}</p>
-                                    @if($transaction->getJobOrder())
-                                        <div class="mt-1 space-y-1">
-                                            <p class="text-xs text-blue-600 font-medium">
-                                                🏭 {{ $transaction->getJobOrder()->supplier->name ?? 'Unknown Supplier' }}
-                                            </p>
-                                            <p class="text-xs text-gray-500">
-                                                👤 {{ $transaction->getJobOrder()->customer->name ?? 'Unknown Customer' }}
-                                            </p>
-                                        </div>
-                                    @endif
-                                </div>
-                                <div class="text-right ml-4">
-                                    <span class="text-sm font-medium text-gray-900">{{ $transaction->qty }} {{ $transaction->uom }}</span>
-                                    <p class="text-xs text-gray-500 mt-1">{{ $transaction->txn_date }}</p>
-                                    @if($transaction->getJobOrder() && $transaction->txn_type === 'receipt')
-                                        @php
-                                            // Check if a production order already exists for THIS SPECIFIC transaction (by transaction ID in notes)
-                                            // Each transaction is tracked separately, even if they share the same item code
-                                            $transactionIdMarker = "Transaction ID: {$transaction->id}";
-                                            $existingProductionOrder = \App\Models\ProductionOrder::where('job_order_id', $transaction->getJobOrder()->id)
-                                                ->where('notes', 'like', '%' . $transactionIdMarker . '%')
-                                                ->first();
-                                            $hasProductionOrder = $existingProductionOrder !== null;
-                                        @endphp
-                                        
-                                        @if(!$hasProductionOrder)
-                                            <button wire:click="openProductionOrderModal({{ $transaction->id }})" 
-                                                    class="mt-2 inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors">
-                                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                                                </svg>
-                                                Start Production
-                                            </button>
-                                        @else
-                                            <a href="{{ route('production-order-detail', $existingProductionOrder->id) }}" 
-                                               wire:navigate
-                                               class="mt-2 inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded-md text-blue-600 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
-                                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                                </svg>
-                                                In Production
-                                            </a>
-                                        @endif
-                                    @endif
-                                </div>
-                            </div>
-                        @empty
-                            <p class="text-gray-500">No recent transactions</p>
-                        @endforelse
+                        {{-- Temporarily disabled to fix memory issue --}}
+                        <p class="text-gray-500">Recent transactions temporarily disabled</p>
                     </div>
                 </div>
             </div>

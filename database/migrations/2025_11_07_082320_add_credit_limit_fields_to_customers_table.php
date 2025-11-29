@@ -12,10 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('customers', function (Blueprint $table) {
-            $table->string('code')->nullable()->after('id');
-            $table->string('contact_person')->nullable()->after('name');
-            $table->string('currency', 3)->default('LKR')->after('email');
-            $table->boolean('is_active')->default(true)->after('currency');
+            $table->string('credit_limit_period')->nullable()->after('bank');
+            $table->decimal('credit_limit_amount', 15, 2)->nullable()->after('credit_limit_period');
         });
     }
 
@@ -25,7 +23,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('customers', function (Blueprint $table) {
-            $table->dropColumn(['code', 'contact_person', 'currency', 'is_active']);
+            $table->dropColumn(['credit_limit_period', 'credit_limit_amount']);
         });
     }
 };

@@ -77,24 +77,28 @@
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
                         @foreach($jobOrders as $jobOrder)
-                        <tr class="hover:bg-gray-50 cursor-pointer" wire:navigate
+                        <tr class="hover:bg-gray-50 cursor-pointer" >
+                            <td class="px-6 py-4 whitespace-nowrap" wire:navigate
                             href="{{ route('job-order-detail', $jobOrder->id) }}">
-                            <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="text-sm font-medium text-gray-900">{{ $jobOrder->supplier_po_number }}</div>
                                 <div class="text-xs text-gray-500">JO #{{ $jobOrder->job_number }}</div>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900" wire:navigate
+                            href="{{ route('job-order-detail', $jobOrder->id) }}">
                                 {{ $jobOrder->date->format('Y-m-d') }}
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm text-gray-900">{{ $jobOrder->supplier->name }}</div>
-                                <div class="text-xs text-gray-500">{{ $jobOrder->supplier->code }}</div>
+                            <td class="px-6 py-4 whitespace-nowrap" wire:navigate
+                            href="{{ route('job-order-detail', $jobOrder->id) }}">
+                                <div class="text-sm text-gray-900">{{ $jobOrder->supplier->name ?? 'N/A' }}</div>
+                                <div class="text-xs text-gray-500">{{ $jobOrder->supplier->code ?? '' }}</div>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <div class="text-sm text-gray-900">{{ $jobOrder->customer->name }}</div>
-                                <div class="text-xs text-gray-500">{{ $jobOrder->customer->code }}</div>
+                            <td class="px-6 py-4 whitespace-nowrap" wire:navigate
+                            href="{{ route('job-order-detail', $jobOrder->id) }}">
+                                <div class="text-sm text-gray-900">{{ $jobOrder->customer->name ?? 'N/A' }}</div>
+                                <div class="text-xs text-gray-500">{{ $jobOrder->customer->code ?? '' }}</div>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900" wire:navigate
+                            href="{{ route('job-order-detail', $jobOrder->id) }}">
                                 <div class="flex flex-col space-y-1">
                                     @if($jobOrder->boxes->count() > 0)
                                     @foreach($jobOrder->boxes as $box)
@@ -243,7 +247,8 @@
                                     @endif
                                 </div>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap">
+                            <td class="px-6 py-4 whitespace-nowrap" wire:navigate
+                            href="{{ route('job-order-detail', $jobOrder->id) }}">
                                 @php
                                 $statusColors = [
                                 'draft' => 'bg-gray-100 text-gray-800',
@@ -276,8 +281,8 @@
                                             </path>
                                         </svg>
                                     </button>
-                                    <button wire:click.stop="deleteJobOrder({{ $jobOrder->id }})"
-                                        wire:confirm="Are you sure you want to delete this job order?"
+                                    <button wire:click.stop="openDeleteConfirmModal({{ $jobOrder->id }})"
+                                        onclick="event.stopPropagation(); event.preventDefault(); return false;"
                                         class="text-red-600 hover:text-red-900" title="Delete">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -526,6 +531,60 @@
                                 Close
                             </button>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    <!-- Delete Confirmation Modal -->
+    @if($showDeleteConfirmModal)
+        <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                <div class="mt-3">
+                    <div class="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full mb-4">
+                        <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                        </svg>
+                    </div>
+
+                    <h3 class="text-lg font-medium text-gray-900 text-center mb-2">
+                        Delete Job Order
+                    </h3>
+
+                    <div class="text-center text-sm text-gray-600 mb-6">
+                        <p>Are you sure you want to delete this job order?</p>
+                        @if($jobOrderToDelete)
+                            @php
+                                $jobOrder = \App\Models\JobOrder::find($jobOrderToDelete);
+                            @endphp
+                            @if($jobOrder)
+                                <p class="font-semibold text-gray-900 mt-2">
+                                    {{ $jobOrder->supplier_po_number }}
+                                </p>
+                                @if($jobOrder->job_number)
+                                    <p class="text-xs text-gray-500 mt-1">
+                                        Job #{{ $jobOrder->job_number }}
+                                    </p>
+                                @endif
+                                <p class="text-xs text-gray-500 mt-1">
+                                    This action cannot be undone.
+                                </p>
+                            @endif
+                        @endif
+                    </div>
+
+                    <div class="flex space-x-3">
+                        <button wire:click="closeDeleteConfirmModal"
+                                class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-4 rounded-md transition-colors">
+                            Cancel
+                        </button>
+                        @if($jobOrderToDelete)
+                        <button wire:click="deleteJobOrder({{ $jobOrderToDelete }})"
+                                class="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-md transition-colors">
+                            Delete
+                        </button>
+                        @endif
                     </div>
                 </div>
             </div>

@@ -180,14 +180,14 @@ class CreatePurchaseOrder extends Component
                 }
                 
                 if ($existingItemIndex !== null) {
-                    // Item already exists, increase quantity if possible
-                    $currentQty = $this->selectedItems[$existingItemIndex]['selected_qty'];
+                    // Item already exists, increase purchase quantity if possible
+                    $currentPurchaseQty = $this->selectedItems[$existingItemIndex]['purchase_qty'] ?? $this->selectedItems[$existingItemIndex]['available_qty'];
                     $availableQty = $this->selectedItems[$existingItemIndex]['available_qty'];
                     
-                    if ($currentQty < $availableQty) {
+                    if ($currentPurchaseQty < $availableQty) {
                         // Increase by 1 or to max available
-                        $newQty = min($currentQty + 1, $availableQty);
-                        $this->selectedItems[$existingItemIndex]['selected_qty'] = $newQty;
+                        $newQty = min($currentPurchaseQty + 1, $availableQty);
+                        $this->selectedItems[$existingItemIndex]['purchase_qty'] = $newQty;
                         
                         if ($newQty >= $availableQty) {
                             session()->flash('info', "Maximum available quantity ({$availableQty}) selected for {$item['description']}.");
@@ -197,6 +197,16 @@ class CreatePurchaseOrder extends Component
                     }
                 } else {
                     // Item doesn't exist, add it with full available quantity as default
+                    // For BOX items, board_qty is already calculated as order_qty / no_of_ups
+                    // For DIVIDER items, board_qty is the quantity from database
+                    $boardQty = isset($item['board_qty']) ? $item['board_qty'] : $item['remaining_qty'];
+                    
+                    // purchase_qty is what's actually being purchased - should not exceed available_qty
+                    // For BOX items: board_qty shows calculated value (order_qty / no_of_ups) for display only
+                    // For DIVIDER items: board_qty shows database quantity for display only
+                    // But purchase_qty should always be capped to available_qty
+                    $purchaseQty = min($item['remaining_qty'], ($item['type'] === 'BOX') ? $boardQty : $item['remaining_qty']);
+                    
                     $this->selectedItems[] = [
                         'id' => $item['id'],
                         'type' => $item['type'],
@@ -205,7 +215,8 @@ class CreatePurchaseOrder extends Component
                         'unit' => $item['unit'],
                         'job_order_number' => $item['job_order_number'],
                         'available_qty' => $item['remaining_qty'],
-                        'selected_qty' => $item['remaining_qty'], // Use full available quantity as default
+                        'board_qty' => $boardQty, // For BOX: calculated as order_qty/no_of_ups; For DIVIDER: quantity from database (display only)
+                        'purchase_qty' => $purchaseQty, // Purchase quantity (what's actually being purchased)
                         'supplier_id' => $item['supplier_id'],
                         'unit_cost' => $item['unit_cost'],
                         'original_number' => $item['original_number'], // Store the original item number
@@ -245,9 +256,10 @@ class CreatePurchaseOrder extends Component
                     return;
                 }
                 
-                // Update quantity if validation passes
-                $item['selected_qty'] = $quantity;
-                session()->flash('success', "Updated quantity for {$item['description']} to {$quantity}.");
+                // Update purchase quantity (what's actually being purchased)
+                // board_qty is for display only (calculated for BOX, database quantity for DIVIDER)
+                $item['purchase_qty'] = $quantity;
+                session()->flash('success', "Updated purchase quantity for {$item['description']} to {$quantity}.");
                 break;
             }
         }
@@ -336,6 +348,11 @@ class CreatePurchaseOrder extends Component
                 ]);
                 
                 if ($remainingQty > 0) {
+                    // Calculate board_qty as order_qty / no_of_ups for BOX items
+                    $boardQty = ($box->no_of_ups && $box->no_of_ups > 0) 
+                        ? ($box->order_qty / $box->no_of_ups) 
+                        : 0;
+                    
                     $this->availableItems[] = [
                         'id' => 'box_' . $box->id,
                         'type' => 'BOX',
@@ -346,7 +363,7 @@ class CreatePurchaseOrder extends Component
                         'unit' => $box->unit,
                         'order_qty' => $box->order_qty,
                         'remaining_qty' => $remainingQty,
-                        'selected_qty' => 0,
+                        'board_qty' => $boardQty, // Calculated as order_qty / no_of_ups
                         'supplier_id' => $box->supplier_id,
                         'unit_cost' => $box->supplier_price ?? 0,
                         'original_number' => $itemCounter, // Store the original item number
@@ -375,7 +392,7 @@ class CreatePurchaseOrder extends Component
                         'unit' => $divider->unit,
                         'order_qty' => $divider->quantity,
                         'remaining_qty' => $remainingQty,
-                        'selected_qty' => 0,
+                        'board_qty' => $divider->quantity, // For DIVIDER, use quantity field from database
                         'supplier_id' => null, // Dividers might not have supplier_id
                         'unit_cost' => $divider->supplier_price ?? 0,
                         'original_number' => $itemCounter, // Store the original item number
@@ -585,14 +602,18 @@ class CreatePurchaseOrder extends Component
         $warnings = [];
         
         foreach ($this->selectedItems as $item) {
-            if ($item['selected_qty'] > $item['available_qty']) {
-                $errors[] = "{$item['description']}: Selected quantity ({$item['selected_qty']}) exceeds available quantity ({$item['available_qty']}).";
+            // Only validate purchase_qty (what's actually being purchased)
+            // board_qty is display-only (calculated for BOX, database quantity for DIVIDER)
+            $purchaseQty = $item['purchase_qty'] ?? 0;
+            
+            if ($purchaseQty > $item['available_qty']) {
+                $errors[] = "{$item['description']}: Purchase quantity ({$purchaseQty}) exceeds available quantity ({$item['available_qty']}).";
             }
-            if ($item['selected_qty'] < 1) {
-                $errors[] = "{$item['description']}: Selected quantity must be at least 1.";
+            if ($purchaseQty < 1) {
+                $errors[] = "{$item['description']}: Purchase quantity must be at least 1.";
             }
-            if ($item['selected_qty'] == $item['available_qty'] && $item['available_qty'] > 0) {
-                $warnings[] = "{$item['description']}: All available quantity ({$item['available_qty']}) is selected.";
+            if ($purchaseQty == $item['available_qty'] && $item['available_qty'] > 0) {
+                $warnings[] = "{$item['description']}: All available quantity ({$item['available_qty']}) is being purchased.";
             }
         }
         
@@ -633,10 +654,12 @@ class CreatePurchaseOrder extends Component
     {
         foreach ($this->availableItems as &$item) {
             if ($item['id'] === $itemId) {
-                if ($item['selected_qty'] > 0) {
-                    $item['selected_qty'] = 0;
+                // This method is not currently used, but if it is, we should handle purchase_qty
+                // For now, keeping the original logic
+                if (isset($item['purchase_qty']) && $item['purchase_qty'] > 0) {
+                    $item['purchase_qty'] = 0;
                 } else {
-                    $item['selected_qty'] = $item['remaining_qty'];
+                    $item['purchase_qty'] = $item['remaining_qty'];
                 }
                 break;
             }
@@ -787,10 +810,11 @@ class CreatePurchaseOrder extends Component
         // Final validation: Check that all selected quantities are within available limits
         $validationErrors = [];
         foreach ($this->selectedItems as $item) {
-            if ($item['selected_qty'] > $item['available_qty']) {
-                $validationErrors[] = "{$item['description']}: Selected quantity ({$item['selected_qty']}) exceeds available quantity ({$item['available_qty']}).";
+            $purchaseQty = $item['purchase_qty'] ?? $item['board_qty'];
+            if ($purchaseQty > $item['available_qty']) {
+                $validationErrors[] = "{$item['description']}: Selected quantity ({$purchaseQty}) exceeds available quantity ({$item['available_qty']}).";
             }
-            if ($item['selected_qty'] < 1) {
+            if ($purchaseQty < 1) {
                 $validationErrors[] = "{$item['description']}: Selected quantity must be at least 1.";
             }
         }
@@ -829,15 +853,18 @@ class CreatePurchaseOrder extends Component
             $itemsToProcess = $this->multipleSuppliersDetected ? $this->selectedSupplierItems : $this->selectedItems;
             
             foreach ($itemsToProcess as $item) {
+                // Use purchase_qty for the actual purchase quantity
+                $purchaseQty = $item['purchase_qty'] ?? $item['board_qty'];
+                
                 // Create purchase order item
                 PurchaseOrderItem::create([
                     'purchase_order_id' => $purchaseOrder->id,
                     'item_type' => strtolower($item['type']),
                     'item_id' => $item['item_id'],
                     'description' => $item['description'],
-                    'quantity' => $item['selected_qty'],
+                    'quantity' => $purchaseQty,
                     'unit_price' => $item['unit_cost'],
-                    'total_price' => $item['selected_qty'] * $item['unit_cost'],
+                    'total_price' => $purchaseQty * $item['unit_cost'],
                 ]);
                 
                 // Update job order item quantity (deduct purchased quantity)
@@ -848,7 +875,7 @@ class CreatePurchaseOrder extends Component
                 Log::info('Purchase order item created', [
                     'item_type' => $item['type'],
                     'item_id' => $item['item_id'],
-                    'quantity' => $item['selected_qty'],
+                    'quantity' => $purchaseQty,
                     'purchase_order_id' => $purchaseOrder->id
                 ]);
                 

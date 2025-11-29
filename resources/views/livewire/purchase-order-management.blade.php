@@ -29,14 +29,37 @@
         <div class="px-6 py-4 border-b border-gray-200">
             <div class="flex items-center justify-between">
                 <h3 class="text-lg font-medium text-gray-900">All Purchase Orders</h3>
-                <button wire:click="openCreateModal({{ $selectedJobOrderId ?? '' }})"
-                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                    </svg>
-                    Generate Purchase Order
-                </button>
+                <div class="flex items-center space-x-4">
+                    <input type="text" wire:model.live="search" placeholder="Search purchase orders..."
+                        class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[200px]">
+                    @if($filterSupplier || $filterStatus || $filterDateFrom || $filterDateTo)
+                    <button wire:click="resetFilters"
+                        class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center">
+                        <svg class="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M15.312 11.424a5.5 5.5 0 0 1-9.201 2.466l-.312-.311h2.433a.75.75 0 0 0 0-1.5H3.989a.75.75 0 0 0-.75.75v4.242a.75.75 0 0 0 1.5 0v-2.43l.31.31a7 7 0 0 0 11.712-3.138.75.75 0 0 0-1.449-.39Zm1.23-3.723a.75.75 0 0 0 .219-.53V2.929a.75.75 0 0 0-1.5 0V5.36l-.31-.31A7 7 0 0 0 3.239 8.188a.75.75 0 1 0 1.448.389A5.5 5.5 0 0 1 13.89 6.11l.311.31h-2.432a.75.75 0 0 0 0 1.5h4.243a.75.75 0 0 0 .53-.219Z" clip-rule="evenodd" />
+                        </svg>
+                        Reset Filter
+                    </button>
+                    @else
+                    <button wire:click="openFilterModal"
+                        class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z">
+                            </path>
+                        </svg>
+                        Filter
+                    </button>
+                    @endif
+                    <button wire:click="openCreateModal({{ $selectedJobOrderId ?? '' }})"
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                        </svg>
+                        Generate Purchase Order
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -71,7 +94,7 @@
                             <div class="text-sm font-medium text-gray-900">{{ $po->po_number }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {{ $po->date->format('Y-m-d') }}
+                            {{ \App\Helpers\DateFormatHelper::format($po->date) }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm text-gray-900">{{ $po->supplier->name ?? 'N/A' }}</div>
@@ -160,20 +183,20 @@
                             <div class="flex items-center space-x-2">
                                 <button wire:click="viewPurchaseOrder({{ $po->id }})"
                                     class="text-gray-400 hover:text-gray-600" title="View Purchase Order">
-                                    <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                    <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" style="color: #8d8d8d;" onMouseOver="this.style.color='#242629'" onMouseOut="this.style.color='#8d8d8d'">
                                         <path stroke="currentColor" stroke-width="2" d="M21 12c0 1.2-4.03 6-9 6s-9-4.8-9-6c0-1.2 4.03-6 9-6s9 4.8 9 6Z"/>
                                         <path stroke="currentColor" stroke-width="2" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"/>
                                       </svg>
-                                      
+
                                 </button>
 
                                 @if($po->status === 'draft')
                                 <button wire:click="openPhoneConfirmModal({{ $po->id }})"
-                                    class="text-green-600 hover:text-green-900" title="Confirm Purchase Order">
-                                    <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                    class="text-green-600 hover:text-green-900" title="Confirm Purchase Order" >
+                                    <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="none" viewBox="0 0 24 24" style="color: #8d8d8d;" onMouseOver="this.style.color='green'" onMouseOut="this.style.color='#242629'">
                                         <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 3v4a1 1 0 0 1-1 1H5m4 6 2 2 4-4m4-8v16a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7.914a1 1 0 0 1 .293-.707l3.914-3.914A1 1 0 0 1 9.914 3H18a1 1 0 0 1 1 1Z"/>
                                       </svg>
-                                      
+
                                 </button>
                                 {{-- <button wire:click="openPhoneConfirmModal({{ $po->id }})"
                                     class="text-yellow-600 hover:text-yellow-900" title="Confirm (Update Prices)">
@@ -198,25 +221,37 @@
 
                                 @if($po->status === 'confirmed')
                                 <button wire:click="openGRNConfirmModal({{ $po->id }})"
-                                    class="{{ $po->grn->isNotEmpty() ? 'text-gray-300 cursor-not-allowed' : 'text-gray-400 hover:text-gray-600' }}" 
+                                    class="{{ $po->grn->isNotEmpty() ? 'text-gray-300 cursor-not-allowed' : 'text-gray-400 hover:text-gray-600' }}"
                                     title="{{ $po->grn->isNotEmpty() ? 'GRN Already Created' : 'Create GRN' }}"
                                     {{ $po->grn->isNotEmpty() ? 'disabled' : '' }}>
-                                    <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
+                                    <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24" style="color: #8d8d8d;" onMouseOver="this.style.color='#242629'" onMouseOut="this.style.color='#8d8d8d'">
                                         <path d="M17 20v-5h2v6.988H3V15h1.98v5H17Z"/>
                                         <path d="m6.84 14.522 8.73 1.825.369-1.755-8.73-1.825-.369 1.755Zm1.155-4.323 8.083 3.764.739-1.617-8.083-3.787-.739 1.64Zm3.372-5.481L10.235 6.08l6.859 5.704 1.132-1.362-6.859-5.704ZM15.57 17H6.655v2h8.915v-2ZM12.861 3.111l6.193 6.415 1.414-1.415-6.43-6.177-1.177 1.177Z"/>
                                       </svg>
-                                      
+
                                 </button>
                                 @endif
 
-                                @if($po->status === 'confirmed' || $po->status === 'draft')
+                                @if($po->status === 'draft')
                                 <button wire:click="openCancelConfirmModal({{ $po->id }})"
-                                    class="text-red-600 hover:text-red-900" 
+                                    class="" style="color: #c40d0d;"
                                     title="Cancel Purchase Order">
-                                    <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                                    <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" style="color: #8d8d8d;" onMouseOver="this.style.color='red'" onMouseOut="this.style.color='#8d8d8d'">
                                         <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18 17.94 6M18 18 6.06 6"/>
                                       </svg>
-                                      
+
+                                </button>
+                                @endif
+
+                                @if($po->status === 'confirmed')
+                                <button wire:click="openCancelConfirmModal({{ $po->id }})"
+                                    class="text-gray-300 cursor-not-allowed" style="color: #9ca3af;"
+                                    title="Cannot cancel confirmed purchase order"
+                                    disabled>
+                                    <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" style="color: #9ca3af;">
+                                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18 17.94 6M18 18 6.06 6"/>
+                                      </svg>
+
                                 </button>
                                 @endif
 
@@ -225,16 +260,18 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="8" class="px-6 py-12 text-center text-gray-500">
-                            <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
-                                </path>
-                            </svg>
-                            <h3 class="mt-2 text-sm font-medium text-gray-900">No purchase orders</h3>
-                            <p class="mt-1 text-sm text-gray-500">Get started by generating a purchase order from a job
-                                order.</p>
+                        <td colspan="9" class="px-6 py-12 text-center text-gray-500">
+                            <div class="flex flex-col items-center justify-center">
+                                <svg class="h-12 w-12 text-gray-400" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                                    </path>
+                                </svg>
+                                <h3 class="mt-2 text-sm font-medium text-gray-900 text-center">No purchase orders</h3>
+                                <p class="mt-1 text-sm text-gray-500 text-center">Get started by generating a purchase order from a job
+                                    order.</p>
+                            </div>
                         </td>
                     </tr>
                     @endforelse
@@ -370,7 +407,7 @@
                             <span class="text-sm text-gray-700">Dimensions</span>
                         </label>
                     </div>
-                    
+
                     <!-- Format indicator -->
                     <div class="mb-4 p-2 bg-blue-50 border border-blue-200 rounded text-sm text-blue-700">
                         <strong>Current Format:</strong> {{ $displayFormat === 'reel_cuts' ? 'Reel and Cuts' : 'Dimensions' }}
@@ -383,7 +420,7 @@
                     <div class="text-center mb-6 border-b-2 border-gray-800 pb-4">
                         <h2 class="text-3xl font-bold text-gray-900">PURCHASE ORDER</h2>
                         <p class="text-lg text-gray-700 mt-2">PO Number: {{ $selectedPurchaseOrder->po_number }}</p>
-                        <p class="text-sm text-gray-600">Date: {{ $selectedPurchaseOrder->date->format('M d, Y') }}</p>
+                        <p class="text-sm text-gray-600">Date: {{ \App\Helpers\DateFormatHelper::format($selectedPurchaseOrder->date) }}</p>
                     </div>
 
                     <!-- Print Details -->
@@ -479,21 +516,28 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div class="space-y-4">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700">PO Number</label>
-                                <div class="mt-1 text-lg font-semibold text-gray-900">{{
-                                    $selectedPurchaseOrder->po_number }}</div>
+                                <label class="block text-sm font-bold text-gray-700">Supplier: <span class="text-xs font-normal text-gray-900">{{ $selectedPurchaseOrder->supplier->name ?? 'N/A' }}</span>
+                                    @if($selectedPurchaseOrder->supplier->code ?? '')
+                                        <span class="text-xs text-gray-500">({{ $selectedPurchaseOrder->supplier->code }})</span>
+                                    @endif
+                                </label>
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700">Date</label>
-                                <div class="mt-1 text-gray-900">{{ $selectedPurchaseOrder->date->format('Y-m-d') }}
-                                </div>
+                                <label class="block text-sm font-bold text-gray-700">Supplier Address: <span class="text-xs font-normal text-gray-900">{{ $selectedPurchaseOrder->supplier->address ?? 'N/A' }}</span></label>
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700">Status</label>
-                                <div class="mt-1">
+                                <label class="block text-sm font-bold text-gray-700">Job Order: <span class="text-xs font-normal text-gray-900">{{ $selectedPurchaseOrder->jobOrder->supplier_po_number ?? 'N/A' }}</span>
+                                    @if($selectedPurchaseOrder->jobOrder->job_number ?? '')
+                                        <span class="text-xs text-gray-500">({{ $selectedPurchaseOrder->jobOrder->job_number }})</span>
+                                    @endif
+                                </label>
+                            </div>
+                            <div class="flex gap-1">
+                                <label class="block text-sm font-bold text-gray-700">Status:</label>
+                                <div>
                                     @php
                                     $statusColors = [
-                                    'draft' => 'bg-gray-100 text-gray-800',
+                                    'draft' => 'bg-yellow-100 text-yellow-800',
                                     'confirmed' => 'bg-green-100 text-green-800',
                                     'cancelled' => 'bg-red-100 text-red-800',
                                     ];
@@ -505,25 +549,15 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="space-y-4">
+                        <div class="space-y-4 text-right">
                             <div>
-                                <label class="block text-sm font-medium text-gray-700">Supplier</label>
-                                <div class="mt-1 text-gray-900">{{ $selectedPurchaseOrder->supplier->name ?? 'N/A' }}
-                                </div>
-                                <div class="text-sm text-gray-500">{{ $selectedPurchaseOrder->supplier->code ?? '' }}
-                                </div>
+                                <label class="block text-sm font-bold text-gray-700">PO Number: <span class="text-xs font-normal text-gray-900">{{ $selectedPurchaseOrder->po_number }}</span></label>
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700">Job Order</label>
-                                <div class="mt-1 text-gray-900">{{ $selectedPurchaseOrder->jobOrder->supplier_po_number
-                                    ?? 'N/A' }}</div>
-                                <div class="text-sm text-gray-500">{{ $selectedPurchaseOrder->jobOrder->job_number ?? ''
-                                    }}</div>
+                                <label class="block text-sm font-bold text-gray-700">Date: <span class="text-xs font-normal text-gray-900">{{ \App\Helpers\DateFormatHelper::format($selectedPurchaseOrder->date) }}</span></label>
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-gray-700">Total Amount</label>
-                                <div class="mt-1 text-lg font-semibold text-gray-900">Rs. {{
-                                    number_format($selectedPurchaseOrder->getTotalAmount(), 2) }}</div>
+                                <label class="block text-sm font-bold text-gray-700">Total Amount: <span class="text-lg font-bold text-gray-900">Rs. {{ number_format($selectedPurchaseOrder->getTotalAmount(), 2) }}</span></label>
                             </div>
                         </div>
                     </div>
@@ -590,7 +624,7 @@
                                             // Get reel_size and cut_size from item
                                             $reelSize = $item->reel_size;
                                             $cutSize = $item->cut_size;
-                                            
+
                                             // If values are not stored, try to calculate from the related box
                                             if (($reelSize === null || $cutSize === null || $reelSize == 0 || $cutSize == 0) && $item->item_type === 'box' && $selectedPurchaseOrder->jobOrder) {
                                                 $box = $selectedPurchaseOrder->jobOrder->boxes->firstWhere('id', $item->item_id);
@@ -613,7 +647,7 @@
                                             $length = '-';
                                             $width = '-';
                                             $height = '-';
-                                            
+
                                             if ($item->item_type === 'box' && $selectedPurchaseOrder->jobOrder) {
                                                 // Try to find the box in job order
                                                 $box = $selectedPurchaseOrder->jobOrder->boxes->firstWhere('id', $item->item_id);
@@ -630,9 +664,8 @@
                                         @endif
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                             @if($selectedPurchaseOrder->status === 'draft')
-                                                <input type="number" 
-                                                       wire:model.live="itemQuantities.{{ $item->id }}"
-                                                       wire:change="updateItemQuantity({{ $item->id }})"
+                                                <input type="number"
+                                                       wire:model="itemQuantities.{{ $item->id }}"
                                                        min="1"
                                                        class="w-24 px-2 py-1 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500">
                                             @else
@@ -642,7 +675,9 @@
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Rs. {{
                                             number_format($item->unit_price, 2) }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Rs. {{
-                                            number_format($item->total_price, 2) }}</td>
+                                            number_format(isset($itemQuantities[$item->id]) && $selectedPurchaseOrder->status === 'draft'
+                                                ? ($item->unit_price * (int)$itemQuantities[$item->id])
+                                                : $item->total_price, 2) }}</td>
                                         @if($selectedPurchaseOrder->status === 'draft')
                                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                             <button wire:click="deletePurchaseOrderItem({{ $item->id }})"
@@ -724,11 +759,68 @@
                 <!-- Modal Body -->
                 <div class="mt-6 space-y-6">
                     <!-- PO Header Information -->
-                    <div class="bg-yellow-50 p-4 rounded-lg">
-                        <h4 class="font-medium text-yellow-900 mb-2">Purchase Order: {{
-                            $selectedPurchaseOrder->po_number }}</h4>
-                        <p class="text-sm text-yellow-700">Update supplier prices and confirm this Purchase Order after
-                            confirmation.</p>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700">Supplier : <span class="text-xs font-normal text-gray-900">{{ $selectedPurchaseOrder->supplier->name ?? 'N/A' }}</span>
+                                    @if($selectedPurchaseOrder->supplier->code ?? '')
+                                        <span class="text-xs text-gray-500">({{ $selectedPurchaseOrder->supplier->code }})</span>
+                                    @endif
+                                </label>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700">Supplier Address : <span class="text-xs font-normal text-gray-900">{{ $selectedPurchaseOrder->supplier->address ?? 'N/A' }}</span></label>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700">Job Order : <span class="text-xs font-normal text-gray-900">{{ $selectedPurchaseOrder->jobOrder->supplier_po_number ?? 'N/A' }}</span>
+                                    @if($selectedPurchaseOrder->jobOrder->job_number ?? '')
+                                        <span class="text-xs text-gray-500">({{ $selectedPurchaseOrder->jobOrder->job_number }})</span>
+                                    @endif
+                                </label>
+                            </div>
+                            <div class="flex gap-1">
+                                <label class="block text-sm font-bold text-gray-700">Status :</label>
+                                <div>
+                                    @php
+                                    $statusColors = [
+                                    'draft' => 'bg-yellow-100 text-yellow-800',
+                                    'confirmed' => 'bg-green-100 text-green-800',
+                                    'cancelled' => 'bg-red-100 text-red-800',
+                                    ];
+                                    @endphp
+                                    <span
+                                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $statusColors[$selectedPurchaseOrder->status] ?? 'bg-gray-100 text-gray-800' }}">
+                                        {{ ucfirst($selectedPurchaseOrder->status) }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="space-y-4 text-right">
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700">PO Number: <span class="text-xs font-normal text-gray-900">{{ $selectedPurchaseOrder->po_number }}</span></label>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700">Date: <span class="text-xs font-normal text-gray-900">{{ \App\Helpers\DateFormatHelper::format($selectedPurchaseOrder->date) }}</span></label>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-bold text-gray-700">Total Amount: <span class="text-lg font-bold text-gray-900">Rs. {{ number_format($selectedPurchaseOrder->getTotalAmount(), 2) }}</span></label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Info Box -->
+                    <div class="bg-yellow-50 p-2 rounded-lg border border-yellow-400">
+                        <div class="flex items-start gap-3">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-5 text-yellow-600 flex-shrink-0 mt-0.5">
+                                <path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495ZM10 5a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 5Zm0 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd" />
+                            </svg>
+                            <div class="flex-1">
+                                <h4 class="font-medium text-yellow-900 mb-2">Purchase Order : {{
+                                    $selectedPurchaseOrder->po_number }}</h4>
+                                <p class="text-sm text-yellow-700">Update supplier prices and confirm this Purchase Order after
+                                    confirmation.</p>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Price Update Table -->
@@ -774,7 +866,7 @@
                                             number_format($item->unit_price, 2) }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <input type="number" step="0.01"
-                                                wire:model="phoneConfirmForm.item_{{ $item->id }}_unit_price"
+                                                wire:model.live="phoneConfirmForm.item_{{ $item->id }}_unit_price"
                                                 class="w-24 px-2 py-1 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500">
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -792,7 +884,7 @@
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Confirmation Notes</label>
                         <textarea wire:model="phoneConfirmForm.notes" rows="3"
-                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                            class="border border-gray-400 mt-1 block w-full p-2  rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
                             placeholder="Any notes from the conversation..."></textarea>
                     </div>
                 </div>
@@ -825,11 +917,11 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                         </svg>
                     </div>
-                    
+
                     <h3 class="text-lg font-medium text-gray-900 text-center mb-2">
                         Create GRN from Purchase Order
                     </h3>
-                    
+
                     <div class="text-center text-sm text-gray-600 mb-6">
                         <p>Are you sure you want to create a GRN from:</p>
                         <p class="font-semibold text-gray-900 mt-1">
@@ -839,13 +931,13 @@
                             This will create a Goods Received Note with {{ $selectedPurchaseOrder->items->count() ?? 0 }} items.
                         </p>
                     </div>
-                    
+
                     <div class="flex space-x-3">
-                        <button wire:click="closeGRNConfirmModal" 
+                        <button wire:click="closeGRNConfirmModal"
                                 class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-4 rounded-md transition-colors">
                             Cancel
                         </button>
-                        <button wire:click="createGRNFromPurchaseOrder({{ $selectedPurchaseOrder->id ?? '' }})" 
+                        <button wire:click="createGRNFromPurchaseOrder({{ $selectedPurchaseOrder->id ?? '' }})"
                                 class="flex-1 bg-orange-600 hover:bg-orange-700 text-white font-medium py-2 px-4 rounded-md transition-colors">
                             Create GRN
                         </button>
@@ -865,11 +957,11 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
                         </svg>
                     </div>
-                    
+
                     <h3 class="text-lg font-medium text-gray-900 text-center mb-2">
                         Cancel Purchase Order
                     </h3>
-                    
+
                     <div class="text-center text-sm text-gray-600 mb-6">
                         <p>Are you sure you want to cancel:</p>
                         <p class="font-semibold text-gray-900 mt-1">
@@ -885,25 +977,25 @@
                                 @endif
                             </p>
                         </div>
-                        
+
                         <div class="mt-4">
                             <label for="cancellation_reason" class="block text-sm font-medium text-gray-700 mb-2">
                                 Cancellation Reason (Optional)
                             </label>
-                            <textarea wire:model="cancellationReason" 
+                            <textarea wire:model="cancellationReason"
                                     id="cancellation_reason"
                                     rows="3"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-sm"
                                     placeholder="Enter reason for cancellation..."></textarea>
                         </div>
                     </div>
-                    
+
                     <div class="flex space-x-3">
-                        <button wire:click="closeCancelConfirmModal" 
+                        <button wire:click="closeCancelConfirmModal"
                                 class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-4 rounded-md transition-colors">
                             Keep Order
                         </button>
-                        <button wire:click="cancelPurchaseOrder({{ $selectedPurchaseOrder->id ?? '' }})" 
+                        <button wire:click="cancelPurchaseOrder({{ $selectedPurchaseOrder->id ?? '' }})"
                                 class="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-md transition-colors">
                             Cancel Order
                         </button>
@@ -918,7 +1010,7 @@
         $wire.on('redirectToProductionOrder', function(url) {
             window.location.href = url;
         });
-        
+
         // Handle redirect after production order creation
         @if($redirectToProductionOrder)
             setTimeout(function() {
@@ -933,10 +1025,10 @@
                 console.error('Print content not found');
                 return;
             }
-            
+
             // Show print content and hide modal
             printContent.style.display = 'block';
-            
+
             // Create a new window for printing
             var printWindow = window.open('', '_blank', 'width=800,height=600');
             printWindow.document.write('<html><head><title>Purchase Order - {{ $selectedPurchaseOrder->po_number ?? "" }}</title>');
@@ -953,7 +1045,7 @@
             printWindow.document.write(printContent.innerHTML);
             printWindow.document.write('</body></html>');
             printWindow.document.close();
-            
+
             // Wait for content to load then print
             setTimeout(function() {
                 printWindow.print();
@@ -963,6 +1055,89 @@
         };
     </script>
     @endscript
+
+    <!-- Filter Modal -->
+    @if($showFilterModal)
+        <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" wire:click.self="closeFilterModal">
+            <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-md bg-white">
+                <div class="mt-3">
+                    <!-- Modal Header -->
+                    <div class="flex justify-between items-center pb-4 border-b">
+                        <h3 class="text-lg font-medium text-gray-900">
+                            Filter Purchase Orders
+                        </h3>
+                        <button wire:click="closeFilterModal" class="text-gray-400 hover:text-gray-600">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <!-- Filter Form -->
+                    <div class="mt-6">
+                        <div class="space-y-3">
+                            <!-- Row 1: Start Date, End Date -->
+                            <div class="flex gap-3">
+                                <div class="flex items-center gap-3 flex-1">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1 w-1/5">Start Date</label>
+                                    <div class="flex-1">
+                                        <input type="date" wire:model.live="filterDateFrom"
+                                            class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center gap-3 flex-1">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1 w-1/5">End Date</label>
+                                    <div class="flex-1">
+                                        <input type="date" wire:model.live="filterDateTo"
+                                            class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Row 2: Supplier, Status -->
+                            <div class="flex gap-3">
+                                <div class="flex items-center gap-3 flex-1">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1 w-1/5">Supplier</label>
+                                    <div class="flex-1">
+                                        <select wire:model.live="filterSupplier"
+                                            class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                            <option value="">All Suppliers</option>
+                                            @foreach($suppliers as $supplier)
+                                            <option value="{{ $supplier->id }}">{{ $supplier->name }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center gap-3 flex-1">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1 w-1/5">Status</label>
+                                    <div class="flex-1">
+                                        <select wire:model.live="filterStatus"
+                                            class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                            <option value="">All Status</option>
+                                            <option value="draft">Draft</option>
+                                            <option value="confirmed">Confirmed</option>
+                                            <option value="cancelled">Cancelled</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="flex justify-end space-x-3 mt-8 pt-6 border-t">
+                            <button type="button"
+                                    wire:click="closeFilterModal"
+                                    class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
 
     <style>
         @media print {

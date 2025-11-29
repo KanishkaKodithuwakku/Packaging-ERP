@@ -6,7 +6,7 @@
                     <h2 class="text-2xl font-bold text-gray-900">Create Purchase Order</h2>
                     <p class="text-gray-600">Select job order items to create a purchase order</p>
                 </div>
-                <a href="{{ route('purchase-order-management') }}" 
+                <a href="{{ route('purchase-order-management') }}"
                    class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md">
                     Back to Purchase Orders
                 </a>
@@ -42,7 +42,7 @@
             @if($showJobOrderSelection)
                 <div class="bg-white border border-gray-200 rounded-lg p-6">
                     <h3 class="text-lg font-semibold mb-4">Select Job Order</h3>
-                    
+
                     @if($jobOrders->count() > 0)
                         <div class="grid gap-4">
                             @foreach($jobOrders as $jobOrder)
@@ -51,7 +51,7 @@
                                     $isSelected = in_array($jobOrder->id, $selectedJobOrderIds);
                                     $isDifferentSupplier = !empty($selectedJobOrderIds) && $currentSelectedSupplierId !== null && $jobOrderSupplierId !== $currentSelectedSupplierId;
                                     $isDisabled = $isDifferentSupplier && !$isSelected;
-                                    
+
                                     // Get supplier name
                                     $jobOrderSupplier = $jobOrder->supplier ?? null;
                                     if ($jobOrderSupplier) {
@@ -72,7 +72,7 @@
                                      @if(!$isDisabled) wire:click="toggleJobOrder({{ $jobOrder->id }})" @endif>
                                     <div class="flex justify-between items-center">
                                         <div class="flex items-center space-x-3">
-                                            <input type="checkbox" 
+                                            <input type="checkbox"
                                                    {{ $isSelected ? 'checked' : '' }}
                                                    {{ $isDisabled ? 'disabled' : '' }}
                                                    class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 {{ $isDisabled ? 'opacity-50' : '' }}">
@@ -81,7 +81,7 @@
                                                     <span class="font-medium">Customer:</span> {{ $jobOrder->customer->name ?? 'No Customer' }}
                                                 </p>
                                                 <p class="text-sm text-gray-600">
-                                                    <span class="font-medium">Supplier:</span> 
+                                                    <span class="font-medium">Supplier:</span>
                                                     <span class="{{ $isDifferentSupplier ? 'text-red-600 font-medium' : '' }}">{{ $supplierName }}</span>
                                                     @if($isDifferentSupplier)
                                                         <span class="text-red-500 text-xs ml-1">(Different Supplier)</span>
@@ -107,9 +107,9 @@
                                 </div>
                             @endforeach
                         </div>
-                        
+
                         <div class="mt-6 flex justify-end">
-                            <button wire:click="proceedToItemSelection" 
+                            <button wire:click="proceedToItemSelection"
                                     class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-md"
                                     @if(empty($selectedJobOrderIds)) disabled @endif>
                                 Next: Select Items ({{ count($selectedJobOrderIds) }} selected)
@@ -130,20 +130,19 @@
                         <h3 class="text-lg font-semibold">Select Items to Purchase</h3>
                         <button wire:click="goBack" class="text-gray-500 hover:text-gray-700">← Back to Job Orders</button>
                     </div>
-                    
-                    
+
+
                     <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
                         <!-- Available Items -->
                         <div>
                             <div class="mb-4">
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Search Item*</label>
-                                <p class="text-xs text-gray-500 mb-2">Search by: dimensions (120x130), job order number, or unit (MM/CM/INCHES)</p>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Search Item <span class="text-red-500">*</span></label>
                                 <div class="relative">
-                                    <input type="text" 
+                                    <input type="text"
                                            wire:model.live="searchItem"
                                            placeholder="Search by dimensions (e.g., 120x130), job order, or unit (MM/CM/INCHES)..."
                                            class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500">
-                                    
+
                                     <!-- Search Results Dropdown -->
                                     @if($searchItem && count($this->getFilteredAvailableItems()) > 0)
                                         <div class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
@@ -188,7 +187,7 @@
                                     @endif
                                 </div>
                             </div>
-                            
+
                             <!-- Show all available items when no search -->
                             @if(empty($searchItem))
                                 <div class="border border-gray-200 rounded-lg overflow-hidden">
@@ -214,7 +213,7 @@
                                                     foreach($selectedItems as $selectedItem) {
                                                         if($selectedItem['id'] === $item['id']) {
                                                             $isSelected = true;
-                                                            $selectedQty = $selectedItem['selected_qty'];
+                                                            $selectedQty = $selectedItem['board_qty'];
                                                             break;
                                                         }
                                                     }
@@ -261,7 +260,7 @@
                                                                 • Check existing purchase orders to see what's been purchased<br>
                                                                 • Modify existing job orders to add more quantities
                                                             </div>
-                                                            
+
                                                             @if(!empty($purchasedItemsDetails))
                                                                 <div class="mt-4 bg-blue-50 p-4 rounded-md">
                                                                     <h4 class="text-sm font-medium text-blue-900 mb-2">📋 Purchased Items Details:</h4>
@@ -272,8 +271,8 @@
                                                                                 <div class="ml-4 mt-2 text-xs text-blue-700">
                                                                                     <div class="font-medium">{{ $item['description'] }}</div>
                                                                                     <div class="text-gray-600">
-                                                                                        Ordered: {{ number_format($item['order_qty']) }} | 
-                                                                                        Purchased: {{ number_format($item['purchased_qty']) }} | 
+                                                                                        Ordered: {{ number_format($item['order_qty']) }} |
+                                                                                        Purchased: {{ number_format($item['purchased_qty']) }} |
                                                                                         Remaining: {{ number_format($item['remaining_qty']) }}
                                                                                     </div>
                                                                                     @if(!empty($item['purchase_orders']))
@@ -292,13 +291,13 @@
                                                                     @endforeach
                                                                 </div>
                                                             @endif
-                                                            
+
                                                             <!-- Development/Testing Only - Remove in Production -->
                         {{-- <div class="mt-4 bg-red-50 p-3 rounded-md border border-red-200">
                             <h4 class="text-sm font-medium text-red-900 mb-2">⚠️ Development Tools:</h4>
                             <p class="text-xs text-red-700 mb-2">For testing purposes only - this will reset purchase history:</p>
                             <p class="text-xs text-red-600 mb-2">Current Currency: {{ $currentSupplierCurrency }} ({{ $this->getCurrencySymbol() }})</p>
-                            <button wire:click="resetPurchaseHistory" 
+                            <button wire:click="resetPurchaseHistory"
                                     class="bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1 rounded"
                                     onclick="return confirm('⚠️ WARNING: This will delete all purchase order items and reset quantities. This is for testing only. Are you sure?')">
                                 Reset Purchase History
@@ -313,11 +312,11 @@
                                 </div>
                             @endif
                         </div>
-                        
+
                         <!-- Selected Items -->
                         <div>
-                            <h4 class="font-medium text-gray-900 mb-4">Selected Items</h4>
-                            
+                            <h4  class="block text-sm font-medium text-gray-700 mb-2">Selected Items</h4>
+
                             <div class="border border-gray-200 rounded-lg overflow-hidden">
                                 <table class="w-full">
                                         <thead class="bg-gray-50">
@@ -326,7 +325,7 @@
                                                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Job Order</th>
                                                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Item Name</th>
                                                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
-                                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Qty</th>
+                                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Board Qty</th>
                                                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
                                             </tr>
                                         </thead>
@@ -338,15 +337,21 @@
                                                 <td class="px-4 py-2 text-sm font-medium text-gray-900">{{ $item['type'] }}</td>
                                                 <td class="px-4 py-2 text-sm text-gray-600">{{ $item['description'] }}</td>
                                                 <td class="px-4 py-2 text-sm">
-                                                    <input type="number" 
-                                                           wire:model.live="selectedItems.{{ $index }}.selected_qty"
-                                                           wire:change="updateSelectedQuantity('{{ $item['id'] }}', $event.target.value)"
-                                                           min="1" 
-                                                           max="{{ $item['available_qty'] }}"
-                                                           step="1"
-                                                           class="w-20 px-2 py-1 border border-gray-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500 {{ $item['selected_qty'] > $item['available_qty'] ? 'border-red-500 bg-red-50' : '' }}"
-                                                           title="Available: {{ $item['available_qty'] }}"
-                                                           oninput="if(this.value > {{ $item['available_qty'] }}) { this.value = {{ $item['available_qty'] }}; } if(this.value < 1) { this.value = 1; }">
+                                                    @if($item['type'] === 'BOX')
+                                                        {{-- For BOX items, board_qty is read-only and comes from database --}}
+                                                        <span class="text-gray-900">{{ $item['board_qty'] }}</span>
+                                                    @else
+                                                        {{-- For DIVIDER items, purchase_qty is editable --}}
+                                                        <input type="number"
+                                                               wire:model.live="selectedItems.{{ $index }}.purchase_qty"
+                                                               wire:change="updateSelectedQuantity('{{ $item['id'] }}', $event.target.value)"
+                                                               min="1"
+                                                               max="{{ $item['available_qty'] }}"
+                                                               step="1"
+                                                               class="w-20 px-2 py-1 border border-gray-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500 {{ ($item['purchase_qty'] ?? $item['board_qty']) > $item['available_qty'] ? 'border-red-500 bg-red-50' : '' }}"
+                                                               title="Available: {{ $item['available_qty'] }}"
+                                                               oninput="if(this.value > {{ $item['available_qty'] }}) { this.value = {{ $item['available_qty'] }}; } if(this.value < 1) { this.value = 1; }">
+                                                    @endif
                                                 </td>
                                                 <td class="px-4 py-2 text-sm">
                                                     <button wire:click="removeItem('{{ $item['id'] }}')"
@@ -367,9 +372,9 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="mt-6 flex justify-end">
-                        <button wire:click="proceedToFinalReview" 
+                        <button wire:click="proceedToFinalReview"
                                 class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-md"
                                 @if(empty($selectedItems)) disabled @endif>
                             Next: Review & Create
@@ -386,7 +391,7 @@
                         <h3 class="text-lg font-semibold">Multiple Suppliers Detected</h3>
                         <button wire:click="goBack" class="text-gray-500 hover:text-gray-700">← Back</button>
                     </div>
-                    
+
                     <div class="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                         <div class="flex items-center">
                             <svg class="w-5 h-5 text-yellow-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
@@ -395,21 +400,21 @@
                             <p class="text-yellow-800 font-medium">Items from multiple suppliers detected. Please select which supplier to use for this purchase order.</p>
                         </div>
                     </div>
-                    
+
                     <div class="grid gap-4">
                         @foreach($availableSuppliers as $supplier)
                             @php
                                 $supplierData = $itemsBySupplier[$supplier['id']];
                                 $itemCount = count($supplierData['items']);
                                 $totalValue = collect($supplierData['items'])->sum(function($item) {
-                                    return $item['selected_qty'] * $item['unit_cost'];
+                                    return $item['board_qty'] * $item['unit_cost'];
                                 });
                             @endphp
                             <div class="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors {{ $selectedSupplierId == $supplier['id'] ? 'border-blue-500 bg-blue-50' : '' }}"
                                  wire:click="selectSupplier({{ $supplier['id'] }})">
                                 <div class="flex justify-between items-center">
                                     <div class="flex items-center space-x-3">
-                                        <input type="radio" 
+                                        <input type="radio"
                                                {{ $selectedSupplierId == $supplier['id'] ? 'checked' : '' }}
                                                class="text-blue-600 focus:ring-blue-500">
                                         <div>
@@ -425,18 +430,18 @@
                             </div>
                         @endforeach
                     </div>
-                    
+
                     <div class="mt-6 flex justify-between">
-                        <button wire:click="createSeparatePurchaseOrders" 
+                        <button wire:click="createSeparatePurchaseOrders"
                                 class="bg-purple-500 hover:bg-purple-600 text-white px-6 py-2 rounded-md">
                             Create Separate POs for Each Supplier
                         </button>
                         <div class="flex space-x-4">
-                            <button wire:click="goBack" 
+                            <button wire:click="goBack"
                                     class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md">
                                 Back
                             </button>
-                            <button wire:click="createPurchaseOrder" 
+                            <button wire:click="createPurchaseOrder"
                                     class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-md"
                                     @if(!$selectedSupplierId) disabled @endif>
                                 Create Purchase Order
@@ -453,13 +458,25 @@
                         <h3 class="text-lg font-semibold">Review Purchase Order</h3>
                         <button wire:click="goBack" class="text-gray-500 hover:text-gray-700">← Back</button>
                     </div>
-                    
+
+                    {{-- <!-- Debug Info -->
+                    <div class="mb-4 p-3 bg-yellow-100 border border-yellow-300 rounded-md">
+                        <p class="text-sm text-yellow-800">
+                            <strong>Debug:</strong> Selected Job Order IDs: {{ implode(', ', $selectedJobOrderIds) }} |
+                            Job Orders Count: {{ $jobOrders->count() }} |
+                            Current Supplier ID: {{ $currentSelectedSupplierId }}
+                        </p>
+                        <p class="text-xs text-yellow-700 mt-1">
+                            Job Orders Data: {{ $jobOrders->map(function($jo) { return ['id' => $jo->id, 'job_number' => $jo->job_number, 'job_order_number' => $jo->job_order_number]; })->toJson() }}
+                        </p>
+                    </div> --}}
+
                     <div class="grid md:grid-cols-2 gap-6">
                         <!-- Purchase Order Details -->
                         <div>
-                            <h4 class="font-semibold mb-3">Purchase Order Details</h4>
+                            <h4 class="font-semibold text-sm mb-3">Purchase Order Details</h4>
                             <div class="space-y-2 text-sm">
-                                <div><strong>Job Orders:</strong> 
+                                <div><strong>Job Orders:</strong>
                                     @if(!empty($selectedJobOrderIds))
                                         @foreach($selectedJobOrderIds as $jobOrderId)
                                             @php
@@ -479,10 +496,10 @@
                                 @endif
                             </div>
                         </div>
-                        
+
                         <!-- Selected Items -->
                         <div>
-                            <h4 class="font-semibold mb-3">Selected Items</h4>
+                            <h4 class="text-sm font-semibold mb-3">Selected Items</h4>
                             <div class="space-y-2">
                                 @php
                                     $itemsToShow = $multipleSuppliersDetected ? $selectedSupplierItems : $selectedItems;
@@ -491,21 +508,33 @@
                                     <div class="flex justify-between items-center text-sm border-b border-gray-100 pb-2">
                                         <div>
                                             <div class="font-medium">{{ $item['description'] }}</div>
-                                            <div class="text-gray-600">Qty: {{ $item['selected_qty'] }} | {{ $this->getCurrencySymbol() }}{{ number_format($item['unit_cost'], 2) }} each</div>
+                                            <div class="text-gray-600">
+                                                @php
+                                                    $purchaseQty = $item['purchase_qty'] ?? $item['available_qty'];
+                                                @endphp
+                                                @if($item['type'] === 'BOX')
+                                                    Board Qty: {{ number_format($item['board_qty']) }} (Purchase: {{ number_format($purchaseQty) }}) | {{ $this->getCurrencySymbol() }}{{ number_format($item['unit_cost'], 2) }} each
+                                                @else
+                                                    Qty: {{ number_format($item['board_qty']) }} (Purchase: {{ number_format($purchaseQty) }}) | {{ $this->getCurrencySymbol() }}{{ number_format($item['unit_cost'], 2) }} each
+                                                @endif
+                                            </div>
                                         </div>
-                                        <div class="text-right">
-                                            <div class="font-medium">{{ $this->getCurrencySymbol() }}{{ number_format($item['selected_qty'] * $item['unit_cost'], 2) }}</div>
+                                            <div class="text-right">
+                                            @php
+                                                $purchaseQty = $item['purchase_qty'] ?? $item['board_qty'];
+                                            @endphp
+                                            <div class="font-medium">{{ $this->getCurrencySymbol() }}{{ number_format($purchaseQty * $item['unit_cost'], 2) }}</div>
                                         </div>
                                     </div>
                                 @endforeach
                             </div>
                         </div>
                     </div>
-                    
+
                     @php
                         $validation = $this->validateQuantities();
                     @endphp
-                    
+
                     @if(!empty($validation['errors']))
                         <div class="mt-4 bg-red-50 border border-red-200 rounded-md p-4">
                             <h4 class="text-sm font-medium text-red-800 mb-2">⚠️ Validation Errors:</h4>
@@ -516,14 +545,29 @@
                             </ul>
                         </div>
                     @endif
-                    
-                    
+
+                    @if(!empty($validation['warnings']))
+                        <div class="mt-4 bg-yellow-50 border border-yellow-200 rounded-md p-4">
+                            <h4 class="text-sm font-medium text-yellow-800 mb-2 flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-5">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-7-4a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM9 9a.75.75 0 0 0 0 1.5h.253a.25.25 0 0 1 .244.304l-.459 2.066A1.75 1.75 0 0 0 10.747 15H11a.75.75 0 0 0 0-1.5h-.253a.25.25 0 0 1-.244-.304l.459-2.066A1.75 1.75 0 0 0 9.253 9H9Z" clip-rule="evenodd" />
+                                </svg>
+                                Information:
+                            </h4>
+                            <ul class="text-sm text-yellow-700 space-y-1">
+                                @foreach($validation['warnings'] as $warning)
+                                    <li>• {{ $warning }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @endif
+
                     <div class="mt-6 flex justify-end space-x-4">
-                        <button wire:click="goBack" 
+                        <button wire:click="goBack"
                                 class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md">
                             Back
                         </button>
-                        <button wire:click="createPurchaseOrder" 
+                        <button wire:click="createPurchaseOrder"
                                 class="bg-green-500 hover:bg-green-600 text-white px-6 py-2 rounded-md {{ !$validation['is_valid'] ? 'opacity-50 cursor-not-allowed' : '' }}"
                                 {{ !$validation['is_valid'] ? 'disabled' : '' }}>
                             Create Purchase Order
