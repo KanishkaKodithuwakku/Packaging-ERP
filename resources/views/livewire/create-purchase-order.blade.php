@@ -226,7 +226,7 @@
                                                     <td class="px-4 py-2 text-sm text-gray-600">
                                                         {{ $item['remaining_qty'] }}
                                                         @if($isSelected)
-                                                            <span class="text-green-600 text-xs">(Selected: {{ number_format((float)($selectedQty ?? 0), 0) }})</span>
+                                                            <span class="text-green-600 text-xs">(Selected: {{ number_format((int)($selectedQty ?? 0), 0) }})</span>
                                                         @endif
                                                     </td>
                                                     <td class="px-4 py-2 text-sm">
@@ -339,7 +339,7 @@
                                                 <td class="px-4 py-2 text-sm">
                                                     @if($item['type'] === 'BOX')
                                                         {{-- For BOX items, board_qty is read-only and comes from database --}}
-                                                        <span class="text-gray-900">{{ number_format((float)($item['board_qty'] ?? 0), 0) }}</span>
+                                                        <span class="text-gray-900">{{ number_format((int)($item['board_qty'] ?? 0), 0) }}</span>
                                                     @else
                                                         {{-- For DIVIDER items, purchase_qty is editable --}}
                                                         <input type="number"
@@ -513,9 +513,9 @@
                                                     $purchaseQty = $item['purchase_qty'] ?? $item['available_qty'];
                                                 @endphp
                                                 @if($item['type'] === 'BOX')
-                                                    Board Qty: {{ number_format((float)($item['board_qty'] ?? 0), 0) }} (Purchase: {{ number_format((float)($purchaseQty ?? 0), 0) }}) | {{ $this->getCurrencySymbol() }}{{ number_format($item['unit_cost'], 2) }} each
+                                                    Board Qty: {{ number_format((int)($item['board_qty'] ?? 0), 0) }} (Purchase: {{ number_format((int)($purchaseQty ?? 0), 0) }}) | {{ $this->getCurrencySymbol() }}{{ number_format($item['unit_cost'], 2) }} each
                                                 @else
-                                                    Qty: {{ number_format((float)($item['board_qty'] ?? 0), 0) }} (Purchase: {{ number_format((float)($purchaseQty ?? 0), 0) }}) | {{ $this->getCurrencySymbol() }}{{ number_format($item['unit_cost'], 2) }} each
+                                                    Qty: {{ number_format((int)($item['board_qty'] ?? 0), 0) }} (Purchase: {{ number_format((int)($purchaseQty ?? 0), 0) }}) | {{ $this->getCurrencySymbol() }}{{ number_format($item['unit_cost'], 2) }} each
                                                 @endif
                                             </div>
                                         </div>

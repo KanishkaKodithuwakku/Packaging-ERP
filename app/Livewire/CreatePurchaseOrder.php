@@ -348,10 +348,8 @@ class CreatePurchaseOrder extends Component
                 ]);
                 
                 if ($remainingQty > 0) {
-                    // Calculate board_qty as order_qty / no_of_ups for BOX items
-                    $boardQty = ($box->no_of_ups && $box->no_of_ups > 0) 
-                        ? ($box->order_qty / $box->no_of_ups) 
-                        : 0;
+                    // Use board_qty from database (already calculated and stored)
+                    $boardQty = $box->board_qty ?? 0;
                     
                     $this->availableItems[] = [
                         'id' => 'box_' . $box->id,
@@ -363,7 +361,7 @@ class CreatePurchaseOrder extends Component
                         'unit' => $box->unit,
                         'order_qty' => $box->order_qty,
                         'remaining_qty' => $remainingQty,
-                        'board_qty' => $boardQty, // Calculated as order_qty / no_of_ups
+                        'board_qty' => $boardQty, // Use database value directly
                         'supplier_id' => $box->supplier_id,
                         'unit_cost' => $box->supplier_price ?? 0,
                         'original_number' => $itemCounter, // Store the original item number
