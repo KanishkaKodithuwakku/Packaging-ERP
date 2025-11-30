@@ -509,13 +509,10 @@
                                         <div>
                                             <div class="font-medium">{{ $item['description'] }}</div>
                                             <div class="text-gray-600">
-                                                @php
-                                                    $purchaseQty = $item['purchase_qty'] ?? $item['available_qty'];
-                                                @endphp
                                                 @if($item['type'] === 'BOX')
-                                                    Board Qty: {{ number_format((int)($item['board_qty'] ?? 0), 0) }} (Purchase: {{ number_format((int)($purchaseQty ?? 0), 0) }}) | {{ $this->getCurrencySymbol() }}{{ number_format($item['unit_cost'], 2) }} each
+                                                    Board Qty: {{ number_format((int)($item['board_qty'] ?? 0), 0) }} | {{ $this->getCurrencySymbol() }}{{ number_format($item['unit_cost'], 2) }} each
                                                 @else
-                                                    Qty: {{ number_format((int)($item['board_qty'] ?? 0), 0) }} (Purchase: {{ number_format((int)($purchaseQty ?? 0), 0) }}) | {{ $this->getCurrencySymbol() }}{{ number_format($item['unit_cost'], 2) }} each
+                                                    Qty: {{ number_format((int)($item['board_qty'] ?? 0), 0) }} | {{ $this->getCurrencySymbol() }}{{ number_format($item['unit_cost'], 2) }} each
                                                 @endif
                                             </div>
                                         </div>
@@ -546,21 +543,6 @@
                         </div>
                     @endif
 
-                    @if(!empty($validation['warnings']))
-                        <div class="mt-4 bg-yellow-50 border border-yellow-200 rounded-md p-4">
-                            <h4 class="text-sm font-medium text-yellow-800 mb-2 flex items-center gap-2">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="size-5">
-                                    <path fill-rule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-7-4a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM9 9a.75.75 0 0 0 0 1.5h.253a.25.25 0 0 1 .244.304l-.459 2.066A1.75 1.75 0 0 0 10.747 15H11a.75.75 0 0 0 0-1.5h-.253a.25.25 0 0 1-.244-.304l.459-2.066A1.75 1.75 0 0 0 9.253 9H9Z" clip-rule="evenodd" />
-                                </svg>
-                                Information:
-                            </h4>
-                            <ul class="text-sm text-yellow-700 space-y-1">
-                                @foreach($validation['warnings'] as $warning)
-                                    <li>• {{ $warning }}</li>
-                                @endforeach
-                            </ul>
-                        </div>
-                    @endif
 
                     <div class="mt-6 flex justify-end space-x-4">
                         <button wire:click="goBack"
