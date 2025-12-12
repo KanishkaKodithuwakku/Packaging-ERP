@@ -239,7 +239,7 @@
                                 </div>
                             </div>
                             <div class="flex items-center gap-3 flex-1">
-                                <label class="block text-sm font-medium text-gray-700 mb-1 " style="min-width: 70px;">Company <br> Email <span class="text-red-500">*</span></label>
+                                <label class="block text-sm font-medium text-gray-700 mb-1 " style="min-width: 70px;">Company <br> Email</label>
                                 <div class="flex-1">
                                     <input type="email" wire:model.defer="form.email" {{ $isViewMode ? 'readonly' : '' }} class="block w-[250px] px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 {{ $isViewMode ? 'bg-gray-100 cursor-not-allowed' : '' }}" />
                                     @error('form.email') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror

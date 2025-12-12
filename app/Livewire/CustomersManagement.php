@@ -230,7 +230,7 @@ class CustomersManagement extends Component
                         : Rule::unique('customers', 'phone'),
                 ],
                 'form.email' => [
-                    'required',
+                    'nullable',
                     'email',
                     'max:255',
                     $excludeId 
@@ -261,7 +261,16 @@ class CustomersManagement extends Component
             throw $e;
         }
 
-        $customerData = array_merge($validated['form'], [
+        // Convert empty strings to null for nullable fields
+        $formData = $validated['form'];
+        if (isset($formData['email']) && $formData['email'] === '') {
+            $formData['email'] = null;
+        }
+        if (isset($formData['website']) && $formData['website'] === '') {
+            $formData['website'] = null;
+        }
+
+        $customerData = array_merge($formData, [
             'contact_first_name' => $validated['contactForm']['first_name'] ?? null,
             'contact_last_name' => $validated['contactForm']['last_name'] ?? null,
             'contact_email' => $validated['contactForm']['email'] ?? null,

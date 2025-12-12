@@ -280,7 +280,7 @@ class SuppliersManagement extends Component
                         : Rule::unique('suppliers', 'phone'),
                 ],
                 'form.email' => [
-                    'required',
+                    'nullable',
                     'email',
                     'max:255',
                     $excludeId
@@ -309,6 +309,9 @@ class SuppliersManagement extends Component
         $formData = $validated['form'];
         if (isset($formData['website']) && $formData['website'] === '') {
             $formData['website'] = null;
+        }
+        if (isset($formData['email']) && $formData['email'] === '') {
+            $formData['email'] = null;
         }
 
         $supplierData = array_merge($formData, [

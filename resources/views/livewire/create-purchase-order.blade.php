@@ -90,11 +90,17 @@
                                                 <p class="text-sm text-gray-500">Status: {{ ucfirst($jobOrder->status) }}</p>
                                             </div>
                                         </div>
-                                        <div class="flex-1 flex justify-center items-center">
+                                        <div class="flex-1 flex flex-col justify-center items-center">
                                             <p class="text-sm text-gray-600">
                                                 <span class="font-medium">Job Order Number:</span> 
                                                 <span class="font-semibold text-gray-900">{{ $jobOrder->job_order_number ?? $jobOrder->job_number }}</span>
                                             </p>
+                                            @if($jobOrder->purchase_order_no)
+                                                <p class="text-sm text-gray-600 mt-1">
+                                                    <span class="font-medium">Purchase Order No:</span> 
+                                                    <span class="font-semibold text-gray-900">{{ $jobOrder->purchase_order_no }}</span>
+                                                </p>
+                                            @endif
                                         </div>
                                         <div class="text-right">
                                             <p class="text-sm text-gray-600">{{ $jobOrder->boxes->count() }} Boxes, {{ $jobOrder->dividers->count() }} Dividers</p>
