@@ -465,11 +465,30 @@
                                     @php
                                         $reelSize = $item->reel_size;
                                         $cutSize = $item->cut_size;
-                                        if (($reelSize === null || $cutSize === null || $reelSize == 0 || $cutSize == 0) && $item->item_type === 'box' && $selectedPurchaseOrder->jobOrder) {
-                                            $box = $selectedPurchaseOrder->jobOrder->boxes->firstWhere('id', $item->item_id);
+                                        if (($reelSize === null || $cutSize === null || $reelSize == 0 || $cutSize == 0) && $item->item_type === 'box') {
+                                            $box = $item->getItem();
                                             if ($box) {
-                                                $reelSize = $box['reel_size'] ?? 0;
-                                                $cutSize = $box['cut_size'] ?? 0;
+                                                // Use stored values if available, otherwise calculate
+                                                if (($box->reel_size && $box->reel_size > 0)) {
+                                                    $reelSize = $box->reel_size;
+                                                } else {
+                                                    try {
+                                                        $supplierId = $selectedPurchaseOrder->supplier_id ?? null;
+                                                        $reelSize = $box->calculateReelSize($supplierId);
+                                                    } catch (\Exception $e) {
+                                                        $reelSize = 0;
+                                                    }
+                                                }
+                                                
+                                                if (($box->cut_size && $box->cut_size > 0)) {
+                                                    $cutSize = $box->cut_size;
+                                                } else {
+                                                    try {
+                                                        $cutSize = $box->calculateCutSize();
+                                                    } catch (\Exception $e) {
+                                                        $cutSize = 0;
+                                                    }
+                                                }
                                             }
                                         }
                                     @endphp
@@ -625,13 +644,31 @@
                                             $reelSize = $item->reel_size;
                                             $cutSize = $item->cut_size;
 
-                                            // If values are not stored, try to calculate from the related box
-                                            if (($reelSize === null || $cutSize === null || $reelSize == 0 || $cutSize == 0) && $item->item_type === 'box' && $selectedPurchaseOrder->jobOrder) {
-                                                $box = $selectedPurchaseOrder->jobOrder->boxes->firstWhere('id', $item->item_id);
+                                            // If values are not stored, try to get from the related box using getItem() method
+                                            if (($reelSize === null || $cutSize === null || $reelSize == 0 || $cutSize == 0) && $item->item_type === 'box') {
+                                                $box = $item->getItem();
                                                 if ($box) {
-                                                    // Use the calculated values from the box
-                                                    $reelSize = $box['reel_size'] ?? 0;
-                                                    $cutSize = $box['cut_size'] ?? 0;
+                                                    // Use stored values if available, otherwise calculate
+                                                    if (($box->reel_size && $box->reel_size > 0)) {
+                                                        $reelSize = $box->reel_size;
+                                                    } else {
+                                                        try {
+                                                            $supplierId = $selectedPurchaseOrder->supplier_id ?? null;
+                                                            $reelSize = $box->calculateReelSize($supplierId);
+                                                        } catch (\Exception $e) {
+                                                            $reelSize = 0;
+                                                        }
+                                                    }
+                                                    
+                                                    if (($box->cut_size && $box->cut_size > 0)) {
+                                                        $cutSize = $box->cut_size;
+                                                    } else {
+                                                        try {
+                                                            $cutSize = $box->calculateCutSize();
+                                                        } catch (\Exception $e) {
+                                                            $cutSize = 0;
+                                                        }
+                                                    }
                                                 }
                                             }
                                         @endphp

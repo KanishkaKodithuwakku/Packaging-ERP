@@ -178,7 +178,7 @@ class PurchaseOrderManagement extends Component
 
     public function viewPurchaseOrder($id)
     {
-        $this->selectedPurchaseOrder = PurchaseOrder::with(['supplier', 'jobOrder', 'items'])->find($id);
+        $this->selectedPurchaseOrder = PurchaseOrder::with(['supplier', 'jobOrder.boxes', 'jobOrder.dividers', 'items'])->find($id);
         if ($this->selectedPurchaseOrder) {
             // Initialize item quantities for editing
             $this->itemQuantities = [];
@@ -361,7 +361,7 @@ class PurchaseOrderManagement extends Component
 
     public function openGRNConfirmModal($id)
     {
-        $this->selectedPurchaseOrder = PurchaseOrder::with(['items', 'jobOrder'])->find($id);
+        $this->selectedPurchaseOrder = PurchaseOrder::with(['items', 'jobOrder.boxes', 'jobOrder.dividers'])->find($id);
         
         if (!$this->selectedPurchaseOrder) {
             session()->flash('error', 'Purchase order not found.');

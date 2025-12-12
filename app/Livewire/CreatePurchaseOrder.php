@@ -854,12 +854,27 @@ class CreatePurchaseOrder extends Component
                 // Use purchase_qty for the actual purchase quantity
                 $purchaseQty = $item['purchase_qty'] ?? $item['board_qty'];
                 
+                // Get reel_size and cut_size for boxes
+                $reelSize = null;
+                $cutSize = null;
+                
+                if ($item['type'] === 'BOX') {
+                    $box = JobOrderBox::find($item['item_id']);
+                    if ($box) {
+                        // Use stored values if available, otherwise calculate
+                        $reelSize = $box->reel_size ?? $box->calculateReelSize($supplierId);
+                        $cutSize = $box->cut_size ?? $box->calculateCutSize();
+                    }
+                }
+                
                 // Create purchase order item
                 PurchaseOrderItem::create([
                     'purchase_order_id' => $purchaseOrder->id,
                     'item_type' => strtolower($item['type']),
                     'item_id' => $item['item_id'],
                     'description' => $item['description'],
+                    'reel_size' => $reelSize,
+                    'cut_size' => $cutSize,
                     'quantity' => $purchaseQty,
                     'unit_price' => $item['unit_cost'],
                     'total_price' => $purchaseQty * $item['unit_cost'],
