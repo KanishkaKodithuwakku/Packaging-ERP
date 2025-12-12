@@ -497,10 +497,11 @@
                                     @else
                                     @php
                                         $dimensions = '-';
-                                        if ($item->item_type === 'box' && $selectedPurchaseOrder->jobOrder) {
-                                            $box = $selectedPurchaseOrder->jobOrder->boxes->firstWhere('id', $item->item_id);
+                                        if ($item->item_type === 'box') {
+                                            // Use getItem() method to get the box directly
+                                            $box = $item->getItem();
                                             if ($box) {
-                                                $dimensions = number_format($box['length'], 2) . ' x ' . number_format($box['width'], 2) . ' x ' . number_format($box['height'], 2) . ' ' . ($box['unit'] ?? 'CM');
+                                                $dimensions = number_format($box->length, 2) . ' x ' . number_format($box->width, 2) . ' x ' . number_format($box->height, 2) . ' ' . ($box->unit ?? 'CM');
                                             }
                                         }
                                     @endphp
@@ -685,13 +686,13 @@
                                             $width = '-';
                                             $height = '-';
 
-                                            if ($item->item_type === 'box' && $selectedPurchaseOrder->jobOrder) {
-                                                // Try to find the box in job order
-                                                $box = $selectedPurchaseOrder->jobOrder->boxes->firstWhere('id', $item->item_id);
+                                            if ($item->item_type === 'box') {
+                                                // Use getItem() method to get the box directly
+                                                $box = $item->getItem();
                                                 if ($box) {
-                                                    $length = number_format($box['length'], 2) . ' ' . ($box['unit'] ?? 'CM');
-                                                    $width = number_format($box['width'], 2) . ' ' . ($box['unit'] ?? 'CM');
-                                                    $height = number_format($box['height'], 2) . ' ' . ($box['unit'] ?? 'CM');
+                                                    $length = number_format($box->length, 2) . ' ' . ($box->unit ?? 'CM');
+                                                    $width = number_format($box->width, 2) . ' ' . ($box->unit ?? 'CM');
+                                                    $height = number_format($box->height, 2) . ' ' . ($box->unit ?? 'CM');
                                                 }
                                             }
                                         @endphp
