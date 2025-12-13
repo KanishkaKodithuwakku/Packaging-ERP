@@ -37,6 +37,30 @@ class InventoryDashboard extends Component
     {
         // Don't load inventory summary on mount to prevent memory issues
         // $this->loadInventorySummary();
+        
+        // Clear cache on mount to ensure fresh data
+        $this->clearCache();
+    }
+    
+    /**
+     * Clear all cached calculations
+     */
+    public function clearCache()
+    {
+        $this->cachedBalanceRawMaterials = null;
+        $this->cachedTotalReceived = null;
+        $this->cachedTotalConsumed = null;
+        $this->cachedWIP = null;
+        $this->cachedInventoryByCategory = null;
+    }
+    
+    /**
+     * Refresh the dashboard data
+     */
+    public function refresh()
+    {
+        $this->clearCache();
+        $this->dispatch('$refresh');
     }
 
     public function loadInventorySummary()
@@ -127,10 +151,11 @@ class InventoryDashboard extends Component
     public function getLowStockItems()
     {
         // Limit to prevent memory issues
+        // Note: inventory table uses lot_code as primary key, not id
         return Inventory::where('qty_available', '<', 10)
             ->orderBy('qty_available')
             ->limit(20) // Limit to 20 items
-            ->get(['id', 'item_code', 'lot_code', 'qty_available', 'uom']);
+            ->get(['lot_code', 'item_code', 'qty_available', 'uom']);
     }
 
     public function getWorkInProgressQuantity()
@@ -141,12 +166,12 @@ class InventoryDashboard extends Component
         }
         
         // Optimize: Use database aggregation instead of loading all records
-        $result = \App\Models\ProductionOrderItem::whereHas('productionOrder', function($query) {
+        $result = (float)(\App\Models\ProductionOrderItem::whereHas('productionOrder', function($query) {
                 $query->whereIn('status', ['pending', 'in_production', 'ready_for_production']);
             })
             ->selectRaw('SUM(quantity - COALESCE(completed_quantity, 0)) as wip_quantity')
             ->whereRaw('quantity > COALESCE(completed_quantity, 0)')
-            ->value('wip_quantity') ?? 0;
+            ->value('wip_quantity') ?? 0);
         
         $this->cachedWIP = $result;
         return $result;
@@ -192,6 +217,9 @@ class InventoryDashboard extends Component
             ->where('txn_type', 'receipt')
             ->sum('qty');
         
+        // Ensure result is numeric (sum may return string)
+        $result = (float) ($result ?? 0);
+        
         $this->cachedTotalReceived = $result;
         return $result;
     }
@@ -210,23 +238,23 @@ class InventoryDashboard extends Component
             return $this->cachedTotalConsumed;
         }
         // Check both generic 'RAW' item_code and specific material codes from explicit consume transactions
-        $consumedGeneric = abs(\App\Models\InventoryTransaction::where('category', 'RAW')
+        $consumedGeneric = abs((float)(\App\Models\InventoryTransaction::where('category', 'RAW')
             ->where('txn_type', 'consume')
             ->where('item_code', 'RAW')
-            ->sum('qty'));
+            ->sum('qty') ?? 0));
         
-        $consumedSpecific = abs(\App\Models\InventoryTransaction::where('category', 'RAW')
+        $consumedSpecific = abs((float)(\App\Models\InventoryTransaction::where('category', 'RAW')
             ->where('txn_type', 'consume')
             ->where('item_code', '!=', 'RAW')
             ->whereNotNull('item_code')
-            ->sum('qty'));
+            ->sum('qty') ?? 0));
         
         $consumedFromTransactions = $consumedGeneric + $consumedSpecific;
         
         // Optimize: Use database aggregation instead of loading all records
         // Sum all completed quantities from production order items directly
         // This is the most accurate source: completed production = consumed raw materials (1:1 conversion)
-        $allCompletedProductionQty = (float)\App\Models\ProductionOrderItem::sum('completed_quantity');
+        $allCompletedProductionQty = (float)(\App\Models\ProductionOrderItem::sum('completed_quantity') ?? 0);
         
         // For production orders with transaction IDs, we can use a simpler approach
         // Since we're already summing all completed quantities above, we don't need to loop
@@ -249,9 +277,9 @@ class InventoryDashboard extends Component
             
             // FG quantity - use direct DB query to avoid circular dependency with getInventoryByCategory()
             // Note: This assumes 1:1 conversion. Adjust if needed based on your conversion ratios
-            $fgQty = \DB::table('inventory')
+            $fgQty = (float)(\DB::table('inventory')
                 ->where('category', 'FG')
-                ->sum('qty_available');
+                ->sum('qty_available') ?? 0);
             
             // Total consumed = WIP + FG (if no transactions exist)
             $result = $wipQty + $fgQty;
@@ -442,24 +470,10 @@ class InventoryDashboard extends Component
 
     public function render()
     {
-        // Prevent infinite loops by checking if we're already rendering
-        static $rendering = false;
-        if ($rendering) {
-            return view('livewire.inventory-dashboard', [
-                'inventoryByCategory' => collect([]),
-                'inventoryByWarehouse' => collect([]),
-                'lowStockItems' => collect([]),
-                'recentTransactions' => collect([]),
-                'workInProgressQuantity' => 0,
-                'balanceRawMaterialsQuantity' => 0,
-                'totalRawMaterialsReceived' => 0,
-                'totalRawMaterialsConsumed' => 0,
-            ]);
-        }
-        
-        $rendering = true;
-        
         try {
+            // Force clear cache at the start of render to ensure fresh calculations
+            $this->clearCache();
+            
             // Calculate all values once and cache them
             $balanceRawMaterialsQuantity = $this->getBalanceRawMaterialsQuantity();
             $totalRawMaterialsReceived = $this->getTotalRawMaterialsReceived();
@@ -467,14 +481,21 @@ class InventoryDashboard extends Component
             $workInProgressQuantity = $this->getWorkInProgressQuantity();
             
             // Use DB facade for low stock items - limit to 5 items
+            // Note: inventory table uses lot_code as primary key, not id
             $lowStockItems = \DB::table('inventory')
                 ->where('qty_available', '<', 10)
                 ->orderBy('qty_available')
                 ->limit(5)
-                ->get(['id', 'item_code', 'lot_code', 'qty_available', 'uom']);
+                ->get(['lot_code', 'item_code', 'qty_available', 'uom']);
             
-            // Disable recent transactions completely
-            $recentTransactions = collect([]);
+            // Get available raw materials for production (recent receipt transactions)
+            $availableRawMaterials = \App\Models\InventoryTransaction::where('category', 'RAW')
+                ->where('txn_type', 'receipt')
+                ->with(['grn.purchaseOrder.jobOrder'])
+                ->orderBy('txn_date', 'desc')
+                ->orderBy('created_at', 'desc')
+                ->limit(10)
+                ->get();
             
             // Use DB facade for inventory queries - calculate once
             $inventoryByCategoryRaw = \DB::table('inventory')
@@ -499,23 +520,23 @@ class InventoryDashboard extends Component
                 'inventoryByCategory' => $inventoryByCategory,
                 'inventoryByWarehouse' => $inventoryByWarehouse,
                 'lowStockItems' => $lowStockItems,
-                'recentTransactions' => $recentTransactions,
+                'recentTransactions' => collect([]),
+                'availableRawMaterials' => $availableRawMaterials,
                 'workInProgressQuantity' => $workInProgressQuantity,
                 'balanceRawMaterialsQuantity' => $balanceRawMaterialsQuantity,
                 'totalRawMaterialsReceived' => $totalRawMaterialsReceived,
                 'totalRawMaterialsConsumed' => $totalRawMaterialsConsumed,
             ];
             
-            $rendering = false;
             return view('livewire.inventory-dashboard', $viewData);
         } catch (\Exception $e) {
-            $rendering = false;
             \Log::error('Inventory Dashboard Render Error: ' . $e->getMessage() . ' | Trace: ' . $e->getTraceAsString());
             return view('livewire.inventory-dashboard', [
                 'inventoryByCategory' => collect([]),
                 'inventoryByWarehouse' => collect([]),
                 'lowStockItems' => collect([]),
                 'recentTransactions' => collect([]),
+                'availableRawMaterials' => collect([]),
                 'workInProgressQuantity' => 0,
                 'balanceRawMaterialsQuantity' => 0,
                 'totalRawMaterialsReceived' => 0,

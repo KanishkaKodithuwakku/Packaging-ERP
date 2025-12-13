@@ -3,6 +3,14 @@
         <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
             <h2 class="text-xl font-semibold text-gray-800">Inventory Dashboard</h2>
             <div class="space-x-2">
+                <button wire:click="refresh"
+                        class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                        title="Refresh dashboard data">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                    Refresh
+                </button>
                 <button wire:click="resetTestData"
                         class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700"
                         title="Reset all transactional data (local env only)">
@@ -15,7 +23,15 @@
             <!-- Summary Cards -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <div class="bg-blue-50 p-6 rounded-lg">
-                    <h3 class="text-lg font-semibold text-blue-800">Raw Materials</h3>
+                    <div class="flex justify-between items-start mb-2">
+                        <h3 class="text-lg font-semibold text-blue-800">Raw Materials</h3>
+                        @if($availableRawMaterials->count() > 0)
+                        <a href="#available-materials" 
+                           class="text-xs text-blue-600 hover:text-blue-800 underline">
+                            View Available →
+                        </a>
+                        @endif
+                    </div>
                     <p class="text-3xl font-bold text-blue-600">
                         {{ number_format($balanceRawMaterialsQuantity, 2) }}
                     </p>
@@ -94,11 +110,40 @@
                     </div>
                 </div>
 
-                <div class="bg-white border rounded-lg p-6">
-                    <h3 class="text-lg font-semibold mb-4">Recent Transactions</h3>
+                <div id="available-materials" class="bg-white border rounded-lg p-6">
+                    <h3 class="text-lg font-semibold mb-4">Available Raw Materials for Production</h3>
                     <div class="space-y-3">
-                        {{-- Temporarily disabled to fix memory issue --}}
-                        <p class="text-gray-500">Recent transactions temporarily disabled</p>
+                        @forelse($availableRawMaterials as $transaction)
+                            <div class="flex justify-between items-center p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                <div class="flex-1">
+                                    <div class="flex items-center justify-between mb-1">
+                                        <p class="font-medium text-gray-900">{{ $transaction->item_code }}</p>
+                                        <span class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800 font-semibold">
+                                            {{ number_format($transaction->qty, 2) }} {{ $transaction->uom }}
+                                        </span>
+                                    </div>
+                                    <div class="text-xs text-gray-600 space-y-1">
+                                        <p>Lot: <span class="font-mono">{{ $transaction->lot_code }}</span></p>
+                                        <p>Date: {{ $transaction->txn_date->format('Y-m-d') }}</p>
+                                        @if($transaction->getJobOrder())
+                                            <p>Job Order: <span class="font-medium">{{ $transaction->getJobOrder()->job_number }}</span></p>
+                                        @endif
+                                    </div>
+                                </div>
+                                <div class="ml-4">
+                                    <button wire:click="openProductionOrderModal({{ $transaction->id }})"
+                                            class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                                            title="Start Production Order">
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                        </svg>
+                                        Start Production
+                                    </button>
+                                </div>
+                            </div>
+                        @empty
+                            <p class="text-gray-500">No raw materials available for production</p>
+                        @endforelse
                     </div>
                 </div>
             </div>
