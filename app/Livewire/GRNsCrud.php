@@ -31,34 +31,43 @@ class GRNsCrud extends Component
     public $search = '';
 
     // Form fields
-    public $supplier_po_id;
+    public $supplier_id;
+    public $po_reference;
     public $grn_no;
     public $lot_code;
-    public $material_code;
-    public $qty_received;
-    public $uom = 'KG';
     public $received_date;
 
     protected $rules = [
-        'supplier_po_id' => 'required|exists:supplier_orders,id',
-        'grn_no' => 'required|string|max:255|unique:goods_receipts,grn_no',
-        'lot_code' => 'required|string|max:255',
-        'material_code' => 'required|string|max:255',
-        'qty_received' => 'required|numeric|min:0.01',
-        'uom' => 'required|string|max:10',
+        'supplier_id' => 'required|exists:suppliers,id',
+        'po_reference' => 'nullable|string|max:255',
+        'grn_no' => 'required|string|max:255|unique:grns,grn_no',
+        'lot_code' => 'nullable|string|max:255',
         'received_date' => 'required|date',
     ];
 
+    public function getRules()
+    {
+        $rules = [
+            'supplier_id' => 'required|exists:suppliers,id',
+            'po_reference' => 'nullable|string|max:255',
+            'grn_no' => 'required|string|max:255|unique:grns,grn_no',
+            'lot_code' => 'nullable|string|max:255',
+            'received_date' => 'required|date',
+        ];
+
+        // If editing, update unique rule
+        if ($this->editing) {
+            $rules['grn_no'] = 'required|string|max:255|unique:grns,grn_no,' . $this->grnId;
+        }
+
+        return $rules;
+    }
+
     protected $messages = [
-        'supplier_po_id.required' => 'Please select a supplier order.',
-        'supplier_po_id.exists' => 'Selected supplier order does not exist.',
+        'supplier_id.required' => 'Please select a supplier.',
+        'supplier_id.exists' => 'Selected supplier does not exist.',
         'grn_no.required' => 'GRN number is required.',
         'grn_no.unique' => 'This GRN number already exists.',
-        'lot_code.required' => 'Lot code is required.',
-        'material_code.required' => 'Material code is required.',
-        'qty_received.required' => 'Quantity received is required.',
-        'qty_received.numeric' => 'Quantity must be a number.',
-        'qty_received.min' => 'Quantity must be greater than 0.',
         'received_date.required' => 'Received date is required.',
     ];
 
@@ -74,16 +83,15 @@ class GRNsCrud extends Component
 
     public function resetForm()
     {
-        $this->supplier_po_id = '';
+        $this->supplier_id = '';
+        $this->po_reference = '';
         $this->grn_no = '';
         $this->lot_code = '';
-        $this->material_code = '';
-        $this->qty_received = '';
-        $this->uom = 'KG';
         $this->received_date = now()->format('Y-m-d');
         $this->editing = false;
         $this->grnId = null;
     }
+
 
     public function create()
     {
@@ -96,9 +104,8 @@ class GRNsCrud extends Component
     {
         $supplierOrder = SupplierOrder::findOrFail($supplierOrderId);
 
-        $this->supplier_po_id = $supplierOrder->id;
-        $this->material_code = $supplierOrder->material_code;
-        $this->qty_received = $supplierOrder->qty_kg;
+        $this->supplier_id = $supplierOrder->supplier_id;
+        $this->po_reference = $supplierOrder->po_no;
         $this->grn_no = app(OrderService::class)->generateGRNNumber();
         $this->received_date = now()->format('Y-m-d');
         $this->editing = false;
@@ -110,12 +117,19 @@ class GRNsCrud extends Component
         $grn = GRN::findOrFail($id);
 
         $this->grnId = $id;
-        $this->supplier_po_id = $grn->supplier_po_id;
+        // Get supplier from various sources
+        if ($grn->supplier_id) {
+            $this->supplier_id = $grn->supplier_id;
+        } elseif ($grn->supplierOrder) {
+            $this->supplier_id = $grn->supplierOrder->supplier_id;
+        } elseif ($grn->purchaseOrder) {
+            $this->supplier_id = $grn->purchaseOrder->supplier_id;
+        } elseif ($grn->productionOrder) {
+            $this->supplier_id = $grn->productionOrder->supplier_id;
+        }
+        $this->po_reference = $grn->po_reference;
         $this->grn_no = $grn->grn_no;
         $this->lot_code = $grn->lot_code;
-        $this->material_code = $grn->material_code;
-        $this->qty_received = $grn->qty_received;
-        $this->uom = $grn->uom;
         $this->received_date = $grn->received_date->format('Y-m-d');
         $this->editing = true;
         $this->showModal = true;
@@ -123,35 +137,49 @@ class GRNsCrud extends Component
 
     public function save()
     {
+        // Use dynamic rules
+        $this->rules = $this->getRules();
         $this->validate();
 
-        if ($this->editing) {
-            $this->rules['grn_no'] = 'required|string|max:255|unique:goods_receipts,grn_no,' . $this->grnId;
+        // Auto-generate lot code if empty
+        if (empty($this->lot_code)) {
+            $this->lot_code = 'GRN-' . now()->format('Ymd') . '-' . str_pad(GRN::count() + 1, 4, '0', STR_PAD_LEFT);
         }
 
         $data = [
-            'supplier_po_id' => $this->supplier_po_id,
+            'po_reference' => $this->po_reference,
             'grn_no' => $this->grn_no,
             'lot_code' => $this->lot_code,
-            'material_code' => $this->material_code,
-            'qty_received' => $this->qty_received,
-            'uom' => $this->uom,
             'received_date' => $this->received_date,
         ];
 
         if ($this->editing) {
+            $data['supplier_id'] = $this->supplier_id;
             GRN::findOrFail($this->grnId)->update($data);
             session()->flash('message', 'GRN updated successfully!');
             $this->showModal = false;
             $this->resetForm();
         } else {
-            app(OrderService::class)->processGoodsReceipt($data);
-            session()->flash('message', 'GRN created and inventory updated successfully!');
+            // Create GRN with basic info only
+            $grn = GRN::create([
+                'supplier_po_id' => null,
+                'production_order_id' => null,
+                'purchase_order_id' => null,
+                'supplier_id' => $this->supplier_id,
+                'po_reference' => $this->po_reference,
+                'grn_no' => $this->grn_no,
+                'lot_code' => $this->lot_code,
+                'received_date' => $this->received_date,
+                'status' => 'pending',
+                'notes' => $this->po_reference ? "PO Reference: {$this->po_reference}" : null,
+            ]);
+
+            session()->flash('message', 'GRN created successfully! You can now add consumable items.');
             $this->showModal = false;
             $this->resetForm();
 
-            // Redirect to GRNs page after creation
-            return $this->redirect(route('grns'), navigate: true);
+            // Redirect to GRN detail page to add items
+            return $this->redirect(route('grn-detail', $grn->id), navigate: true);
         }
     }
 

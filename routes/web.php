@@ -11,6 +11,7 @@ use App\Livewire\MaterialRequestsCrud;
 use App\Livewire\DeliveryNotesCrud;
 use App\Livewire\InventoryDashboard;
 use App\Livewire\InventoryTransactionsHistory;
+use App\Livewire\ConsumableItemsCrud;
 use App\Livewire\ChartOfAccountsCrud;
 use App\Livewire\CurrencyManagement;
 use App\Livewire\ExchangeRateManagement;
@@ -118,6 +119,11 @@ Route::get('/inventory-dashboard', InventoryDashboard::class)
 Route::get('/inventory-transactions', InventoryTransactionsHistory::class)
     ->middleware(['auth', 'permission:view inventory transactions'])
     ->name('inventory-transactions');
+
+// Consumable Items Master
+Route::get('/consumable-items', ConsumableItemsCrud::class)
+    ->middleware(['auth', 'permission:view inventory'])
+    ->name('consumable-items');
 
 // Accounting Routes
 Route::get('/accounting/chart-of-accounts', ChartOfAccountsCrud::class)

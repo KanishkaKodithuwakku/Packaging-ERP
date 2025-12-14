@@ -6,7 +6,7 @@
     <div class="flex justify-between items-center">
         <h1 class="mt-2 text-2xl font-bold">GRN Details</h1>
         
-        @if($grn && $grn->hasUnprocessedItems())
+        @if($grn && $grn->isFullyReceived() && $grn->hasUnprocessedItems())
             <div class="flex space-x-2">
                 <button wire:click="openModal" 
                         wire:loading.attr="disabled"
@@ -14,12 +14,12 @@
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
-                    @if($grn->hasPartialReceiving() && !$grn->isFullyReceived())
-                        Process Partial to Stock
-                    @else
-                        Process to Stock
-                    @endif
+                    Process to Stock
                 </button>
+            </div>
+        @elseif($grn && !$grn->isFullyReceived())
+            <div class="text-sm text-gray-500">
+                All items must be received before processing to stock
             </div>
         @endif
     </div>
@@ -53,11 +53,31 @@
                         Production - {{ $grn->productionOrder->production_order_number ?? 'N/A' }}
                     @elseif($grn->isFromPurchaseOrder())
                         Purchase Order - {{ $grn->purchaseOrder->po_number ?? 'N/A' }}
-                    @else
+                    @elseif($grn->supplierOrder)
                         Supplier PO - {{ $grn->supplierOrder->po_no ?? 'N/A' }}
+                    @else
+                        Direct GRN
+                        @if($grn->supplier)
+                            - {{ $grn->supplier->name }}
+                        @endif
+                        @if($grn->po_reference)
+                            (PO: {{ $grn->po_reference }})
+                        @endif
                     @endif
                 </div>
             </div>
+            @if(!$grn->isFromProductionOrder() && !$grn->isFromPurchaseOrder() && !$grn->supplierOrder && $grn->supplier)
+            <div>
+                <label class="text-xs text-gray-500">Supplier</label>
+                <div class="font-medium">{{ $grn->supplier->name }}</div>
+            </div>
+            @endif
+            @if($grn->po_reference)
+            <div>
+                <label class="text-xs text-gray-500">PO Reference</label>
+                <div class="font-medium">{{ $grn->po_reference }}</div>
+            </div>
+            @endif
             <div>
                 <label class="text-xs text-gray-500">Status</label>
                 <div class="font-medium">
@@ -107,7 +127,18 @@
         </div>
 
         <div class="mt-8">
-            <h2 class="text-lg font-semibold mb-3">Items</h2>
+            <div class="flex justify-between items-center mb-3">
+                <h2 class="text-lg font-semibold">Items</h2>
+                @if(!$grn->supplier_po_id && !$grn->production_order_id && !$grn->purchase_order_id && $grn->status !== 'processed')
+                    <button wire:click="openAddItemModal" 
+                            class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                        Add Consumable Item
+                    </button>
+                @endif
+            </div>
             <div class="bg-white shadow rounded-lg overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
@@ -156,14 +187,31 @@
                                     @endif
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                    @if(!($item->is_fully_received ?? false))
-                                        <button wire:click="openPartialReceivingModal({{ $item->id }})" 
-                                                class="text-blue-600 hover:text-blue-900 text-xs font-medium">
-                                            Add Receipt
-                                        </button>
-                                    @else
-                                        <span class="text-gray-400 text-xs">Complete</span>
-                                    @endif
+                                    <div class="flex space-x-2">
+                                        @if(!($item->is_fully_received ?? false))
+                                            @if(!$grn->supplier_po_id && !$grn->production_order_id && !$grn->purchase_order_id)
+                                                <button wire:click="markItemAsReceived({{ $item->id }})" 
+                                                        wire:loading.attr="disabled"
+                                                        class="text-green-600 hover:text-green-900 text-xs font-medium">
+                                                    Complete
+                                                </button>
+                                            @else
+                                                <button wire:click="openPartialReceivingModal({{ $item->id }})" 
+                                                        class="text-blue-600 hover:text-blue-900 text-xs font-medium">
+                                                    Add Receipt
+                                                </button>
+                                            @endif
+                                        @else
+                                            <span class="text-gray-400 text-xs">Complete</span>
+                                        @endif
+                                        @if(!$grn->supplier_po_id && !$grn->production_order_id && !$grn->purchase_order_id && ($item->qty_processed ?? 0) == 0)
+                                            <button wire:click="deleteItem({{ $item->id }})" 
+                                                    wire:confirm="Are you sure you want to delete this item?"
+                                                    class="text-red-600 hover:text-red-900 text-xs font-medium">
+                                                Delete
+                                            </button>
+                                        @endif
+                                    </div>
                                 </td>
                             </tr>
                         @empty
@@ -354,6 +402,131 @@
             </div>
         </div>
         @endif
+    @endif
+
+    <!-- Add Consumable Item Modal -->
+    @if($showAddItemModal)
+    <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <h3 class="text-lg font-medium text-gray-900 mb-4">Add Consumable Item</h3>
+                
+                <!-- Flash Messages -->
+                @if (session()->has('error'))
+                    <div class="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+                        {{ session('error') }}
+                    </div>
+                @endif
+                
+                @if (session()->has('success'))
+                    <div class="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded">
+                        {{ session('success') }}
+                    </div>
+                @endif
+                
+                <form wire:submit.prevent="addConsumableItem">
+                    <div class="mb-4 relative" id="consumable-item-container">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Consumable Item *</label>
+                        <input type="hidden" wire:model="selectedConsumableItemId">
+                        <div class="relative">
+                            <input type="text" 
+                                   wire:model.live="itemSearchTerm" 
+                                   wire:focus="showItemDropdown"
+                                   id="consumable-item-search"
+                                   class="w-full border border-gray-300 rounded-md px-3 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                   placeholder="Search by item code or name..."
+                                   onblur="setTimeout(() => @this.set('showItemDropdown', false), 200)">
+                            @if($selectedConsumableItemId || $itemSearchTerm)
+                                <button type="button" 
+                                        wire:click="clearItemSelection"
+                                        class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 hover:text-red-600 focus:outline-none">
+                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                </button>
+                            @else
+                                <svg class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                </svg>
+                            @endif
+                        </div>
+                        
+                        @if($showItemDropdown)
+                            <div class="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto"
+                                 onmousedown="event.preventDefault()"
+                                 wire:ignore.self>
+                                @if(count($filteredItems) > 0)
+                                    @foreach($filteredItems as $item)
+                                        <div wire:click="selectConsumableItem({{ $item->id }})" 
+                                             wire:key="item-{{ $item->id }}"
+                                             class="px-4 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors {{ $selectedConsumableItemId == $item->id ? 'bg-blue-100' : '' }}">
+                                            <div class="font-medium text-gray-900">{{ $item->item_code }}</div>
+                                            <div class="text-sm text-gray-600">{{ $item->item_name }}</div>
+                                        </div>
+                                    @endforeach
+                                @else
+                                    <div class="px-4 py-2 text-gray-500 text-sm">No items found</div>
+                                @endif
+                            </div>
+                        @endif
+                        
+                        @error('selectedConsumableItemId') 
+                            <p class="text-red-500 text-xs mt-1">{{ $message }}</p> 
+                        @enderror
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Quantity *</label>
+                            <input type="number" 
+                                   wire:model="itemQuantity" 
+                                   step="0.01" 
+                                   min="0.01"
+                                   class="w-full border border-gray-300 rounded-md px-3 py-2"
+                                   placeholder="Enter quantity">
+                            @error('itemQuantity') 
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p> 
+                            @enderror
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Unit Cost *</label>
+                            <input type="number" 
+                                   wire:model="itemUnitCost" 
+                                   step="0.01" 
+                                   min="0"
+                                   class="w-full border border-gray-300 rounded-md px-3 py-2"
+                                   placeholder="Enter unit cost">
+                            @error('itemUnitCost') 
+                                <p class="text-red-500 text-xs mt-1">{{ $message }}</p> 
+                            @enderror
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Notes (Optional)</label>
+                        <textarea wire:model="itemNotes" 
+                                  rows="3" 
+                                  class="w-full border border-gray-300 rounded-md px-3 py-2"
+                                  placeholder="Add any notes about this item"></textarea>
+                    </div>
+
+                    <div class="flex justify-end space-x-3">
+                        <button type="button" wire:click="closeAddItemModal" 
+                                class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300">
+                            Cancel
+                        </button>
+                        <button type="submit" 
+                                wire:loading.attr="disabled"
+                                wire:target="addConsumableItem"
+                                class="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <span wire:loading.remove wire:target="addConsumableItem">Add Item</span>
+                            <span wire:loading wire:target="addConsumableItem">Adding...</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
     @endif
 
     <!-- Partial Receiving Modal -->

@@ -14,6 +14,8 @@ class GRN extends Model
         'supplier_po_id',
         'production_order_id',
         'purchase_order_id',
+        'supplier_id',
+        'po_reference',
         'grn_no',
         'lot_code',
         'received_date',
@@ -47,6 +49,11 @@ class GRN extends Model
     public function purchaseOrder(): BelongsTo
     {
         return $this->belongsTo(PurchaseOrder::class);
+    }
+
+    public function supplier(): BelongsTo
+    {
+        return $this->belongsTo(Supplier::class);
     }
 
     /**
@@ -134,6 +141,12 @@ class GRN extends Model
      */
     public function isFullyReceived(): bool
     {
+        $totalItems = $this->items()->count();
+        // If no items, cannot be fully received
+        if ($totalItems === 0) {
+            return false;
+        }
+        // Check if all items are fully received
         return $this->items()->where('is_fully_received', false)->count() === 0;
     }
 

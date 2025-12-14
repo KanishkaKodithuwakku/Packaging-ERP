@@ -85,6 +85,7 @@ class InventoryService
                 'lot_code' => $data['lot_code'],
                 'item_code' => $data['item_code'],
                 'category' => $data['category'],
+                'material_type' => $data['material_type'] ?? 'raw_material',
                 'qty_available' => $data['qty'],
                 'uom' => $data['uom'],
                 'warehouse' => $data['warehouse'],

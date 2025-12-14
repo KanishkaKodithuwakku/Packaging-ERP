@@ -11,6 +11,7 @@ class InventoryTransaction extends Model
         'lot_code',
         'item_code',
         'category',
+        'material_type',
         'txn_type',
         'qty',
         'uom',

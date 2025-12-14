@@ -30,6 +30,7 @@ class GRNItem extends Model
         'unit_cost',
         'total_cost',
         'processed_at',
+        'notes',
     ];
 
     protected $casts = [

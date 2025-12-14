@@ -11,6 +11,7 @@ class InventoryLayer extends Model
         'lot_code',
         'item_code',
         'category',
+        'material_type',
         'qty_available',
         'unit_cost',
         'total_cost',

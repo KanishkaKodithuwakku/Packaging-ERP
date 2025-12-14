@@ -196,16 +196,22 @@
 
                     <form wire:submit.prevent="save">
                         <div class="mb-4">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Supplier Order</label>
-                            <select wire:model="supplier_po_id" class="w-full border border-gray-300 rounded-md px-3 py-2">
-                                <option value="">Select Supplier Order</option>
-                                @foreach($supplierOrders as $supplierOrder)
-                                    <option value="{{ $supplierOrder->id }}">
-                                        {{ $supplierOrder->po_no }} - {{ $supplierOrder->supplier->name }} ({{ $supplierOrder->material_code }})
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Supplier *</label>
+                            <select wire:model="supplier_id" class="w-full border border-gray-300 rounded-md px-3 py-2">
+                                <option value="">Select Supplier</option>
+                                @foreach($suppliers as $supplier)
+                                    <option value="{{ $supplier->id }}">
+                                        {{ $supplier->name }}
                                     </option>
                                 @endforeach
                             </select>
-                            @error('supplier_po_id') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                            @error('supplier_id') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">PO Reference (Optional)</label>
+                            <input type="text" wire:model="po_reference" placeholder="Enter PO reference if any" class="w-full border border-gray-300 rounded-md px-3 py-2">
+                            @error('po_reference') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                         </div>
 
                         <div class="mb-4">
@@ -218,30 +224,6 @@
                             <label class="block text-sm font-medium text-gray-700 mb-2">Lot Code</label>
                             <input type="text" wire:model="lot_code" placeholder="Auto-generated if empty" class="w-full border border-gray-300 rounded-md px-3 py-2">
                             @error('lot_code') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                        </div>
-
-                        <div class="mb-4">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Material Code</label>
-                            <input type="text" wire:model="material_code" class="w-full border border-gray-300 rounded-md px-3 py-2">
-                            @error('material_code') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                        </div>
-
-                        <div class="grid grid-cols-2 gap-4 mb-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">Quantity Received</label>
-                                <input type="number" step="0.01" wire:model="qty_received" class="w-full border border-gray-300 rounded-md px-3 py-2">
-                                @error('qty_received') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-2">UOM</label>
-                                <select wire:model="uom" class="w-full border border-gray-300 rounded-md px-3 py-2">
-                                    <option value="KG">KG</option>
-                                    <option value="PCS">PCS</option>
-                                    <option value="MTR">MTR</option>
-                                    <option value="ROLL">ROLL</option>
-                                </select>
-                                @error('uom') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                            </div>
                         </div>
 
                         <div class="mb-4">

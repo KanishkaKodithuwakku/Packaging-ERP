@@ -215,6 +215,10 @@ class InventoryDashboard extends Component
         
         $result = \App\Models\InventoryTransaction::where('category', 'RAW')
             ->where('txn_type', 'receipt')
+            ->where(function($query) {
+                $query->where('material_type', 'raw_material')
+                      ->orWhereNull('material_type'); // Backward compatibility
+            })
             ->sum('qty');
         
         // Ensure result is numeric (sum may return string)
@@ -222,6 +226,31 @@ class InventoryDashboard extends Component
         
         $this->cachedTotalReceived = $result;
         return $result;
+    }
+
+    /**
+     * Get consumables quantity (available consumables)
+     */
+    public function getConsumablesQuantity()
+    {
+        return (float)(\DB::table('inventory')
+            ->where('category', 'RAW')
+            ->where('material_type', 'consumable')
+            ->sum('qty_available') ?? 0);
+    }
+
+    /**
+     * Get consumables by type (grouped by item_code)
+     */
+    public function getConsumablesByType()
+    {
+        return \DB::table('inventory')
+            ->where('category', 'RAW')
+            ->where('material_type', 'consumable')
+            ->selectRaw('item_code, SUM(qty_available) as total_qty, uom')
+            ->groupBy('item_code', 'uom')
+            ->orderBy('item_code')
+            ->get();
     }
 
     /**
@@ -238,15 +267,24 @@ class InventoryDashboard extends Component
             return $this->cachedTotalConsumed;
         }
         // Check both generic 'RAW' item_code and specific material codes from explicit consume transactions
+        // Exclude consumables - only count raw_material type
         $consumedGeneric = abs((float)(\App\Models\InventoryTransaction::where('category', 'RAW')
             ->where('txn_type', 'consume')
             ->where('item_code', 'RAW')
+            ->where(function($query) {
+                $query->where('material_type', 'raw_material')
+                      ->orWhereNull('material_type'); // Backward compatibility
+            })
             ->sum('qty') ?? 0));
         
         $consumedSpecific = abs((float)(\App\Models\InventoryTransaction::where('category', 'RAW')
             ->where('txn_type', 'consume')
             ->where('item_code', '!=', 'RAW')
             ->whereNotNull('item_code')
+            ->where(function($query) {
+                $query->where('material_type', 'raw_material')
+                      ->orWhereNull('material_type'); // Backward compatibility
+            })
             ->sum('qty') ?? 0));
         
         $consumedFromTransactions = $consumedGeneric + $consumedSpecific;
@@ -479,6 +517,8 @@ class InventoryDashboard extends Component
             $totalRawMaterialsReceived = $this->getTotalRawMaterialsReceived();
             $totalRawMaterialsConsumed = $this->getTotalRawMaterialsConsumed();
             $workInProgressQuantity = $this->getWorkInProgressQuantity();
+            $consumablesQuantity = $this->getConsumablesQuantity();
+            $consumablesByType = $this->getConsumablesByType();
             
             // Use DB facade for low stock items - limit to 5 items
             // Note: inventory table uses lot_code as primary key, not id
@@ -526,6 +566,8 @@ class InventoryDashboard extends Component
                 'balanceRawMaterialsQuantity' => $balanceRawMaterialsQuantity,
                 'totalRawMaterialsReceived' => $totalRawMaterialsReceived,
                 'totalRawMaterialsConsumed' => $totalRawMaterialsConsumed,
+                'consumablesQuantity' => $consumablesQuantity,
+                'consumablesByType' => $consumablesByType,
             ];
             
             return view('livewire.inventory-dashboard', $viewData);
@@ -541,6 +583,8 @@ class InventoryDashboard extends Component
                 'balanceRawMaterialsQuantity' => 0,
                 'totalRawMaterialsReceived' => 0,
                 'totalRawMaterialsConsumed' => 0,
+                'consumablesQuantity' => 0,
+                'consumablesByType' => collect([]),
             ]);
         }
     }

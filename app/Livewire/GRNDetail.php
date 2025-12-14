@@ -3,6 +3,8 @@
 namespace App\Livewire;
 
 use App\Models\GRN;
+use App\Models\ConsumableItem;
+use App\Models\GRNItem;
 use App\Services\GRNProcessingService;
 use App\Services\InventoryReportService;
 use Livewire\Component;
@@ -23,10 +25,19 @@ class GRNDetail extends Component
         'notes' => ''
     ];
 
+    // Add consumable item properties
+    public bool $showAddItemModal = false;
+    public $selectedConsumableItemId = '';
+    public $itemQuantity = '';
+    public $itemUnitCost = '';
+    public $itemNotes = '';
+    public $itemSearchTerm = '';
+    public bool $showItemDropdown = false;
+
     public function mount(int $id)
     {
         $this->grnId = $id;
-        $this->grn = GRN::with(['supplierOrder.supplier', 'productionOrder.supplier', 'items'])->findOrFail($id);
+        $this->grn = GRN::with(['supplierOrder.supplier', 'productionOrder.supplier', 'purchaseOrder.supplier', 'supplier', 'items'])->findOrFail($id);
         
         // Set default status if not set
         if (!$this->grn->status) {
@@ -37,6 +48,291 @@ class GRNDetail extends Component
         $this->syncItemsReceivingStatus();
         
         $this->loadProcessingStatus();
+    }
+
+    /**
+     * Open modal to add consumable item
+     */
+    public function openAddItemModal()
+    {
+        // Only allow adding items if GRN is not from supplier order or production order
+        if ($this->grn->supplier_po_id || $this->grn->production_order_id || $this->grn->purchase_order_id) {
+            session()->flash('error', 'Cannot add items to GRNs created from orders. Items are automatically added from the order.');
+            return;
+        }
+
+        // Prevent adding items if GRN is already processed
+        if ($this->grn->status === 'processed') {
+            session()->flash('error', 'Cannot add items to a processed GRN.');
+            return;
+        }
+
+        $this->selectedConsumableItemId = '';
+        $this->itemQuantity = '';
+        $this->itemUnitCost = '';
+        $this->itemNotes = '';
+        $this->itemSearchTerm = '';
+        $this->showItemDropdown = false;
+        $this->showAddItemModal = true;
+    }
+
+    /**
+     * Close add item modal
+     */
+    public function closeAddItemModal()
+    {
+        $this->showAddItemModal = false;
+        $this->selectedConsumableItemId = '';
+        $this->itemQuantity = '';
+        $this->itemUnitCost = '';
+        $this->itemNotes = '';
+        $this->itemSearchTerm = '';
+        $this->showItemDropdown = false;
+    }
+
+    /**
+     * Auto-fill consumable item details when selected
+     */
+    public function updatedSelectedConsumableItemId($value)
+    {
+        if ($value) {
+            $consumable = ConsumableItem::find($value);
+            if ($consumable) {
+                $this->itemUnitCost = $consumable->default_unit_cost;
+                $this->itemSearchTerm = $consumable->item_code . ' - ' . $consumable->item_name;
+                $this->showItemDropdown = false;
+            }
+        }
+    }
+
+    /**
+     * Handle search term changes and show dropdown
+     */
+    public function updatedItemSearchTerm($value)
+    {
+        // Show dropdown when typing
+        if (!$this->showItemDropdown) {
+            $this->showItemDropdown = true;
+        }
+        // Clear selection if search term is cleared
+        if (empty($value)) {
+            $this->selectedConsumableItemId = '';
+            $this->itemUnitCost = '';
+        }
+    }
+
+    /**
+     * Show dropdown when input is focused
+     */
+    public function showItemDropdown()
+    {
+        $this->showItemDropdown = true;
+    }
+
+
+    /**
+     * Select consumable item from dropdown
+     */
+    public function selectConsumableItem($itemId)
+    {
+        $this->selectedConsumableItemId = $itemId;
+        $consumable = ConsumableItem::find($itemId);
+        if ($consumable) {
+            $this->itemUnitCost = $consumable->default_unit_cost;
+            $this->itemSearchTerm = $consumable->item_code . ' - ' . $consumable->item_name;
+            $this->showItemDropdown = false;
+            
+            // Dispatch browser event to ensure UI updates
+            $this->dispatch('item-selected');
+        }
+    }
+
+    /**
+     * Clear item selection
+     */
+    public function clearItemSelection()
+    {
+        $this->selectedConsumableItemId = '';
+        $this->itemSearchTerm = '';
+        $this->itemUnitCost = '';
+        $this->showItemDropdown = false;
+    }
+
+    /**
+     * Get filtered consumable items for dropdown
+     */
+    public function getFilteredConsumableItems()
+    {
+        $query = ConsumableItem::where('is_active', true)
+            ->orderBy('item_code');
+
+        if (!empty($this->itemSearchTerm)) {
+            $searchTerm = '%' . $this->itemSearchTerm . '%';
+            $query->where(function($q) use ($searchTerm) {
+                $q->where('item_code', 'like', $searchTerm)
+                  ->orWhere('item_name', 'like', $searchTerm);
+            });
+        }
+
+        // If no search term, show first 5 items by default
+        if (empty($this->itemSearchTerm)) {
+            return $query->limit(5)->get();
+        }
+
+        return $query->limit(10)->get();
+    }
+
+    /**
+     * Add consumable item to GRN
+     */
+    public function addConsumableItem()
+    {
+        \Log::info('addConsumableItem called', [
+            'selectedConsumableItemId' => $this->selectedConsumableItemId,
+            'itemQuantity' => $this->itemQuantity,
+            'itemUnitCost' => $this->itemUnitCost,
+            'grn_id' => $this->grn->id ?? null,
+        ]);
+
+        // Validate selectedConsumableItemId first
+        if (empty($this->selectedConsumableItemId)) {
+            session()->flash('error', 'Please select a consumable item from the dropdown.');
+            return;
+        }
+
+        // Validate quantity
+        if (empty($this->itemQuantity) || !is_numeric($this->itemQuantity) || $this->itemQuantity <= 0) {
+            session()->flash('error', 'Please enter a valid quantity greater than 0.');
+            return;
+        }
+
+        // Validate unit cost
+        if (empty($this->itemUnitCost) || !is_numeric($this->itemUnitCost) || $this->itemUnitCost < 0) {
+            session()->flash('error', 'Please enter a valid unit cost.');
+            return;
+        }
+
+        try {
+            $consumable = ConsumableItem::find($this->selectedConsumableItemId);
+            
+            if (!$consumable) {
+                session()->flash('error', 'Selected consumable item not found.');
+                return;
+            }
+
+            \Log::info('Creating GRNItem', [
+                'grn_id' => $this->grn->id,
+                'material_code' => $consumable->item_code,
+                'quantity' => $this->itemQuantity,
+            ]);
+
+            // Create GRNItem
+            $grnItem = GRNItem::create([
+                'grn_id' => $this->grn->id,
+                'production_order_item_id' => null,
+                'item_type' => null,
+                'item_id' => null,
+                'material_code' => $consumable->item_code,
+                'description' => $consumable->item_name,
+                'qty_received' => $this->itemQuantity,
+                'qty_expected' => $this->itemQuantity,
+                'uom' => $consumable->default_uom,
+                'unit_cost' => $this->itemUnitCost,
+                'notes' => $this->itemNotes,
+            ]);
+
+            \Log::info('GRNItem created', ['grn_item_id' => $grnItem->id]);
+
+            // Initialize partial receiving fields - start as NOT received
+            $grnItem->initializePartialReceiving();
+            
+            // Keep as not received initially - user will mark as received using Complete button
+            $grnItem->update([
+                'qty_received_partial' => 0,
+                'qty_pending' => $this->itemQuantity,
+                'is_fully_received' => false,
+                'last_received_at' => null,
+            ]);
+
+            session()->flash('success', 'Consumable item added successfully!');
+            
+            // Refresh GRN data
+            $this->grn->refresh();
+            $this->grn->load('items');
+            
+            // Close modal
+            $this->closeAddItemModal();
+            
+        } catch (\Exception $e) {
+            \Log::error('Error adding consumable item', [
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            session()->flash('error', 'Failed to add consumable item: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Mark item as fully received (Complete)
+     */
+    public function markItemAsReceived($itemId)
+    {
+        try {
+            $item = GRNItem::findOrFail($itemId);
+            
+            // Prevent marking as received if already processed
+            if ($item->qty_processed > 0) {
+                session()->flash('error', 'Cannot modify item that has already been processed.');
+                return;
+            }
+
+            // Mark as fully received
+            $item->update([
+                'qty_received_partial' => $item->qty_expected,
+                'qty_pending' => 0,
+                'is_fully_received' => true,
+                'last_received_at' => now(),
+            ]);
+
+            session()->flash('success', 'Item marked as received successfully.');
+            
+            // Refresh GRN data
+            $this->grn->refresh();
+            $this->grn->load('items');
+            $this->syncItemsReceivingStatus();
+            
+        } catch (\Exception $e) {
+            session()->flash('error', 'Failed to mark item as received: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Delete GRN item
+     */
+    public function deleteItem($itemId)
+    {
+        try {
+            $item = GRNItem::findOrFail($itemId);
+            
+            // Prevent deletion if item is already processed
+            if ($item->qty_processed > 0) {
+                session()->flash('error', 'Cannot delete item that has already been processed.');
+                return;
+            }
+
+            $item->delete();
+            
+            session()->flash('success', 'Item deleted successfully.');
+            
+            // Refresh GRN data
+            $this->grn->refresh();
+            $this->grn->load('items');
+            
+        } catch (\Exception $e) {
+            session()->flash('error', 'Failed to delete item: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -180,7 +476,7 @@ class GRNDetail extends Component
                 $this->showProcessingModal = false;
                 
                 // Refresh GRN data
-                $this->grn = GRN::with(['supplierOrder.supplier', 'productionOrder.supplier', 'items'])->findOrFail($this->grnId);
+                $this->grn = GRN::with(['supplierOrder.supplier', 'productionOrder.supplier', 'purchaseOrder.supplier', 'supplier', 'items'])->findOrFail($this->grnId);
                 
                 // Sync all items status in case any updates were needed
                 $this->syncItemsReceivingStatus();
@@ -290,14 +586,24 @@ class GRNDetail extends Component
      */
     public function refreshGRN()
     {
-        $this->grn = GRN::with(['supplierOrder.supplier', 'productionOrder.supplier', 'items'])->findOrFail($this->grnId);
+        $this->grn = GRN::with(['supplierOrder.supplier', 'productionOrder.supplier', 'purchaseOrder.supplier', 'supplier', 'items'])->findOrFail($this->grnId);
         $this->syncItemsReceivingStatus();
         $this->loadProcessingStatus();
     }
 
     public function render()
     {
-        return view('livewire.grn-detail');
+        $consumableItems = ConsumableItem::where('is_active', true)
+            ->orderBy('item_code')
+            ->get();
+
+        // Get filtered items for dropdown
+        $filteredItems = $this->getFilteredConsumableItems();
+
+        return view('livewire.grn-detail', [
+            'consumableItems' => $consumableItems,
+            'filteredItems' => $filteredItems,
+        ]);
     }
 }
 

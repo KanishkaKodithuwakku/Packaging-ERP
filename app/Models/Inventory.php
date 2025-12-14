@@ -17,6 +17,7 @@ class Inventory extends Model
         'lot_code',
         'item_code',
         'category',
+        'material_type',
         'qty_available',
         'uom',
         'warehouse',

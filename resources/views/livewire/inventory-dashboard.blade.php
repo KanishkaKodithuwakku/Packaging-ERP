@@ -21,7 +21,7 @@
 
         <div class="p-6">
             <!-- Summary Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 <div class="bg-blue-50 p-6 rounded-lg">
                     <div class="flex justify-between items-start mb-2">
                         <h3 class="text-lg font-semibold text-blue-800">Raw Materials</h3>
@@ -41,6 +41,28 @@
                         <p class="text-xs text-blue-600">Consumed: <span class="font-semibold">{{ number_format($totalRawMaterialsConsumed, 2) }}</span></p>
                         @endif
                         <p class="text-sm text-blue-700 font-medium">Balance Available: <span class="text-base font-bold">{{ number_format($balanceRawMaterialsQuantity, 2) }}</span></p>
+                    </div>
+                </div>
+                
+                <div class="bg-purple-50 p-6 rounded-lg">
+                    <h3 class="text-lg font-semibold text-purple-800">Consumables</h3>
+                    <p class="text-3xl font-bold text-purple-600">
+                        {{ number_format($consumablesQuantity, 2) }}
+                    </p>
+                    <div class="mt-3 pt-3 border-t border-purple-200 space-y-1">
+                        @if($consumablesByType->count() > 0)
+                            @foreach($consumablesByType->take(3) as $consumable)
+                                <p class="text-xs text-purple-600">
+                                    {{ $consumable->item_code }}: 
+                                    <span class="font-semibold">{{ number_format($consumable->total_qty, 2) }} {{ $consumable->uom }}</span>
+                                </p>
+                            @endforeach
+                            @if($consumablesByType->count() > 3)
+                                <p class="text-xs text-purple-500 italic">+{{ $consumablesByType->count() - 3 }} more</p>
+                            @endif
+                        @else
+                            <p class="text-xs text-purple-500">No consumables in stock</p>
+                        @endif
                     </div>
                 </div>
                 

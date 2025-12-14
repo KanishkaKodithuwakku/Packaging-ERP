@@ -9,6 +9,7 @@ use App\Models\InventoryLayer;
 use App\Models\InventoryTransaction;
 use App\Models\ProductionOrder;
 use App\Models\ProductionOrderItem;
+use App\Models\ConsumableItem;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
@@ -144,8 +145,18 @@ class GRNProcessingService
 
             // Get required variables first
             $category = $this->determineItemCategory($grnItem);
+            $materialType = $this->determineMaterialType($grnItem);
             $lotCode = $this->generateInventoryLotCode($grnItem);
+            
+            // If consumable, try to get defaults from item master
             $unitCost = $this->calculateUnitCost($grnItem);
+            if ($materialType === 'consumable') {
+                $consumableDefaults = $this->getConsumableDefaults($grnItem->material_code);
+                if (!empty($consumableDefaults)) {
+                    // Use consumable defaults if available, but allow override
+                    $unitCost = $consumableDefaults['unit_cost'] ?? $unitCost;
+                }
+            }
             
             // Always create a new transaction for each processing batch
             // This ensures we have a complete audit trail
@@ -153,6 +164,7 @@ class GRNProcessingService
                 'lot_code' => $lotCode,
                 'item_code' => $grnItem->material_code,
                 'category' => $category,
+                'material_type' => $materialType,
                 'txn_type' => 'receipt',
                 'qty' => $quantityToProcess,
                 'unit_cost' => $unitCost,
@@ -233,6 +245,7 @@ class GRNProcessingService
             
             // Determine item category based on production order item
             $category = $this->determineItemCategory($grnItem);
+            $materialType = $this->determineMaterialType($grnItem);
             
             // Generate inventory lot code
             $lotCode = $this->generateInventoryLotCode($grnItem);
@@ -240,11 +253,21 @@ class GRNProcessingService
             // Calculate unit cost (you may need to implement cost calculation logic)
             $unitCost = $this->calculateUnitCost($grnItem);
             
+            // If consumable, try to get defaults from item master
+            if ($materialType === 'consumable') {
+                $consumableDefaults = $this->getConsumableDefaults($grnItem->material_code);
+                if (!empty($consumableDefaults)) {
+                    // Use consumable defaults if available, but allow override
+                    $unitCost = $consumableDefaults['unit_cost'] ?? $unitCost;
+                }
+            }
+            
             // Create inventory transaction
             $transaction = $this->inventoryService->recordTransaction([
                 'lot_code' => $lotCode,
                 'item_code' => $grnItem->material_code,
                 'category' => $category,
+                'material_type' => $materialType,
                 'txn_type' => 'receipt',
                 'qty' => $grnItem->qty_received,
                 'unit_cost' => $unitCost,
@@ -301,6 +324,75 @@ class GRNProcessingService
         
         // For supplier orders, items are typically raw materials
         return 'RAW'; // Raw Materials
+    }
+
+    /**
+     * Determine material type (raw_material, consumable, component)
+     */
+    private function determineMaterialType(GRNItem $grnItem): string
+    {
+        // First check if it's in consumable_items table (preferred method)
+        $consumableItem = ConsumableItem::where('item_code', $grnItem->material_code)
+            ->where('is_active', true)
+            ->first();
+        
+        if ($consumableItem) {
+            return 'consumable';
+        }
+        
+        // Fallback: Check if item is a consumable based on material code prefix
+        if ($this->isConsumable($grnItem->material_code)) {
+            return 'consumable';
+        }
+        
+        // Default to raw_material
+        return 'raw_material';
+    }
+
+    /**
+     * Check if material code indicates a consumable item (fallback method)
+     */
+    private function isConsumable(string $materialCode): bool
+    {
+        if (empty($materialCode)) {
+            return false;
+        }
+
+        $consumablePrefixes = [
+            'GLUE', 'INK', 'PAPER', 'TAPE', 'LABEL', 
+            'ADHESIVE', 'STAPLE', 'STRING', 'TWINE',
+            'WRAP', 'FILM', 'SHRINK', 'BUBBLE'
+        ];
+
+        $upperCode = strtoupper($materialCode);
+        
+        foreach ($consumablePrefixes as $prefix) {
+            if (str_starts_with($upperCode, $prefix)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Get consumable defaults from item master
+     */
+    private function getConsumableDefaults(string $itemCode): array
+    {
+        $consumable = ConsumableItem::where('item_code', $itemCode)
+            ->where('is_active', true)
+            ->first();
+        
+        if ($consumable) {
+            return [
+                'uom' => $consumable->default_uom,
+                'unit_cost' => $consumable->default_unit_cost,
+                'warehouse' => $consumable->default_warehouse,
+            ];
+        }
+        
+        return [];
     }
 
     /**
