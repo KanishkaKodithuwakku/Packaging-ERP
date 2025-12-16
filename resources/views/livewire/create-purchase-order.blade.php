@@ -219,7 +219,7 @@
                                                     foreach($selectedItems as $selectedItem) {
                                                         if($selectedItem['id'] === $item['id']) {
                                                             $isSelected = true;
-                                                            $selectedQty = $selectedItem['board_qty'];
+                                                            $selectedQty = $selectedItem['purchase_qty'] ?? $selectedItem['board_qty'] ?? 0;
                                                             break;
                                                         }
                                                     }
@@ -331,7 +331,7 @@
                                                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Job Order</th>
                                                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Item Name</th>
                                                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
-                                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Board Qty</th>
+                                                <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Qty</th>
                                                 <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
                                             </tr>
                                         </thead>
@@ -343,21 +343,16 @@
                                                 <td class="px-4 py-2 text-sm font-medium text-gray-900">{{ $item['type'] }}</td>
                                                 <td class="px-4 py-2 text-sm text-gray-600">{{ $item['description'] }}</td>
                                                 <td class="px-4 py-2 text-sm">
-                                                    @if($item['type'] === 'BOX')
-                                                        {{-- For BOX items, board_qty is read-only and comes from database --}}
-                                                        <span class="text-gray-900">{{ number_format((int)($item['board_qty'] ?? 0), 0) }}</span>
-                                                    @else
-                                                        {{-- For DIVIDER items, purchase_qty is editable --}}
-                                                        <input type="number"
-                                                               wire:model.live="selectedItems.{{ $index }}.purchase_qty"
-                                                               wire:change="updateSelectedQuantity('{{ $item['id'] }}', $event.target.value)"
-                                                               min="1"
-                                                               max="{{ $item['available_qty'] }}"
-                                                               step="1"
-                                                               class="w-20 px-2 py-1 border border-gray-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500 {{ ($item['purchase_qty'] ?? $item['board_qty']) > $item['available_qty'] ? 'border-red-500 bg-red-50' : '' }}"
-                                                               title="Available: {{ $item['available_qty'] }}"
-                                                               oninput="if(this.value > {{ $item['available_qty'] }}) { this.value = {{ $item['available_qty'] }}; } if(this.value < 1) { this.value = 1; }">
-                                                    @endif
+                                                    {{-- All items (BOX and DIVIDER) have editable purchase_qty --}}
+                                                    <input type="number"
+                                                           wire:model.live="selectedItems.{{ $index }}.purchase_qty"
+                                                           wire:change="updateSelectedQuantity('{{ $item['id'] }}', $event.target.value)"
+                                                           min="1"
+                                                           max="{{ $item['available_qty'] }}"
+                                                           step="1"
+                                                           class="w-20 px-2 py-1 border border-gray-300 rounded text-sm focus:ring-blue-500 focus:border-blue-500 {{ ($item['purchase_qty'] ?? $item['board_qty']) > $item['available_qty'] ? 'border-red-500 bg-red-50' : '' }}"
+                                                           title="Available: {{ $item['available_qty'] }}"
+                                                           oninput="if(this.value > {{ $item['available_qty'] }}) { this.value = {{ $item['available_qty'] }}; } if(this.value < 1) { this.value = 1; }">
                                                 </td>
                                                 <td class="px-4 py-2 text-sm">
                                                     <button wire:click="removeItem('{{ $item['id'] }}')"
