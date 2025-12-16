@@ -1,4 +1,38 @@
 <div>
+    <!-- Flash Messages -->
+    @if (session()->has('success'))
+        <div class="mb-4 bg-green-100 border-l-4 border-green-500 text-green-700 p-4 rounded">
+            <div class="flex items-center">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <div class="font-medium">{!! session('success') !!}</div>
+            </div>
+        </div>
+    @endif
+    @if (session()->has('error'))
+        <div class="mb-4 bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded">
+            <div class="flex items-start">
+                <svg class="w-5 h-5 mr-2 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <div>
+                    <div class="font-medium">{{ session('error') }}</div>
+                </div>
+            </div>
+        </div>
+    @endif
+    @if (session()->has('info'))
+        <div class="mb-4 bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-4 rounded">
+            <div class="flex items-center">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <div class="font-medium">{!! session('info') !!}</div>
+            </div>
+        </div>
+    @endif
+
     <div class="mb-6">
         <div class="flex justify-between items-start">
             <div>
@@ -12,14 +46,8 @@
                 <h1 class="text-3xl font-bold text-gray-900 mt-4">Delivery Note Details</h1>
                 <p class="text-gray-600 mt-1">DN Number: {{ $deliveryNote->dn_number }}</p>
             </div>
-            @if($deliveryNote->status === 'dispatched' || $deliveryNote->status === 'partial')
+            @if(($deliveryNote->status === 'dispatched' || $deliveryNote->status === 'partial') && !$existingInvoice)
             <div class="flex space-x-3">
-                <!-- Test button - remove after debugging -->
-                <button type="button"
-                        wire:click="testButton"
-                        class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-md text-sm font-medium">
-                    Test
-                </button>
                 <button type="button"
                         wire:click="createInvoice"
                         wire:loading.attr="disabled"
@@ -37,6 +65,36 @@
                     <span wire:loading.remove wire:target="createInvoice">Create Invoice</span>
                     <span wire:loading wire:target="createInvoice">Creating...</span>
                 </button>
+                <button wire:click="printDeliveryNote"
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+                    </svg>
+                    Print Delivery Note
+                </button>
+            </div>
+            @endif
+            @if($existingInvoice)
+            <div class="flex space-x-3">
+                <button type="button"
+                        disabled
+                        class="bg-gray-400 cursor-not-allowed text-white px-4 py-2 rounded-md text-sm font-medium flex items-center"
+                        title="Invoice already created (Invoice #{{ $existingInvoice->invoice_number }})">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M9 17v-6a2 2 0 012-2h8m-6 8h6a2 2 0 002-2V7a2 2 0 00-2-2h-8a2 2 0 00-2 2v10m-4 0h12"></path>
+                    </svg>
+                    Invoice Created ({{ $existingInvoice->invoice_number }})
+                </button>
+                <a href="{{ route('invoices') }}" 
+                   class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                    </svg>
+                    View Invoices
+                </a>
                 <button wire:click="printDeliveryNote"
                         class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center">
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -71,8 +129,12 @@
                         {{ $deliveryNote->status === 'dispatched' ? 'bg-green-100 text-green-800' : '' }}
                         {{ $deliveryNote->status === 'partial' ? 'bg-yellow-100 text-yellow-800' : '' }}
                         {{ $deliveryNote->status === 'draft' ? 'bg-gray-100 text-gray-800' : '' }}
+                        {{ $deliveryNote->status === 'invoiced' ? 'bg-purple-100 text-purple-800' : '' }}
                         {{ $deliveryNote->status === 'cancelled' ? 'bg-red-100 text-red-800' : '' }}">
-                        {{ ucfirst($deliveryNote->status) }}
+                        {{ $deliveryNote->status === 'invoiced' ? 'INVOICED' : strtoupper($deliveryNote->status) }}
+                        @if($deliveryNote->status === 'invoiced' && $deliveryNote->invoice)
+                            <span class="ml-2 text-xs">({{ $deliveryNote->invoice->invoice_number }})</span>
+                        @endif
                     </span>
                 </div>
             </div>
@@ -119,10 +181,11 @@
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ number_format($item->remaining_qty, 0) }}</td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
+                                    {{ $item->status === 'invoiced' ? 'bg-purple-100 text-purple-800' : '' }}
                                     {{ $item->status === 'dispatched' ? 'bg-green-100 text-green-800' : '' }}
                                     {{ $item->status === 'partial' ? 'bg-yellow-100 text-yellow-800' : '' }}
                                     {{ $item->status === 'pending' ? 'bg-gray-100 text-gray-800' : '' }}">
-                                    {{ ucfirst($item->status) }}
+                                    {{ $item->status === 'invoiced' ? 'INVOICED' : strtoupper($item->status) }}
                                 </span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
@@ -211,7 +274,7 @@
                             <td style="padding: 10px; border: 1px solid #000;">{{ $item->material_code }}</td>
                             <td style="padding: 10px; text-align: right; border: 1px solid #000;">{{ number_format($item->quantity, 0) }}</td>
                             <td style="padding: 10px; text-align: right; border: 1px solid #000;">{{ number_format($item->dispatched_qty, 0) }}</td>
-                            <td style="padding: 10px; border: 1px solid #000;">{{ ucfirst($item->status) }}</td>
+                            <td style="padding: 10px; border: 1px solid #000;">{{ $item->status === 'invoiced' ? 'INVOICED' : strtoupper($item->status) }}</td>
                         </tr>
                     @endforeach
                 </tbody>

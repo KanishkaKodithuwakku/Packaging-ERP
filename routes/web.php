@@ -110,6 +110,15 @@ Route::get('/delivery-notes/{id}', \App\Livewire\DeliveryNoteDetail::class)
     ->middleware(['auth'])
     ->name('delivery-note-detail');
 
+// Invoices
+Route::get('/invoices', \App\Livewire\InvoiceManagement::class)
+    ->middleware(['auth'])
+    ->name('invoices');
+
+Route::get('/invoices/{id}', \App\Livewire\InvoiceDetail::class)
+    ->middleware(['auth'])
+    ->name('invoice-detail');
+
 // Inventory Dashboard
 Route::get('/inventory-dashboard', InventoryDashboard::class)
     ->middleware(['auth', 'permission:view inventory'])
