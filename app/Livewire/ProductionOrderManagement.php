@@ -97,11 +97,24 @@ class ProductionOrderManagement extends Component
             $purchaseOrder = PurchaseOrder::with(['items'])->find($this->form['purchase_order_id']);
 
             // Add items from Purchase Order to Production Order
+            // Use job order's order quantity (finished goods quantity) instead of purchase order quantity (material quantity)
             foreach ($purchaseOrder->items as $item) {
+                // Get the job order item to get the order quantity (finished goods quantity)
+                $jobOrderItem = null;
+                if ($item->item_type === 'box') {
+                    $jobOrderItem = \App\Models\JobOrderBox::find($item->item_id);
+                    $orderQty = $jobOrderItem ? (int) $jobOrderItem->order_qty : $item->quantity;
+                } elseif ($item->item_type === 'divider') {
+                    $jobOrderItem = \App\Models\JobOrderDivider::find($item->item_id);
+                    $orderQty = $jobOrderItem ? (int) $jobOrderItem->quantity : $item->quantity;
+                } else {
+                    $orderQty = $item->quantity; // Fallback
+                }
+                
                 $productionOrder->items()->create([
                     'item_type' => $item->item_type,
                     'item_id' => $item->item_id,
-                    'quantity' => $item->quantity,
+                    'quantity' => $orderQty, // Use job order's order quantity (finished goods), not material quantity
                     'completed_quantity' => 0,
                     'status' => 'pending',
                 ]);

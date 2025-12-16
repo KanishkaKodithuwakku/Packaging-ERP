@@ -350,10 +350,43 @@
 
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Production Quantity</label>
+                            @php
+                                $jobOrder = $selectedTransaction->getJobOrder();
+                                $maxOrderQty = $selectedTransaction->qty; // Default to transaction quantity
+                                
+                                if ($jobOrder) {
+                                    // Try to find the job order item that matches this transaction
+                                    $jobOrderItem = null;
+                                    if ($selectedTransaction->item_code) {
+                                        $jobOrderBox = $jobOrder->boxes()->where('id', $selectedTransaction->item_code)->first();
+                                        if ($jobOrderBox) {
+                                            $maxOrderQty = (int) $jobOrderBox->order_qty;
+                                        } else {
+                                            $jobOrderDivider = $jobOrder->dividers()->where('id', $selectedTransaction->item_code)->first();
+                                            if ($jobOrderDivider) {
+                                                $maxOrderQty = (int) $jobOrderDivider->quantity;
+                                            }
+                                        }
+                                    }
+                                    
+                                    // If no specific item found, use the first available item
+                                    if ($maxOrderQty == $selectedTransaction->qty) {
+                                        $jobOrderBox = $jobOrder->boxes()->first();
+                                        if ($jobOrderBox) {
+                                            $maxOrderQty = (int) $jobOrderBox->order_qty;
+                                        } else {
+                                            $jobOrderDivider = $jobOrder->dividers()->first();
+                                            if ($jobOrderDivider) {
+                                                $maxOrderQty = (int) $jobOrderDivider->quantity;
+                                            }
+                                        }
+                                    }
+                                }
+                            @endphp
                             <input type="number" wire:model="productionOrderForm.quantity" 
-                                   step="0.01" min="0" max="{{ $selectedTransaction->qty }}"
+                                   step="0.01" min="0" max="{{ $maxOrderQty }}"
                                    class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 sm:text-sm">
-                            <p class="mt-1 text-sm text-gray-500">Maximum: {{ number_format($selectedTransaction->qty, 0) }} {{ $selectedTransaction->uom }}</p>
+                            <p class="mt-1 text-sm text-gray-500">Maximum: {{ number_format($maxOrderQty, 0) }} PCS (Job Order Order Quantity)</p>
                         </div>
 
                         <div>

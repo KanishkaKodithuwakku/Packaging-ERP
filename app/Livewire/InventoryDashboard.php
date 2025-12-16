@@ -383,14 +383,49 @@ class InventoryDashboard extends Component
 
     public function openProductionOrderModal($transactionId)
     {
-        $this->selectedTransaction = \App\Models\InventoryTransaction::with(['grn.purchaseOrder.jobOrder.supplier', 'grn.purchaseOrder.jobOrder.customer'])
+        $this->selectedTransaction = \App\Models\InventoryTransaction::with(['grn.purchaseOrder.jobOrder.supplier', 'grn.purchaseOrder.jobOrder.customer', 'grn.purchaseOrder.jobOrder.boxes', 'grn.purchaseOrder.jobOrder.dividers'])
             ->find($transactionId);
         
         if ($this->selectedTransaction) {
+            // Get job order's order quantity (finished goods quantity) instead of material quantity
+            $jobOrder = $this->selectedTransaction->getJobOrder();
+            $orderQty = $this->selectedTransaction->qty; // Default to transaction quantity
+            
+            if ($jobOrder) {
+                // Try to find the job order item that matches this transaction
+                $jobOrderItem = null;
+                if ($this->selectedTransaction->item_code) {
+                    $jobOrderBox = $jobOrder->boxes()->where('id', $this->selectedTransaction->item_code)->first();
+                    if ($jobOrderBox) {
+                        $jobOrderItem = $jobOrderBox;
+                        $orderQty = (int) $jobOrderBox->order_qty;
+                    } else {
+                        $jobOrderDivider = $jobOrder->dividers()->where('id', $this->selectedTransaction->item_code)->first();
+                        if ($jobOrderDivider) {
+                            $jobOrderItem = $jobOrderDivider;
+                            $orderQty = (int) $jobOrderDivider->quantity;
+                        }
+                    }
+                }
+                
+                // If no specific item found, use the first available item from the job order
+                if (!$jobOrderItem) {
+                    $jobOrderBox = $jobOrder->boxes()->first();
+                    if ($jobOrderBox) {
+                        $orderQty = (int) $jobOrderBox->order_qty;
+                    } else {
+                        $jobOrderDivider = $jobOrder->dividers()->first();
+                        if ($jobOrderDivider) {
+                            $orderQty = (int) $jobOrderDivider->quantity;
+                        }
+                    }
+                }
+            }
+            
             $this->productionOrderForm = [
                 'production_order_number' => \App\Models\ProductionOrder::generateProductionOrderNumber(),
                 'date' => now()->format('Y-m-d'),
-                'quantity' => $this->selectedTransaction->qty,
+                'quantity' => $orderQty, // Use job order's order quantity (finished goods), not material quantity
                 'notes' => "Production order created from inventory transaction: {$this->selectedTransaction->lot_code}"
             ];
             $this->showProductionOrderModal = true;
@@ -429,8 +464,42 @@ class InventoryDashboard extends Component
                 return;
             }
 
-            if ($this->productionOrderForm['quantity'] > $this->selectedTransaction->qty) {
-                session()->flash('error', 'Production quantity cannot exceed available quantity.');
+            // Get job order's order quantity for validation
+            $jobOrderItem = null;
+            $itemType = 'box';
+            $maxOrderQty = $this->selectedTransaction->qty; // Default to transaction quantity
+            
+            if ($this->selectedTransaction->item_code) {
+                $jobOrderBox = $jobOrder->boxes()->where('id', $this->selectedTransaction->item_code)->first();
+                if ($jobOrderBox) {
+                    $jobOrderItem = $jobOrderBox;
+                    $itemType = 'box';
+                    $maxOrderQty = (int) $jobOrderBox->order_qty;
+                } else {
+                    $jobOrderDivider = $jobOrder->dividers()->where('id', $this->selectedTransaction->item_code)->first();
+                    if ($jobOrderDivider) {
+                        $jobOrderItem = $jobOrderDivider;
+                        $itemType = 'divider';
+                        $maxOrderQty = (int) $jobOrderDivider->quantity;
+                    }
+                }
+            }
+            
+            // If no specific item found, use the first available item
+            if (!$jobOrderItem) {
+                $jobOrderBox = $jobOrder->boxes()->first();
+                if ($jobOrderBox) {
+                    $maxOrderQty = (int) $jobOrderBox->order_qty;
+                } else {
+                    $jobOrderDivider = $jobOrder->dividers()->first();
+                    if ($jobOrderDivider) {
+                        $maxOrderQty = (int) $jobOrderDivider->quantity;
+                    }
+                }
+            }
+
+            if ($this->productionOrderForm['quantity'] > $maxOrderQty) {
+                session()->flash('error', "Production quantity cannot exceed job order's order quantity ({$maxOrderQty}).");
                 return;
             }
 
@@ -487,12 +556,22 @@ class InventoryDashboard extends Component
             }
             
             if ($jobOrderItem) {
-                // Create production order item
+                // Get job order's order quantity (finished goods quantity) instead of material quantity
+                $orderQty = 0;
+                if ($itemType === 'box' && $jobOrderItem instanceof \App\Models\JobOrderBox) {
+                    $orderQty = (int) $jobOrderItem->order_qty;
+                } elseif ($itemType === 'divider' && $jobOrderItem instanceof \App\Models\JobOrderDivider) {
+                    $orderQty = (int) $jobOrderItem->quantity;
+                } else {
+                    $orderQty = $this->productionOrderForm['quantity']; // Fallback
+                }
+                
+                // Create production order item with job order's order quantity (finished goods)
                 \App\Models\ProductionOrderItem::create([
                     'production_order_id' => $productionOrder->id,
                     'item_type' => $itemType,
                     'item_id' => $jobOrderItem->id,
-                    'quantity' => $this->productionOrderForm['quantity'],
+                    'quantity' => $orderQty, // Use job order's order quantity (finished goods), not material quantity
                     'completed_quantity' => 0,
                     'status' => 'pending',
                 ]);
@@ -726,6 +805,14 @@ class InventoryDashboard extends Component
                 \App\Models\JobOrderBox::query()->delete();
                 \App\Models\JobOrderDivider::query()->delete();
                 \App\Models\JobOrder::query()->delete();
+
+                // Invoices
+                \App\Models\InvoiceItem::query()->delete();
+                \App\Models\Invoice::query()->delete();
+
+                // Delivery Notes
+                \App\Models\DeliveryNoteItem::query()->delete();
+                \App\Models\DeliveryNote::query()->delete();
 
                 // Re-enable FK checks
                 FacadesDB::statement('SET FOREIGN_KEY_CHECKS=1');

@@ -215,9 +215,20 @@ class ProductionOrderDetail extends Component
             return;
         }
 
-        $remaining = $item->getRemainingQuantity();
-        if ($qty > $remaining) {
-            session()->flash('error', "Quantity exceeds remaining amount ({$remaining}).");
+        // Check if already reached job order's order quantity limit
+        if ($item->hasReachedJobOrderLimit()) {
+            session()->flash('error', 'Cannot complete more items. The completed quantity has reached the job order\'s order quantity limit.');
+            return;
+        }
+
+        // Get effective maximum quantity (min of expected from material and job order order qty)
+        $effectiveMaxQty = $item->getEffectiveMaxQuantity();
+        $maxCanComplete = $effectiveMaxQty - $item->completed_quantity;
+
+        if ($qty > $maxCanComplete) {
+            $expectedFromMaterial = $item->getExpectedFinishedGoodsFromMaterial();
+            $jobOrderOrderQty = $item->getJobOrderOrderQuantity();
+            session()->flash('error', "Quantity exceeds the maximum allowed. Maximum remaining: {$maxCanComplete} (Effective Max: {$effectiveMaxQty}, Expected from Material: {$expectedFromMaterial}, Job Order Qty: {$jobOrderOrderQty}).");
             return;
         }
 
@@ -254,9 +265,21 @@ class ProductionOrderDetail extends Component
             $item = $this->productionOrder->items()->findOrFail($this->pendingCompleteItemId);
             $qty = $this->pendingCompleteQty;
 
-            $remaining = $item->getRemainingQuantity();
-            if ($qty > $remaining) {
-                session()->flash('error', "Quantity exceeds remaining amount ({$remaining}).");
+            // Check if already reached job order's order quantity limit
+            if ($item->hasReachedJobOrderLimit()) {
+                session()->flash('error', 'Cannot complete more items. The completed quantity has reached the job order\'s order quantity limit.');
+                $this->closeCompleteConfirmModal();
+                return;
+            }
+
+            // Get effective maximum quantity (min of expected from material and job order order qty)
+            $effectiveMaxQty = $item->getEffectiveMaxQuantity();
+            $maxCanComplete = $effectiveMaxQty - $item->completed_quantity;
+
+            if ($qty > $maxCanComplete) {
+                $expectedFromMaterial = $item->getExpectedFinishedGoodsFromMaterial();
+                $jobOrderOrderQty = $item->getJobOrderOrderQuantity();
+                session()->flash('error', "Quantity exceeds the maximum allowed. Maximum remaining: {$maxCanComplete} (Effective Max: {$effectiveMaxQty}, Expected from Material: {$expectedFromMaterial}, Job Order Qty: {$jobOrderOrderQty}).");
                 $this->closeCompleteConfirmModal();
                 return;
             }

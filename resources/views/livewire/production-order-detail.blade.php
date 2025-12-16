@@ -316,27 +316,57 @@
                             {{ $item->description ?? 'N/A' }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {{ number_format($item->quantity) }}
+                            @php
+                                $materialQty = $item->getMaterialQuantity();
+                                $noOfUps = $item->getNoOfUps();
+                                $expectedFromMaterial = $item->getExpectedFinishedGoodsFromMaterial();
+                                $effectiveMaxQty = $item->getEffectiveMaxQuantity();
+                            @endphp
+                            {{ number_format($effectiveMaxQty) }}
+                            <div class="text-xs text-gray-400 mt-1">
+                                ({{ number_format($materialQty) }} × {{ $noOfUps }} = {{ number_format($expectedFromMaterial) }})
+                            </div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {{ number_format($item->completed_quantity) }}
+                            @php
+                                // Calculate material completed from finished goods completed
+                                $materialCompleted = $item->getNoOfUps() > 0 ? ($item->completed_quantity / $item->getNoOfUps()) : 0;
+                            @endphp
+                            <div class="text-xs text-gray-400 mt-1">
+                                ({{ number_format($materialCompleted, 1) }} × {{ $item->getNoOfUps() }})
+                            </div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm">
-                            @php $remaining = $item->quantity - $item->completed_quantity; @endphp
-                            @if($remaining > 0)
+                            @php 
+                                $materialQty = $item->getMaterialQuantity();
+                                $noOfUps = $item->getNoOfUps();
+                                $expectedFromMaterial = $item->getExpectedFinishedGoodsFromMaterial();
+                                $jobOrderOrderQty = $item->getJobOrderOrderQuantity();
+                                $effectiveMaxQty = $item->getEffectiveMaxQuantity();
+                                $maxCanComplete = $effectiveMaxQty - $item->completed_quantity;
+                                $hasReachedLimit = $item->completed_quantity >= $effectiveMaxQty;
+                            @endphp
+                            @if(!$hasReachedLimit && $maxCanComplete > 0)
                                 <div class="flex items-center space-x-2">
-                                    <input type="number" min="1" max="{{ $remaining }}" step="1"
+                                    <input type="number" min="1" max="{{ $maxCanComplete }}" step="1"
                                            wire:model.defer="completeQty.{{ $item->id }}"
                                            class="w-24 px-2 py-1 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                                           placeholder="Qty">
+                                           placeholder="Qty"
+                                           title="Max: {{ $maxCanComplete }} (Effective Max: {{ $effectiveMaxQty }})">
                                     <button wire:click="completeItemQuantity({{ $item->id }})"
                                             class="inline-flex items-center px-3 py-1 border border-transparent rounded-md text-xs font-medium text-white bg-green-600 hover:bg-green-700">
                                         Complete
                                     </button>
                                 </div>
-                                <div class="text-xs text-gray-500 mt-1">Remaining: {{ number_format($remaining) }}</div>
+                                <div class="text-xs text-gray-500 mt-1">
+                                    <div>Remaining: {{ number_format($maxCanComplete) }} / Max: {{ number_format($effectiveMaxQty) }}</div>
+                                    <div class="text-gray-400">
+                                        Material: {{ number_format($materialQty) }} × UPS: {{ $noOfUps }} = {{ number_format($expectedFromMaterial) }} | Job Order: {{ number_format($jobOrderOrderQty) }}
+                                    </div>
+                                </div>
                             @else
-                                <span class="text-xs text-green-700">Fully completed</span>
+                                <span class="text-xs text-green-700">Fully completed ({{ number_format($item->completed_quantity) }} / {{ number_format($effectiveMaxQty) }})</span>
                             @endif
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
