@@ -4,9 +4,8 @@ namespace App\Livewire;
 
 use App\Models\DeliveryNote;
 use App\Models\DeliveryNoteItem;
-use App\Models\Entry;
-use App\Models\EntryType;
-use App\Models\Ledger;
+use App\Models\Invoice;
+use App\Models\InvoiceItem;
 use App\Models\JobOrderBox;
 use App\Models\JobOrderDivider;
 use App\Services\DeliveryService;
@@ -19,13 +18,22 @@ class DeliveryNoteDetail extends Component
 
     public $deliveryNote;
     public $dispatchQuantities = [];
+    public $existingInvoice = null;
 
     public function mount($id)
     {
         $this->deliveryNote = DeliveryNote::with([
             'jobOrder.customer', 
-            'items.inventoryTransactions'
+            'items.inventoryTransactions',
+            'invoice'
         ])->findOrFail($id);
+        
+        $this->checkExistingInvoice();
+    }
+    
+    public function checkExistingInvoice()
+    {
+        $this->existingInvoice = Invoice::where('delivery_note_id', $this->deliveryNote->id)->first();
     }
 
     public function dispatchItem($itemId, $quantity)
@@ -177,12 +185,6 @@ class DeliveryNoteDetail extends Component
      * Create sales invoice (accounting entry) for this delivery note.
      * Uses customer's Account Receivable and Sales Revenue ledgers from customer finance settings.
      */
-    public function testButton()
-    {
-        session()->flash('success', 'Test button works! Livewire is functioning correctly.');
-        Log::info('Test button clicked');
-    }
-
     public function createInvoice()
     {
         Log::info('createInvoice method called', [
@@ -220,64 +222,21 @@ class DeliveryNoteDetail extends Component
             Log::info('Customer loaded', [
                 'customer_id' => $customer->id,
                 'customer_name' => $customer->name,
-                'account_receivable' => $customer->account_receivable ?? 'empty',
-                'sales_revenue' => $customer->sales_revenue ?? 'empty',
-            ]);
-
-            if (empty($customer->account_receivable) || empty($customer->sales_revenue)) {
-                Log::warning('Customer missing finance settings', [
-                    'customer_id' => $customer->id,
-                    'account_receivable' => $customer->account_receivable ?? 'empty',
-                    'sales_revenue' => $customer->sales_revenue ?? 'empty',
-                ]);
-                session()->flash('error', 'Customer is missing Account Receivable or Sales Revenue ledger mapping. Please configure these in customer finance settings first.');
-                return;
-            }
-
-            // Find the Sales Voucher entry type
-            $salesEntryType = EntryType::where('label', 'sales')->first();
-            if (!$salesEntryType) {
-                Log::warning('Sales Voucher entry type not found');
-                session()->flash('error', 'Sales Voucher entry type not configured. Please run seeders or configure entry types.');
-                return;
-            }
-            
-            Log::info('Sales entry type found', [
-                'entry_type_id' => $salesEntryType->id,
-                'entry_type_name' => $salesEntryType->name,
             ]);
 
             // Prevent duplicate invoice for same DN
-            $existingInvoice = Entry::where('entrytype_id', $salesEntryType->id)
-                ->where('narration', 'like', '%' . $this->deliveryNote->dn_number . '%')
-                ->first();
-            if ($existingInvoice) {
-                session()->flash('info', 'An invoice already exists for this delivery note (Entry #' . $existingInvoice->formatted_number . ').');
+            $this->checkExistingInvoice();
+            if ($this->existingInvoice) {
+                $invoicesUrl = route('invoices');
+                session()->flash('info', 'An invoice already exists for this delivery note (Invoice #' . $this->existingInvoice->invoice_number . '). | <a href="' . $invoicesUrl . '" class="underline font-semibold">View Invoices</a>');
                 return;
             }
 
-            // Resolve ledgers from customer finance mapping (by ledger name)
-            $receivableLedger = Ledger::where('name', $customer->account_receivable)->first();
-            $salesLedger = Ledger::where('name', $customer->sales_revenue)->first();
+            // Calculate invoice total and items based on dispatched quantities and selling prices
+            $invoiceItems = [];
+            $subtotal = 0;
+            $sortOrder = 0;
 
-            Log::info('Ledgers lookup', [
-                'account_receivable_name' => $customer->account_receivable,
-                'receivable_ledger_found' => $receivableLedger ? true : false,
-                'sales_revenue_name' => $customer->sales_revenue,
-                'sales_ledger_found' => $salesLedger ? true : false,
-            ]);
-
-            if (!$receivableLedger || !$salesLedger) {
-                Log::warning('Ledgers not found', [
-                    'account_receivable_name' => $customer->account_receivable,
-                    'sales_revenue_name' => $customer->sales_revenue,
-                ]);
-                session()->flash('error', 'Could not find ledger(s) for Account Receivable or Sales Revenue. Please ensure ledger names in customer finance tab match Chart of Accounts.');
-                return;
-            }
-
-            // Calculate invoice total based on dispatched quantities and selling prices from job order items
-            $invoiceTotal = 0;
             foreach ($this->deliveryNote->items as $item) {
                 if ($item->dispatched_qty <= 0) {
                     continue;
@@ -296,63 +255,77 @@ class DeliveryNoteDetail extends Component
                     }
                 }
 
-                $lineTotal = $unitPrice * (float) $item->dispatched_qty;
-                $invoiceTotal += $lineTotal;
+                if ($unitPrice > 0) {
+                    $lineTotal = $unitPrice * (float) $item->dispatched_qty;
+                    $subtotal += $lineTotal;
+                    
+                    $invoiceItems[] = [
+                        'delivery_note_item_id' => $item->id,
+                        'item_type' => $item->item_type,
+                        'item_id' => $item->item_id,
+                        'description' => $item->description,
+                        'material_code' => $item->material_code,
+                        'quantity' => $item->dispatched_qty,
+                        'unit_price' => $unitPrice,
+                        'line_total' => $lineTotal,
+                        'sort_order' => $sortOrder++,
+                    ];
+                }
             }
 
-            Log::info('Invoice total calculated', [
-                'invoice_total' => $invoiceTotal,
-                'items_count' => $this->deliveryNote->items->count(),
-            ]);
-
-            if ($invoiceTotal <= 0) {
-                Log::warning('Invoice total is zero or negative');
+            if ($subtotal <= 0 || empty($invoiceItems)) {
+                Log::warning('Invoice total is zero or negative or no items');
                 session()->flash('error', 'Cannot create invoice: No dispatched quantities with valid prices were found.');
                 return;
             }
 
-            // Create sales entry
-            $entry = Entry::create([
-                'date' => $this->deliveryNote->dispatch_date?->format('Y-m-d') ?? now()->format('Y-m-d'),
-                'entrytype_id' => $salesEntryType->id,
-                'number' => null, // auto-numbering by EntryType
-                'tag_id' => null,
-                'narration' => "Invoice for Delivery Note {$this->deliveryNote->dn_number} - {$customer->name}",
-                'dr_total' => $invoiceTotal,
-                'cr_total' => $invoiceTotal,
+            // Create invoice
+            $invoice = Invoice::create([
+                'invoice_number' => Invoice::generateInvoiceNumber(),
+                'delivery_note_id' => $this->deliveryNote->id,
+                'customer_id' => $customer->id,
+                'job_order_id' => $this->deliveryNote->job_order_id,
+                'invoice_date' => $this->deliveryNote->dispatch_date?->format('Y-m-d') ?? now()->format('Y-m-d'),
+                'due_date' => null, // Can be calculated based on payment terms
+                'subtotal' => $subtotal,
+                'tax_amount' => 0, // Can be calculated if tax is configured
+                'discount_amount' => 0, // Can be applied if discounts are configured
+                'total_amount' => $subtotal,
+                'status' => 'draft',
+                'notes' => "Invoice for Delivery Note {$this->deliveryNote->dn_number}",
+                'terms' => null,
             ]);
 
-            // DR Accounts Receivable
-            $entry->entryItems()->create([
-                'ledger_id' => $receivableLedger->id,
-                'amount' => $invoiceTotal,
-                'dc' => 'D',
-                'reconciliation_date' => null,
-            ]);
+            // Create invoice items
+            foreach ($invoiceItems as $itemData) {
+                InvoiceItem::create(array_merge($itemData, ['invoice_id' => $invoice->id]));
+            }
 
-            // CR Sales Revenue
-            $entry->entryItems()->create([
-                'ledger_id' => $salesLedger->id,
-                'amount' => $invoiceTotal,
-                'dc' => 'C',
-                'reconciliation_date' => null,
-            ]);
+            // Update delivery note status to invoiced
+            $this->deliveryNote->update(['status' => 'invoiced']);
 
-            // Refresh entry to ensure number is set and load relationships
-            $entry->refresh();
-            $entry->load('entryType');
-            
+            // Update all delivery note items status to invoiced
+            foreach ($this->deliveryNote->items as $item) {
+                if ($item->dispatched_qty > 0) {
+                    $item->update(['status' => 'invoiced']);
+                }
+            }
+
             Log::info('Invoice created successfully', [
-                'entry_id' => $entry->id,
-                'entry_number' => $entry->number,
-                'formatted_number' => $entry->formatted_number,
+                'invoice_id' => $invoice->id,
+                'invoice_number' => $invoice->invoice_number,
+                'delivery_note_id' => $this->deliveryNote->id,
             ]);
             
-            session()->flash('success', 'Sales invoice created successfully for this delivery note. Entry #: ' . $entry->formatted_number);
+            // Update existing invoice reference
+            $this->existingInvoice = $invoice;
+            
+            $invoicesUrl = route('invoices');
+            session()->flash('success', 'Invoice created successfully for this delivery note. Invoice #: ' . $invoice->invoice_number . ' | <a href="' . $invoicesUrl . '" class="underline font-semibold">View Invoices</a>');
             
             // Refresh the delivery note to show updated data
             $this->deliveryNote->refresh();
-            $this->deliveryNote->load('items', 'jobOrder.customer');
+            $this->deliveryNote->load('items', 'jobOrder.customer', 'invoice');
         } catch (\Exception $e) {
             Log::error('Error creating invoice from delivery note: ' . $e->getMessage(), [
                 'delivery_note_id' => $this->deliveryNote->id ?? null,
@@ -390,6 +363,9 @@ class DeliveryNoteDetail extends Component
 
     public function render()
     {
+        // Refresh invoice check on each render
+        $this->checkExistingInvoice();
+        
         return view('livewire.delivery-note-detail');
     }
 }

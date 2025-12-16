@@ -34,8 +34,9 @@
                                     {{ $dn->status === 'dispatched' ? 'bg-green-100 text-green-800' : '' }}
                                     {{ $dn->status === 'partial' ? 'bg-yellow-100 text-yellow-800' : '' }}
                                     {{ $dn->status === 'draft' ? 'bg-gray-100 text-gray-800' : '' }}
+                                    {{ $dn->status === 'invoiced' ? 'bg-purple-100 text-purple-800' : '' }}
                                     {{ $dn->status === 'cancelled' ? 'bg-red-100 text-red-800' : '' }}">
-                                    {{ ucfirst($dn->status) }}
+                                    {{ $dn->status === 'invoiced' ? 'INVOICED' : strtoupper($dn->status) }}
                                 </span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $dn->items->count() }} items</td>

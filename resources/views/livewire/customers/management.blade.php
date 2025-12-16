@@ -364,13 +364,23 @@
                             <div class="flex items-center gap-3 flex-1">
                                 <label class="block text-sm font-medium text-gray-700 mb-1 " style="min-width: 80px;">Account Receivable</label>
                                 <div class="flex-1">
-                                    <input type="text" wire:model.defer="financeForm.account_receivable" {{ $isViewMode ? 'readonly' : '' }} class="block w-[300px] px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 {{ $isViewMode ? 'bg-gray-100 cursor-not-allowed' : '' }}" />
+                                    <select wire:model.defer="financeForm.account_receivable" {{ $isViewMode ? 'disabled' : '' }} class="block w-[300px] px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 {{ $isViewMode ? 'bg-gray-100 cursor-not-allowed' : '' }}">
+                                        <option value="">-- Select Ledger --</option>
+                                        @foreach($this->ledgers as $ledger)
+                                            <option value="{{ $ledger->name }}">{{ $ledger->name }} @if($ledger->code)({{ $ledger->code }})@endif</option>
+                                        @endforeach
+                                    </select>
                                 </div>
                             </div>
                             <div class="flex items-center gap-3 flex-1">
                                 <label class="block text-sm font-medium text-gray-700 mb-1 " style="min-width: 20px;">Sales Revenue</label>
                                 <div class="flex-1">
-                                    <input type="text" wire:model.defer="financeForm.sales_revenue" {{ $isViewMode ? 'readonly' : '' }} class="block w-[320px] px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 {{ $isViewMode ? 'bg-gray-100 cursor-not-allowed' : '' }}" />
+                                    <select wire:model.defer="financeForm.sales_revenue" {{ $isViewMode ? 'disabled' : '' }} class="block w-[320px] px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 {{ $isViewMode ? 'bg-gray-100 cursor-not-allowed' : '' }}">
+                                        <option value="">-- Select Ledger --</option>
+                                        @foreach($this->ledgers as $ledger)
+                                            <option value="{{ $ledger->name }}">{{ $ledger->name }} @if($ledger->code)({{ $ledger->code }})@endif</option>
+                                        @endforeach
+                                    </select>
                                 </div>
                             </div>
                         </div>

@@ -5,6 +5,7 @@ namespace App\Livewire;
 use App\Models\Customer;
 use App\Models\CustomerOrder;
 use App\Models\JobOrder;
+use App\Models\Ledger;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Component;
@@ -376,5 +377,10 @@ class CustomersManagement extends Component
         return view('livewire.customers.management', [
             'customers' => $customers,
         ]);
+    }
+
+    public function getLedgersProperty()
+    {
+        return Ledger::orderBy('name')->get();
     }
 }
