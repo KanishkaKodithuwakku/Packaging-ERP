@@ -1035,6 +1035,18 @@
                 </div>
                 @endif
 
+                @if (session()->has('success'))
+                <div class="mb-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
+                    {{ session('success') }}
+                </div>
+                @endif
+
+                @if (session()->has('info'))
+                <div class="mb-4 bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded">
+                    {{ session('info') }}
+                </div>
+                @endif
+
                 @if (session()->has('error'))
                 <div class="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
                     {{ session('error') }}

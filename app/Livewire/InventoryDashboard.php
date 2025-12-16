@@ -529,13 +529,86 @@ class InventoryDashboard extends Component
                 ->get(['lot_code', 'item_code', 'qty_available', 'uom']);
             
             // Get available raw materials for production (recent receipt transactions)
+            // Exclude consumables - only show raw_material type items or null (backward compatibility)
             $availableRawMaterials = \App\Models\InventoryTransaction::where('category', 'RAW')
                 ->where('txn_type', 'receipt')
+                ->where(function($query) {
+                    $query->where('material_type', 'raw_material')
+                          ->orWhereNull('material_type'); // Backward compatibility
+                })
                 ->with(['grn.purchaseOrder.jobOrder'])
                 ->orderBy('txn_date', 'desc')
                 ->orderBy('created_at', 'desc')
                 ->limit(10)
                 ->get();
+            
+            // Load production orders for each transaction to show progress
+            foreach ($availableRawMaterials as $transaction) {
+                $transactionIdMarker = "Transaction ID: {$transaction->id}";
+                $jobOrder = $transaction->getJobOrder();
+                
+                if ($jobOrder) {
+                    // Load customer information from job order (available even without production order)
+                    $jobOrder->load('customer');
+                    $transaction->customerName = $jobOrder->customer->name ?? 'N/A';
+                    
+                    // Try to get dimensions from job order boxes/dividers
+                    $jobOrder->load(['boxes', 'dividers']);
+                    $firstBox = $jobOrder->boxes->first();
+                    if ($firstBox && isset($firstBox->length, $firstBox->width, $firstBox->height)) {
+                        $unit = $firstBox->unit ?? 'CM';
+                        $transaction->dimensions = number_format($firstBox->length, 2) . ' x ' . 
+                                                   number_format($firstBox->width, 2) . ' x ' . 
+                                                   number_format($firstBox->height, 2) . ' ' . $unit;
+                    } else {
+                        $firstDivider = $jobOrder->dividers->first();
+                        if ($firstDivider && isset($firstDivider->ply)) {
+                            $transaction->dimensions = $firstDivider->ply . ' PLY';
+                        } else {
+                            $transaction->dimensions = 'N/A';
+                        }
+                    }
+                    
+                    $productionOrder = \App\Models\ProductionOrder::where('job_order_id', $jobOrder->id)
+                        ->where('notes', 'like', '%' . $transactionIdMarker . '%')
+                        ->with(['items', 'jobOrder.customer'])
+                        ->first();
+                    
+                    if ($productionOrder) {
+                        $transaction->productionOrder = $productionOrder;
+                        $transaction->hasProductionOrder = true;
+                        
+                        // Calculate progress
+                        $totalQuantity = $productionOrder->items->sum('quantity');
+                        $completedQuantity = $productionOrder->items->sum('completed_quantity');
+                        $transaction->productionProgress = $totalQuantity > 0 ? ($completedQuantity / $totalQuantity) * 100 : 0;
+                        $transaction->productionStatus = $productionOrder->status;
+                        $transaction->productionOrderNumber = $productionOrder->production_order_number;
+                        
+                        // Override dimensions from production order item if available (more accurate)
+                        $firstItem = $productionOrder->items->first();
+                        if ($firstItem) {
+                            $itemDetails = $firstItem->getItem();
+                            if ($itemDetails) {
+                                if ($firstItem->item_type === 'box' && isset($itemDetails->length, $itemDetails->width, $itemDetails->height)) {
+                                    $unit = $itemDetails->unit ?? 'CM';
+                                    $transaction->dimensions = number_format($itemDetails->length, 2) . ' x ' . 
+                                                               number_format($itemDetails->width, 2) . ' x ' . 
+                                                               number_format($itemDetails->height, 2) . ' ' . $unit;
+                                } elseif ($firstItem->item_type === 'divider' && isset($itemDetails->ply)) {
+                                    $transaction->dimensions = $itemDetails->ply . ' PLY';
+                                }
+                            }
+                        }
+                    } else {
+                        $transaction->hasProductionOrder = false;
+                    }
+                } else {
+                    $transaction->hasProductionOrder = false;
+                    $transaction->customerName = 'N/A';
+                    $transaction->dimensions = 'N/A';
+                }
+            }
             
             // Use DB facade for inventory queries - calculate once
             $inventoryByCategoryRaw = \DB::table('inventory')
@@ -555,7 +628,33 @@ class InventoryDashboard extends Component
                 ->selectRaw('warehouse, SUM(qty_available) as total_qty')
                 ->groupBy('warehouse')
                 ->get();
-            
+
+            // Detailed breakdowns for dashboard cards
+            $rawInventoryDetails = \DB::table('inventory')
+                ->where('category', 'RAW')
+                ->where(function($query) {
+                    $query->whereNull('material_type')
+                          ->orWhere('material_type', 'raw_material');
+                })
+                ->selectRaw('item_code, SUM(qty_available) as total_qty, MAX(uom) as uom')
+                ->groupBy('item_code')
+                ->orderBy('item_code')
+                ->get();
+
+            $fgInventoryDetails = \DB::table('inventory')
+                ->where('category', 'FG')
+                ->selectRaw('item_code, SUM(qty_available) as total_qty, MAX(uom) as uom')
+                ->groupBy('item_code')
+                ->orderBy('item_code')
+                ->get();
+
+            $wipDetails = \App\Models\ProductionOrderItem::with(['productionOrder.jobOrder'])
+                ->whereHas('productionOrder', function($query) {
+                    $query->whereIn('status', ['pending', 'in_production', 'ready_for_production']);
+                })
+                ->whereRaw('quantity > COALESCE(completed_quantity, 0)')
+                ->get();
+
             $viewData = [
                 'inventoryByCategory' => $inventoryByCategory,
                 'inventoryByWarehouse' => $inventoryByWarehouse,
@@ -568,6 +667,9 @@ class InventoryDashboard extends Component
                 'totalRawMaterialsConsumed' => $totalRawMaterialsConsumed,
                 'consumablesQuantity' => $consumablesQuantity,
                 'consumablesByType' => $consumablesByType,
+                'rawInventoryDetails' => $rawInventoryDetails,
+                'fgInventoryDetails' => $fgInventoryDetails,
+                'wipDetails' => $wipDetails,
             ];
             
             return view('livewire.inventory-dashboard', $viewData);

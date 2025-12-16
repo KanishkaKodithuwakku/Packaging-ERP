@@ -262,6 +262,9 @@ class GRNProcessingService
                 }
             }
             
+            // Get the quantity to process (use partial received if available, otherwise use received)
+            $qtyToProcess = $grnItem->qty_received_partial ?? $grnItem->qty_received ?? 0;
+            
             // Create inventory transaction
             $transaction = $this->inventoryService->recordTransaction([
                 'lot_code' => $lotCode,
@@ -269,7 +272,7 @@ class GRNProcessingService
                 'category' => $category,
                 'material_type' => $materialType,
                 'txn_type' => 'receipt',
-                'qty' => $grnItem->qty_received,
+                'qty' => $qtyToProcess,
                 'unit_cost' => $unitCost,
                 'uom' => $grnItem->uom,
                 'warehouse' => $this->getWarehouseForCategory($category),
@@ -280,19 +283,23 @@ class GRNProcessingService
             ], $costingMethod);
 
             // Update GRN item with inventory details
+            // Mark the full received quantity as processed
             $grnItem->update([
                 'inventory_lot_code' => $lotCode,
                 'unit_cost' => $unitCost,
-                'total_cost' => $grnItem->qty_received * $unitCost,
+                'total_cost' => $qtyToProcess * $unitCost,
+                'qty_processed' => $qtyToProcess,
+                'qty_remaining' => 0,
                 'processed_at' => now(),
             ]);
 
             return [
                 'grn_item_id' => $grnItem->id,
                 'material_code' => $grnItem->material_code,
-                'qty_received' => $grnItem->qty_received,
+                'qty_received' => $qtyToProcess,
+                'qty_processed' => $qtyToProcess,
                 'unit_cost' => $unitCost,
-                'total_cost' => $grnItem->qty_received * $unitCost,
+                'total_cost' => $qtyToProcess * $unitCost,
                 'lot_code' => $lotCode,
                 'category' => $category,
                 'success' => true

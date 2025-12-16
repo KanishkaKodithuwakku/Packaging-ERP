@@ -13,12 +13,39 @@
                 <p class="text-gray-600 mt-1">DN Number: {{ $deliveryNote->dn_number }}</p>
             </div>
             @if($deliveryNote->status === 'dispatched' || $deliveryNote->status === 'partial')
-            <button wire:click="printDeliveryNote" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center">
-                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
-                </svg>
-                Print Delivery Note
-            </button>
+            <div class="flex space-x-3">
+                <!-- Test button - remove after debugging -->
+                <button type="button"
+                        wire:click="testButton"
+                        class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                    Test
+                </button>
+                <button type="button"
+                        wire:click="createInvoice"
+                        wire:loading.attr="disabled"
+                        wire:target="createInvoice"
+                        onclick="console.log('Create Invoice button clicked');"
+                        class="bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 disabled:cursor-not-allowed text-white px-4 py-2 rounded-md text-sm font-medium flex items-center">
+                    <svg wire:loading.remove wire:target="createInvoice" class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M9 17v-6a2 2 0 012-2h8m-6 8h6a2 2 0 002-2V7a2 2 0 00-2-2h-8a2 2 0 00-2 2v10m-4 0h12"></path>
+                    </svg>
+                    <svg wire:loading wire:target="createInvoice" class="animate-spin w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span wire:loading.remove wire:target="createInvoice">Create Invoice</span>
+                    <span wire:loading wire:target="createInvoice">Creating...</span>
+                </button>
+                <button wire:click="printDeliveryNote"
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+                    </svg>
+                    Print Delivery Note
+                </button>
+            </div>
             @endif
         </div>
     </div>
@@ -87,9 +114,9 @@
                         <tr>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $item->description }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $item->material_code }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ number_format($item->quantity, 2) }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ number_format($item->dispatched_qty, 2) }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ number_format($item->remaining_qty, 2) }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ number_format($item->quantity, 0) }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ number_format($item->dispatched_qty, 0) }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ number_format($item->remaining_qty, 0) }}</td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
                                     {{ $item->status === 'dispatched' ? 'bg-green-100 text-green-800' : '' }}
@@ -119,7 +146,7 @@
                                         @foreach($item->inventoryTransactions->sortByDesc('created_at') as $transaction)
                                             <div class="flex items-center justify-between text-xs mb-1">
                                                 <span class="text-gray-600">
-                                                    {{ number_format(abs($transaction->qty), 2) }} units - 
+                                                    {{ number_format(abs($transaction->qty), 0) }} units - 
                                                     {{ $transaction->txn_date->format('M d, Y H:i') }}
                                                 </span>
                                                 <button wire:click="printDispatch({{ $transaction->id }})"
@@ -182,8 +209,8 @@
                             <td style="padding: 10px; border: 1px solid #000;">{{ $index + 1 }}</td>
                             <td style="padding: 10px; border: 1px solid #000;">{{ $item->description }}</td>
                             <td style="padding: 10px; border: 1px solid #000;">{{ $item->material_code }}</td>
-                            <td style="padding: 10px; text-align: right; border: 1px solid #000;">{{ number_format($item->quantity, 2) }}</td>
-                            <td style="padding: 10px; text-align: right; border: 1px solid #000;">{{ number_format($item->dispatched_qty, 2) }}</td>
+                            <td style="padding: 10px; text-align: right; border: 1px solid #000;">{{ number_format($item->quantity, 0) }}</td>
+                            <td style="padding: 10px; text-align: right; border: 1px solid #000;">{{ number_format($item->dispatched_qty, 0) }}</td>
                             <td style="padding: 10px; border: 1px solid #000;">{{ ucfirst($item->status) }}</td>
                         </tr>
                     @endforeach
@@ -265,7 +292,7 @@
                                 <td style="padding: 10px; border: 1px solid #000;">1</td>
                                 <td style="padding: 10px; border: 1px solid #000;">{{ $item->description }}</td>
                                 <td style="padding: 10px; border: 1px solid #000;">{{ $item->material_code }}</td>
-                                <td style="padding: 10px; text-align: right; border: 1px solid #000;">{{ number_format(abs($transaction->qty), 2) }}</td>
+                                <td style="padding: 10px; text-align: right; border: 1px solid #000;">{{ number_format(abs($transaction->qty), 0) }}</td>
                                 <td style="padding: 10px; border: 1px solid #000;">Dispatched</td>
                             </tr>
                         </tbody>
@@ -273,10 +300,10 @@
 
                     <div style="margin-bottom: 20px; background-color: #f9fafb; padding: 15px; border-radius: 5px;">
                         <h3 style="font-weight: bold; margin-bottom: 10px;">Dispatch Summary</h3>
-                        <p><strong>Total Quantity in DN:</strong> {{ number_format($item->quantity, 2) }}</p>
-                        <p><strong>This Dispatch:</strong> {{ number_format(abs($transaction->qty), 2) }}</p>
-                        <p><strong>Total Dispatched to Date:</strong> {{ number_format($item->dispatched_qty, 2) }}</p>
-                        <p><strong>Remaining:</strong> {{ number_format($item->remaining_qty, 2) }}</p>
+                        <p><strong>Total Quantity in DN:</strong> {{ number_format($item->quantity, 0) }}</p>
+                        <p><strong>This Dispatch:</strong> {{ number_format(abs($transaction->qty), 0) }}</p>
+                        <p><strong>Total Dispatched to Date:</strong> {{ number_format($item->dispatched_qty, 0) }}</p>
+                        <p><strong>Remaining:</strong> {{ number_format($item->remaining_qty, 0) }}</p>
                     </div>
 
                     @if($deliveryNote->notes)
@@ -318,27 +345,30 @@
 
     @script
     <script>
-        document.addEventListener('livewire:initialized', () => {
-            Livewire.on('openPrintDialog', () => {
-                window.print();
+        // Listen for Livewire browser events dispatched from the component
+        window.addEventListener('openPrintDialog', () => {
+            // Print full delivery note (#printContent handles its own print styling)
+            window.print();
+        });
+
+        window.addEventListener('openDispatchPrintDialog', (event) => {
+            const transactionId = event.detail?.transactionId;
+            if (!transactionId) return;
+
+            // Hide all print contents
+            document.querySelectorAll('[id^="printContent"], [id^="printDispatch-"]').forEach(el => {
+                el.style.display = 'none';
             });
-            
-            Livewire.on('openDispatchPrintDialog', (event) => {
-                const transactionId = event.transactionId;
-                // Hide all print contents
-                document.querySelectorAll('[id^="printContent"], [id^="printDispatch-"]').forEach(el => {
-                    el.style.display = 'none';
-                });
-                // Show specific dispatch print content
-                const dispatchPrint = document.getElementById('printDispatch-' + transactionId);
-                if (dispatchPrint) {
-                    dispatchPrint.style.display = 'block';
-                    setTimeout(() => {
-                        window.print();
-                        dispatchPrint.style.display = 'none';
-                    }, 100);
-                }
-            });
+
+            // Show specific dispatch print content
+            const dispatchPrint = document.getElementById('printDispatch-' + transactionId);
+            if (dispatchPrint) {
+                dispatchPrint.style.display = 'block';
+                setTimeout(() => {
+                    window.print();
+                    dispatchPrint.style.display = 'none';
+                }, 100);
+            }
         });
     </script>
     @endscript

@@ -33,28 +33,41 @@
                         @endif
                     </div>
                     <p class="text-3xl font-bold text-blue-600">
-                        {{ number_format($balanceRawMaterialsQuantity, 2) }}
+                        {{ number_format($balanceRawMaterialsQuantity, 0) }}
                     </p>
                     <div class="mt-3 pt-3 border-t border-blue-200 space-y-1">
-                        <p class="text-xs text-blue-600">Total Received: <span class="font-semibold">{{ number_format($totalRawMaterialsReceived, 2) }}</span></p>
+                        <p class="text-xs text-blue-600">Total Received: <span class="font-semibold">{{ number_format($totalRawMaterialsReceived, 0) }}</span></p>
                         @if($totalRawMaterialsConsumed > 0)
-                        <p class="text-xs text-blue-600">Consumed: <span class="font-semibold">{{ number_format($totalRawMaterialsConsumed, 2) }}</span></p>
+                        <p class="text-xs text-blue-600">Consumed: <span class="font-semibold">{{ number_format($totalRawMaterialsConsumed, 0) }}</span></p>
                         @endif
-                        <p class="text-sm text-blue-700 font-medium">Balance Available: <span class="text-base font-bold">{{ number_format($balanceRawMaterialsQuantity, 2) }}</span></p>
+                        <p class="text-sm text-blue-700 font-medium">Balance Available: <span class="text-base font-bold">{{ number_format($balanceRawMaterialsQuantity, 0) }}</span></p>
+                        @if(isset($rawInventoryDetails) && $rawInventoryDetails->count() > 0)
+                            <div class="mt-2 space-y-1">
+                                @foreach($rawInventoryDetails->take(3) as $raw)
+                                    <p class="text-xs text-blue-700">
+                                        {{ $raw->item_code ?? 'RAW' }}:
+                                        <span class="font-semibold">{{ number_format($raw->total_qty, 0) }} {{ $raw->uom ?? 'PCS' }}</span>
+                                    </p>
+                                @endforeach
+                                @if($rawInventoryDetails->count() > 3)
+                                    <p class="text-xs text-blue-500 italic">+{{ $rawInventoryDetails->count() - 3 }} more items</p>
+                                @endif
+                            </div>
+                        @endif
                     </div>
                 </div>
                 
                 <div class="bg-purple-50 p-6 rounded-lg">
                     <h3 class="text-lg font-semibold text-purple-800">Consumables</h3>
                     <p class="text-3xl font-bold text-purple-600">
-                        {{ number_format($consumablesQuantity, 2) }}
+                        {{ number_format($consumablesQuantity, 0) }}
                     </p>
                     <div class="mt-3 pt-3 border-t border-purple-200 space-y-1">
                         @if($consumablesByType->count() > 0)
                             @foreach($consumablesByType->take(3) as $consumable)
                                 <p class="text-xs text-purple-600">
                                     {{ $consumable->item_code }}: 
-                                    <span class="font-semibold">{{ number_format($consumable->total_qty, 2) }} {{ $consumable->uom }}</span>
+                                    <span class="font-semibold">{{ number_format($consumable->total_qty, 0) }} {{ $consumable->uom }}</span>
                                 </p>
                             @endforeach
                             @if($consumablesByType->count() > 3)
@@ -71,6 +84,22 @@
                     <p class="text-3xl font-bold text-yellow-600">
                         {{ $workInProgressQuantity }}
                     </p>
+                    @if(isset($wipDetails) && $wipDetails->count() > 0)
+                        <div class="mt-3 pt-3 border-t border-yellow-200 space-y-1">
+                            @foreach($wipDetails->take(3) as $wip)
+                                @php
+                                    $remaining = max(0, ($wip->quantity ?? 0) - ($wip->completed_quantity ?? 0));
+                                @endphp
+                                <p class="text-xs text-yellow-700">
+                                    {{ method_exists($wip, 'getItemCode') ? $wip->getItemCode() : ($wip->item_type . '#' . $wip->item_id) }}:
+                                    <span class="font-semibold">{{ number_format($remaining, 0) }} PCS</span>
+                                </p>
+                            @endforeach
+                            @if($wipDetails->count() > 3)
+                                <p class="text-xs text-yellow-500 italic">+{{ $wipDetails->count() - 3 }} more items</p>
+                            @endif
+                        </div>
+                    @endif
                 </div>
                 
                 <div class="bg-green-50 p-6 rounded-lg">
@@ -78,9 +107,22 @@
                     <p class="text-3xl font-bold text-green-600">
                         @php
                             $fgQty = $inventoryByCategory->where('category', 'FG')->first();
-                            echo number_format($fgQty ? $fgQty->total_qty : 0, 2);
+                            echo number_format($fgQty ? $fgQty->total_qty : 0, 0);
                         @endphp
                     </p>
+                    @if(isset($fgInventoryDetails) && $fgInventoryDetails->count() > 0)
+                        <div class="mt-3 pt-3 border-t border-green-200 space-y-1">
+                            @foreach($fgInventoryDetails->take(3) as $fg)
+                                <p class="text-xs text-green-700">
+                                    {{ $fg->item_code ?? 'FG' }}:
+                                    <span class="font-semibold">{{ number_format($fg->total_qty, 0) }} {{ $fg->uom ?? 'PCS' }}</span>
+                                </p>
+                            @endforeach
+                            @if($fgInventoryDetails->count() > 3)
+                                <p class="text-xs text-green-500 italic">+{{ $fgInventoryDetails->count() - 3 }} more items</p>
+                            @endif
+                        </div>
+                    @endif
                 </div>
             </div>
 
@@ -92,7 +134,7 @@
                         @foreach($inventoryByCategory as $category)
                             <div class="flex justify-between items-center">
                                 <span class="font-medium">{{ $category->category }}</span>
-                                <span class="text-lg font-bold">{{ $category->total_qty }}</span>
+                                <span class="text-lg font-bold">{{ number_format($category->total_qty, 0) }}</span>
                             </div>
                         @endforeach
                     </div>
@@ -104,7 +146,7 @@
                         @foreach($inventoryByWarehouse as $warehouse)
                             <div class="flex justify-between items-center">
                                 <span class="font-medium">{{ $warehouse->warehouse }}</span>
-                                <span class="text-lg font-bold">{{ $warehouse->total_qty }}</span>
+                                <span class="text-lg font-bold">{{ number_format($warehouse->total_qty, 0) }}</span>
                             </div>
                         @endforeach
                     </div>
@@ -123,7 +165,7 @@
                                     <p class="text-sm text-gray-600">{{ $item->lot_code }}</p>
                                 </div>
                                 <span class="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">
-                                    {{ $item->qty_available }} {{ $item->uom }}
+                                    {{ number_format($item->qty_available, 0) }} {{ $item->uom }}
                                 </span>
                             </div>
                         @empty
@@ -141,7 +183,7 @@
                                     <div class="flex items-center justify-between mb-1">
                                         <p class="font-medium text-gray-900">{{ $transaction->item_code }}</p>
                                         <span class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800 font-semibold">
-                                            {{ number_format($transaction->qty, 2) }} {{ $transaction->uom }}
+                                            {{ number_format($transaction->qty, 0) }} {{ $transaction->uom }}
                                         </span>
                                     </div>
                                     <div class="text-xs text-gray-600 space-y-1">
@@ -150,17 +192,70 @@
                                         @if($transaction->getJobOrder())
                                             <p>Job Order: <span class="font-medium">{{ $transaction->getJobOrder()->job_number }}</span></p>
                                         @endif
+                                        @if(isset($transaction->customerName) && $transaction->customerName !== 'N/A')
+                                            <p>
+                                                <span class="font-medium text-gray-900">Customer:</span>
+                                                <span class="text-gray-700">{{ $transaction->customerName }}</span>
+                                            </p>
+                                        @endif
+                                        @if(isset($transaction->dimensions) && $transaction->dimensions !== 'N/A')
+                                            <p>
+                                                <span class="font-medium text-gray-900">Dimensions:</span>
+                                                <span class="text-gray-700">{{ $transaction->dimensions }}</span>
+                                            </p>
+                                        @endif
+                                        @if(isset($transaction->hasProductionOrder) && $transaction->hasProductionOrder)
+                                            <p class="mt-2">
+                                                <span class="font-medium text-gray-900">Production Order:</span> 
+                                                <span class="text-blue-600">{{ $transaction->productionOrderNumber ?? 'N/A' }}</span>
+                                            </p>
+                                            <p>
+                                                <span class="font-medium text-gray-900">Status:</span>
+                                                @if(isset($transaction->productionStatus))
+                                                    @if($transaction->productionStatus === 'completed')
+                                                        <span class="px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-800">Completed</span>
+                                                    @elseif($transaction->productionStatus === 'in_production')
+                                                        <span class="px-2 py-0.5 text-xs rounded-full bg-yellow-100 text-yellow-800">In Production</span>
+                                                    @else
+                                                        <span class="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-800">{{ ucfirst($transaction->productionStatus) }}</span>
+                                                    @endif
+                                                @endif
+                                            </p>
+                                        @endif
                                     </div>
                                 </div>
                                 <div class="ml-4">
-                                    <button wire:click="openProductionOrderModal({{ $transaction->id }})"
-                                            class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                                            title="Start Production Order">
-                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                                        </svg>
-                                        Start Production
-                                    </button>
+                                    @if(isset($transaction->hasProductionOrder) && $transaction->hasProductionOrder)
+                                        <!-- Show Progress -->
+                                        <div class="min-w-[120px]">
+                                            <div class="text-xs text-gray-600 mb-1 text-center">
+                                                Progress: {{ number_format($transaction->productionProgress ?? 0, 1) }}%
+                                            </div>
+                                            <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                                <div class="bg-green-600 h-2.5 rounded-full transition-all duration-300" 
+                                                     style="width: {{ min(100, max(0, $transaction->productionProgress ?? 0)) }}%"></div>
+                                            </div>
+                                            @if(isset($transaction->productionOrder))
+                                                @php
+                                                    $totalQty = $transaction->productionOrder->getTotalQuantity();
+                                                    $completedQty = $transaction->productionOrder->getCompletedQuantity();
+                                                @endphp
+                                                <div class="text-xs text-gray-500 mt-1 text-center">
+                                                    {{ number_format($completedQty, 0) }} / {{ number_format($totalQty, 0) }} PCS
+                                                </div>
+                                            @endif
+                                        </div>
+                                    @else
+                                        <!-- Show Start Production Button -->
+                                        <button wire:click="openProductionOrderModal({{ $transaction->id }})"
+                                                class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                                                title="Start Production Order">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                            </svg>
+                                            Start Production
+                                        </button>
+                                    @endif
                                 </div>
                             </div>
                         @empty
@@ -198,7 +293,7 @@
                             </div>
                             <div>
                                 <span class="text-gray-600">Quantity:</span>
-                                <span class="font-medium">{{ $selectedTransaction->qty }} {{ $selectedTransaction->uom }}</span>
+                                <span class="font-medium">{{ number_format($selectedTransaction->qty, 0) }} {{ $selectedTransaction->uom }}</span>
                             </div>
                             <div>
                                 <span class="text-gray-600">Type:</span>
@@ -258,7 +353,7 @@
                             <input type="number" wire:model="productionOrderForm.quantity" 
                                    step="0.01" min="0" max="{{ $selectedTransaction->qty }}"
                                    class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 sm:text-sm">
-                            <p class="mt-1 text-sm text-gray-500">Maximum: {{ $selectedTransaction->qty }} {{ $selectedTransaction->uom }}</p>
+                            <p class="mt-1 text-sm text-gray-500">Maximum: {{ number_format($selectedTransaction->qty, 0) }} {{ $selectedTransaction->uom }}</p>
                         </div>
 
                         <div>

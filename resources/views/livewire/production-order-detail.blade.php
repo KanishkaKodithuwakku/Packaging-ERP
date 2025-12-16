@@ -255,6 +255,27 @@
             <div>
                 <label class="text-xs text-gray-500">Customer</label>
                 <div class="font-medium text-gray-900">{{ $productionOrder->jobOrder->customer->name ?? 'N/A' }}</div>
+                @php
+                    // Get dimensions from first production order item
+                    $firstItem = $productionOrder->items->first();
+                    $dimensions = null;
+                    if ($firstItem) {
+                        $itemDetails = $firstItem->getItem();
+                        if ($itemDetails) {
+                            if ($firstItem->item_type === 'box' && isset($itemDetails->length, $itemDetails->width, $itemDetails->height)) {
+                                $unit = $itemDetails->unit ?? 'CM';
+                                $dimensions = number_format($itemDetails->length, 2) . ' x ' . 
+                                             number_format($itemDetails->width, 2) . ' x ' . 
+                                             number_format($itemDetails->height, 2) . ' ' . $unit;
+                            } elseif ($firstItem->item_type === 'divider' && isset($itemDetails->ply)) {
+                                $dimensions = $itemDetails->ply . ' PLY';
+                            }
+                        }
+                    }
+                @endphp
+                @if($dimensions)
+                    <div class="text-xs text-gray-500 mt-1">{{ $dimensions }}</div>
+                @endif
             </div>
             <div>
                 <label class="text-xs text-gray-500">Supplier PO</label>
@@ -655,6 +676,53 @@
                             </button>
                         @endif
                     @endif
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    <!-- Complete Item Confirmation Modal -->
+    @if($showCompleteConfirmModal)
+    <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <div class="flex items-center justify-center w-12 h-12 mx-auto bg-blue-100 rounded-full mb-4">
+                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+
+                <h3 class="text-lg font-medium text-gray-900 text-center mb-2">
+                    Complete Production Item
+                </h3>
+
+                <div class="text-center text-sm text-gray-600 mb-4">
+                    <p>You are about to complete <strong>{{ number_format($pendingCompleteQty, 0) }} units</strong>.</p>
+                </div>
+
+                <div class="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                    <label class="flex items-center cursor-pointer">
+                        <input type="checkbox" wire:model="bypassGRN" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                        <span class="ml-2 text-sm text-gray-700">
+                            <strong>Bypass GRN process</strong> - Add finished goods directly to stock and create GRN automatically
+                        </span>
+                    </label>
+                    <p class="text-xs text-gray-500 mt-2 ml-6">
+                        <strong>If checked:</strong> GRN will be created and processed automatically.<br>
+                        <strong>If unchecked:</strong> GRN will be created as pending and you'll need to process it to stock manually.
+                    </p>
+                </div>
+
+                <div class="flex space-x-3">
+                    <button wire:click="closeCompleteConfirmModal"
+                            class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-4 rounded-md transition-colors">
+                        Cancel
+                    </button>
+                    <button wire:click="confirmCompleteItemQuantity"
+                            class="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium py-2 px-4 rounded-md transition-colors">
+                        Confirm Complete
+                    </button>
                 </div>
             </div>
         </div>

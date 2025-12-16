@@ -46,7 +46,7 @@
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">PO Number</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Production Date</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Purchase Order</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer / Dimensions</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">GRN Status</th>
@@ -68,8 +68,26 @@
                                     <div class="text-sm text-gray-900">{{ $po->jobOrder->supplier_po_number ?? 'N/A' }}</div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <div class="text-sm text-gray-900">{{ $po->supplier->name ?? 'N/A' }}</div>
-                                    <div class="text-xs text-gray-500">{{ $po->supplier->code ?? '' }}</div>
+                                    <div class="text-sm text-gray-900">{{ $po->jobOrder->customer->name ?? 'N/A' }}</div>
+                                    @php
+                                        // Get dimensions from first production order item
+                                        $firstItem = $po->items->first();
+                                        $dimensions = 'N/A';
+                                        if ($firstItem) {
+                                            $itemDetails = $firstItem->getItem();
+                                            if ($itemDetails) {
+                                                if ($firstItem->item_type === 'box' && isset($itemDetails->length, $itemDetails->width, $itemDetails->height)) {
+                                                    $unit = $itemDetails->unit ?? 'CM';
+                                                    $dimensions = number_format($itemDetails->length, 2) . ' x ' . 
+                                                                 number_format($itemDetails->width, 2) . ' x ' . 
+                                                                 number_format($itemDetails->height, 2) . ' ' . $unit;
+                                                } elseif ($firstItem->item_type === 'divider' && isset($itemDetails->ply)) {
+                                                    $dimensions = $itemDetails->ply . ' PLY';
+                                                }
+                                            }
+                                        }
+                                    @endphp
+                                    <div class="text-xs text-gray-500">{{ $dimensions }}</div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                     {{ $po->items->count() }} items
