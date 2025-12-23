@@ -6,7 +6,7 @@
                 <div class="flex items-center space-x-4">
                     <input type="text" wire:model.live="search" placeholder="Search GRNs..."
                         class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[200px]">
-                    @if($filterSupplier || $filterReceivingProgress || $filterDateFrom || $filterDateTo)
+                    @if($filterSupplier || ($filterReceivingProgress && $filterReceivingProgress !== 'partial_and_not_received') || $filterDateFrom || $filterDateTo)
                     <button wire:click="resetFilters"
                         class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center">
                         <svg class="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
@@ -150,7 +150,7 @@
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500" wire:navigate href="{{ route('grn-detail', $grn->id) }}">{{ $grn->received_date->format('Y-m-d') }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium" onclick="event.stopPropagation(); event.preventDefault(); return false;">
                                     <div class="flex items-center space-x-2" onclick="event.stopPropagation(); event.preventDefault(); return false;">
-                                        <button wire:click.stop.prevent="edit({{ $grn->id }})" onclick="event.stopPropagation(); event.preventDefault(); return false;" class="text-indigo-600 hover:text-indigo-900 flex items-center" title="Edit">
+                                        <button disabled onclick="event.stopPropagation(); event.preventDefault(); return false;" class="text-gray-400 cursor-not-allowed flex items-center" title="Edit GRN is disabled">
                                             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                                             </svg>
@@ -354,7 +354,8 @@
                                     <div class="flex-1">
                                         <select wire:model.live="filterReceivingProgress"
                                             class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                                            <option value="">All Receiving Progress</option>
+                                            <option value="all">All</option>
+                                            <option value="partial_and_not_received">Partial & Not Received</option>
                                             <option value="not_received">Not Received</option>
                                             <option value="partial">Partial</option>
                                             <option value="fully_received">Fully Received</option>

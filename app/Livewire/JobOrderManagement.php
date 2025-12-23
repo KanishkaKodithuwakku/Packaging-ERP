@@ -208,7 +208,7 @@ class JobOrderManagement extends Component
         // Process boxes
         foreach ($jobOrder->boxes as $box) {
             $materialCode = 'BOX-' . $box->id . '-' . $box->ply . 'PLY';
-            $orderQty = $box->order_qty;
+            $orderQty = $box->board_qty ?? $box->order_qty;
 
             // Calculate total dispatched from all delivery notes for this box
             $dispatchedQty = 0;

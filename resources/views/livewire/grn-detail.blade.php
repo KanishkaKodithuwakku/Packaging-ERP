@@ -18,8 +18,13 @@
                 </button>
             </div>
         @elseif($grn && !$grn->isFullyReceived())
-            <div class="text-sm text-gray-500">
-                All items must be received before processing to stock
+            <div class="inline-flex items-center px-4 py-3 bg-yellow-50 border-2 border-yellow-400 rounded-lg shadow-md">
+                <svg class="w-6 h-6 text-yellow-600 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                </svg>
+                <span class="text-base font-bold text-yellow-800">
+                    All items must be received before processing to stock
+                </span>
             </div>
         @endif
     </div>

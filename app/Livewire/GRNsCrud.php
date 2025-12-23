@@ -25,7 +25,7 @@ class GRNsCrud extends Component
     // Filter modal and filters
     public $showFilterModal = false;
     public $filterSupplier = '';
-    public $filterReceivingProgress = '';
+    public $filterReceivingProgress = 'partial_and_not_received'; // Default: show partial and not_received
     public $filterDateFrom = '';
     public $filterDateTo = '';
     public $search = '';
@@ -227,7 +227,7 @@ class GRNsCrud extends Component
     public function resetFilters()
     {
         $this->filterSupplier = '';
-        $this->filterReceivingProgress = '';
+        $this->filterReceivingProgress = 'partial_and_not_received';
         $this->filterDateFrom = '';
         $this->filterDateTo = '';
         $this->search = '';
@@ -264,28 +264,53 @@ class GRNsCrud extends Component
         }
 
         // Apply receiving progress filter
-        if ($this->filterReceivingProgress) {
-            if ($this->filterReceivingProgress === 'fully_received') {
-                // Filter for fully received GRNs (all items have is_fully_received = true)
-                $query->whereHas('items')->whereDoesntHave('items', function($q) {
-                    $q->where('is_fully_received', false);
+        if ($this->filterReceivingProgress === 'all' || empty($this->filterReceivingProgress)) {
+            // Show all GRNs (no filter applied)
+            // No additional filtering needed
+        } elseif ($this->filterReceivingProgress === 'fully_received') {
+            // Filter for fully received GRNs (all items have is_fully_received = true)
+            $query->whereHas('items')->whereDoesntHave('items', function($q) {
+                $q->where('is_fully_received', false);
+            });
+        } elseif ($this->filterReceivingProgress === 'partial') {
+            // Filter for partial receiving (has items with qty_received_partial > 0 but not all fully received)
+            $query->whereHas('items', function($q) {
+                $q->where('qty_received_partial', '>', 0);
+            })->whereHas('items', function($q) {
+                $q->where(function($subQ) {
+                    $subQ->where('is_fully_received', false)
+                         ->orWhereNull('is_fully_received');
                 });
-            } elseif ($this->filterReceivingProgress === 'partial') {
-                // Filter for partial receiving (has items with qty_received_partial > 0 but not all fully received)
-                $query->whereHas('items', function($q) {
-                    $q->where('qty_received_partial', '>', 0);
-                })->whereHas('items', function($q) {
-                    $q->where(function($subQ) {
-                        $subQ->where('is_fully_received', false)
-                             ->orWhereNull('is_fully_received');
+            });
+        } elseif ($this->filterReceivingProgress === 'not_received') {
+            // Filter for not received: has items, not fully received, and no partial receiving
+            // This matches the view logic: !isFullyReceived() && !hasPartialReceiving()
+            // Use whereRaw to check both conditions in one query
+            $query->whereHas('items') // Must have items
+                ->whereRaw('EXISTS (SELECT 1 FROM grn_items WHERE grn_items.grn_id = grns.id AND (is_fully_received = 0 OR is_fully_received IS NULL))')
+                ->whereRaw('NOT EXISTS (SELECT 1 FROM grn_items WHERE grn_items.grn_id = grns.id AND qty_received_partial > 0)');
+        } elseif ($this->filterReceivingProgress === 'partial_and_not_received') {
+            // Show both partial and not_received (default)
+            // Partial: hasPartialReceiving() && !isFullyReceived()
+            // Not Received: !hasPartialReceiving() && !isFullyReceived()
+            $query->where(function($q) {
+                // Partial receiving: has items with qty_received_partial > 0 but not all fully received
+                $q->whereHas('items', function($subQ) {
+                    $subQ->where('qty_received_partial', '>', 0);
+                })->whereHas('items', function($subQ) {
+                    // At least one item is not fully received
+                    $subQ->where(function($subSubQ) {
+                        $subSubQ->where('is_fully_received', false)
+                                 ->orWhereNull('is_fully_received');
                     });
+                })
+                // OR not received: has items, not fully received, no partial receiving
+                ->orWhere(function($subQ) {
+                    $subQ->whereHas('items')
+                         ->whereRaw('EXISTS (SELECT 1 FROM grn_items WHERE grn_items.grn_id = grns.id AND (is_fully_received = 0 OR is_fully_received IS NULL))')
+                         ->whereRaw('NOT EXISTS (SELECT 1 FROM grn_items WHERE grn_items.grn_id = grns.id AND qty_received_partial > 0)');
                 });
-            } elseif ($this->filterReceivingProgress === 'not_received') {
-                // Filter for not received (no items have qty_received_partial > 0)
-                $query->whereDoesntHave('items', function($q) {
-                    $q->where('qty_received_partial', '>', 0);
-                })->whereHas('items'); // Ensure GRN has items
-            }
+            });
         }
 
         // Apply date filters

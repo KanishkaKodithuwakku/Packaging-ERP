@@ -25,3 +25,4 @@ Thumbs.db
 public/build.zip
 public/css/
 public/error_log
+composer.lock

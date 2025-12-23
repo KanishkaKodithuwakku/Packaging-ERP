@@ -32,6 +32,7 @@ class PurchaseOrderManagement extends Component
     public $showFilterModal = false;
     public $filterSupplier = '';
     public $filterStatus = '';
+    public $filterGRNStatus = 'partial';
     public $filterDateFrom = '';
     public $filterDateTo = '';
     public $search = '';
@@ -64,7 +65,7 @@ class PurchaseOrderManagement extends Component
 
     public function loadPurchaseOrders()
     {
-        $query = PurchaseOrder::with(['supplier', 'jobOrder', 'items', 'grn']);
+        $query = PurchaseOrder::with(['supplier', 'jobOrder.customer', 'items', 'grn']);
         
         // Apply search filter
         if ($this->search) {
@@ -89,6 +90,37 @@ class PurchaseOrderManagement extends Component
         // Apply status filter
         if ($this->filterStatus) {
             $query->where('status', $this->filterStatus);
+        }
+        
+        // Apply GRN status filter
+        if ($this->filterGRNStatus) {
+            if ($this->filterGRNStatus === 'no_grn') {
+                // Purchase orders without any GRN
+                $query->whereDoesntHave('grn');
+            } elseif ($this->filterGRNStatus === 'not_received') {
+                // Purchase orders with GRN but nothing received yet
+                $query->whereHas('grn', function($q) {
+                    $q->where('status', '!=', 'cancelled');
+                })->whereDoesntHave('grn.items', function($q) {
+                    $q->where('qty_received_partial', '>', 0);
+                });
+            } elseif ($this->filterGRNStatus === 'partial') {
+                // Purchase orders with GRN that has partial receiving but not fully received
+                $query->whereHas('grn', function($q) {
+                    $q->where('status', '!=', 'cancelled');
+                })->whereHas('grn.items', function($q) {
+                    $q->where('qty_received_partial', '>', 0);
+                })->whereHas('grn.items', function($q) {
+                    $q->where('is_fully_received', false);
+                });
+            } elseif ($this->filterGRNStatus === 'fully_received') {
+                // Purchase orders with GRN that is fully received (all items have is_fully_received = true)
+                $query->whereHas('grn', function($q) {
+                    $q->where('status', '!=', 'cancelled');
+                })->whereHas('grn.items')->whereDoesntHave('grn.items', function($q) {
+                    $q->where('is_fully_received', false);
+                });
+            }
         }
         
         // Apply date filters
@@ -129,6 +161,11 @@ class PurchaseOrderManagement extends Component
         $this->loadPurchaseOrders();
     }
     
+    public function updatedFilterGRNStatus()
+    {
+        $this->loadPurchaseOrders();
+    }
+    
     public function openFilterModal()
     {
         $this->showFilterModal = true;
@@ -143,6 +180,7 @@ class PurchaseOrderManagement extends Component
     {
         $this->filterSupplier = '';
         $this->filterStatus = '';
+        $this->filterGRNStatus = 'partial';
         $this->filterDateFrom = '';
         $this->filterDateTo = '';
         $this->search = '';
@@ -178,7 +216,7 @@ class PurchaseOrderManagement extends Component
 
     public function viewPurchaseOrder($id)
     {
-        $this->selectedPurchaseOrder = PurchaseOrder::with(['supplier', 'jobOrder.boxes', 'jobOrder.dividers', 'items'])->find($id);
+        $this->selectedPurchaseOrder = PurchaseOrder::with(['supplier', 'jobOrder.customer', 'jobOrder.boxes', 'jobOrder.dividers', 'items'])->find($id);
         if ($this->selectedPurchaseOrder) {
             // Initialize item quantities for editing
             $this->itemQuantities = [];
@@ -361,7 +399,7 @@ class PurchaseOrderManagement extends Component
 
     public function openGRNConfirmModal($id)
     {
-        $this->selectedPurchaseOrder = PurchaseOrder::with(['items', 'jobOrder.boxes', 'jobOrder.dividers'])->find($id);
+        $this->selectedPurchaseOrder = PurchaseOrder::with(['items', 'jobOrder.customer', 'jobOrder.boxes', 'jobOrder.dividers'])->find($id);
         
         if (!$this->selectedPurchaseOrder) {
             session()->flash('error', 'Purchase order not found.');
@@ -421,7 +459,7 @@ class PurchaseOrderManagement extends Component
     public function createGRNFromPurchaseOrder($id)
     {
         try {
-            $purchaseOrder = PurchaseOrder::with(['items', 'jobOrder'])->find($id);
+            $purchaseOrder = PurchaseOrder::with(['items', 'jobOrder.customer'])->find($id);
             
             if (!$purchaseOrder) {
                 session()->flash('error', 'Purchase order not found.');
@@ -663,7 +701,7 @@ class PurchaseOrderManagement extends Component
 
     public function openPhoneConfirmModal($id)
     {
-        $this->selectedPurchaseOrder = PurchaseOrder::with(['items'])->find($id);
+        $this->selectedPurchaseOrder = PurchaseOrder::with(['items', 'jobOrder.customer'])->find($id);
         if ($this->selectedPurchaseOrder) {
             // Initialize phone confirm form with current item prices
             $this->phoneConfirmForm = [];

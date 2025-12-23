@@ -103,13 +103,14 @@
                                     @if($jobOrder->boxes->count() > 0)
                                     @foreach($jobOrder->boxes as $box)
                                     @php
+                                    $boxQty = $box->board_qty ?? $box->order_qty;
                                     $purchasedQty = \App\Models\PurchaseOrderItem::where('item_type', 'box')
                                     ->where('item_id', $box->id)
                                     ->whereHas('purchaseOrder', function($query) {
                                         $query->where('status', '!=', 'cancelled');
                                     })
                                     ->sum('quantity');
-                                    $progress = $box->order_qty > 0 ? min(100, ($purchasedQty / $box->order_qty) * 100)
+                                    $progress = $boxQty > 0 ? min(100, ($purchasedQty / $boxQty) * 100)
                                     : 0;
 
                                     // Get GRN received quantities from Purchase Orders
@@ -123,20 +124,20 @@
                                     ->where('item_id', $box->id)
                                     ->sum('qty_received_partial');
 
-                                    $grnProgress = $box->order_qty > 0 ? min(100, ($grnReceivedQty / $box->order_qty) *
+                                    $grnProgress = $boxQty > 0 ? min(100, ($grnReceivedQty / $boxQty) *
                                     100) : 0;
                                     @endphp
                                     <div class="flex flex-col space-y-1">
                                         <div class="flex items-center space-x-2">
                                             <span
                                                 class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                                {{ $box->order_qty }} Boxes
+                                                {{ number_format($boxQty, 0) }} Boxes
                                             </span>
                                             <div class="flex-1 bg-gray-200 rounded-full h-2 max-w-20">
                                                 <div class="bg-green-500 h-2 rounded-full"
                                                     style="width: {{ $progress }}%"></div>
                                             </div>
-                                            <span class="text-xs text-gray-600">{{ $purchasedQty }}/{{ $box->order_qty
+                                            <span class="text-xs text-gray-600">{{ number_format($purchasedQty, 0) }}/{{ number_format($boxQty, 0)
                                                 }}</span>
                                         </div>
                                         <div class="flex items-center space-x-2 ml-2">
@@ -146,7 +147,7 @@
                                                     style="width: {{ $grnProgress }}%"></div>
                                             </div>
                                             <span class="text-xs {{ $grnReceivedQty > 0 ? 'text-orange-600' : 'text-gray-400' }}">
-                                                {{ $grnReceivedQty }}/{{ $box->order_qty }}
+                                                {{ number_format($grnReceivedQty, 0) }}/{{ number_format($boxQty, 0) }}
                                             </span>
                                             @if($grnReceivedQty > 0)
                                                 <span class="text-xs text-orange-500 font-medium">{{ number_format($grnProgress, 1) }}%</span>
@@ -187,14 +188,14 @@
                                         <div class="flex items-center space-x-2">
                                             <span
                                                 class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                {{ $divider->quantity }} Dividers
+                                                {{ number_format($divider->quantity, 0) }} Dividers
                                             </span>
                                             <div class="flex-1 bg-gray-200 rounded-full h-2 max-w-20">
                                                 <div class="bg-green-500 h-2 rounded-full"
                                                     style="width: {{ $progress }}%"></div>
                                             </div>
-                                            <span class="text-xs text-gray-600">{{ $purchasedQty }}/{{
-                                                $divider->quantity }}</span>
+                                            <span class="text-xs text-gray-600">{{ number_format($purchasedQty, 0) }}/{{
+                                                number_format($divider->quantity, 0) }}</span>
                                         </div>
                                         <div class="flex items-center space-x-2 ml-2">
                                             <span class="text-xs text-gray-500">GRN:</span>
@@ -203,7 +204,7 @@
                                                     style="width: {{ $grnProgress }}%"></div>
                                             </div>
                                             <span class="text-xs {{ $grnReceivedQty > 0 ? 'text-orange-600' : 'text-gray-400' }}">
-                                                {{ $grnReceivedQty }}/{{ $divider->quantity }}
+                                                {{ number_format($grnReceivedQty, 0) }}/{{ number_format($divider->quantity, 0) }}
                                             </span>
                                             @if($grnReceivedQty > 0)
                                                 <span class="text-xs text-orange-500 font-medium">{{ number_format($grnProgress, 1) }}%</span>
@@ -220,7 +221,10 @@
 
                                     @php
                                     // Calculate overall GRN progress for this job order
-                                    $totalOrderedQty = $jobOrder->boxes->sum('order_qty') + $jobOrder->dividers->sum('quantity');
+                                    // Use board_qty for boxes, quantity for dividers
+                                    $totalOrderedQty = $jobOrder->boxes->sum(function($box) {
+                                        return $box->board_qty ?? $box->order_qty;
+                                    }) + $jobOrder->dividers->sum('quantity');
                                     $totalGRNReceivedQty = \App\Models\GRNItem::whereHas('grn', function($q) use ($jobOrder) {
                                         $q->whereHas('purchaseOrder', function($po) use ($jobOrder) {
                                             $po->where('job_order_id', $jobOrder->id);
@@ -273,6 +277,16 @@
                                             </path>
                                         </svg>
                                     </button>
+                                    @if($jobOrder->status === 'confirmed')
+                                    <button disabled
+                                        class="text-gray-400 cursor-not-allowed" title="Cannot edit confirmed job orders">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
+                                            </path>
+                                        </svg>
+                                    </button>
+                                    @else
                                     <button wire:click.stop="editJobOrder({{ $jobOrder->id }})"
                                         class="text-blue-600 hover:text-blue-900" title="Edit">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -281,6 +295,17 @@
                                             </path>
                                         </svg>
                                     </button>
+                                    @endif
+                                    @if($jobOrder->status === 'confirmed')
+                                    <button disabled
+                                        class="text-gray-400 cursor-not-allowed" title="Cannot delete confirmed job orders">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+                                            </path>
+                                        </svg>
+                                    </button>
+                                    @else
                                     <button wire:click.stop="openDeleteConfirmModal({{ $jobOrder->id }})"
                                         onclick="event.stopPropagation(); event.preventDefault(); return false;"
                                         class="text-red-600 hover:text-red-900" title="Delete">
@@ -290,6 +315,7 @@
                                             </path>
                                         </svg>
                                     </button>
+                                    @endif
                                 </div>
                             </td>
                         </tr>

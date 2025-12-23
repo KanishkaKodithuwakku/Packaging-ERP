@@ -73,6 +73,18 @@
                 </button>
                 @endif
 
+                @if($jobOrder->status === 'confirmed')
+                <button disabled
+                    class="inline-flex items-center px-4 py-2 border border-gray-200 rounded-md shadow-sm text-sm font-medium text-gray-400 bg-gray-100 cursor-not-allowed"
+                    title="Cannot edit confirmed job orders">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
+                        </path>
+                    </svg>
+                    Edit Job Order
+                </button>
+                @else
                 <button wire:click="toggleEditMode"
                     class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -82,6 +94,7 @@
                     </svg>
                     Edit Job Order
                 </button>
+                @endif
 
                 @if($poProcessedCount > 0)
                 <button wire:click="showPrintPreview"
@@ -252,26 +265,7 @@
                     </div>
 
                     <!-- Status -->
-                    <div class="flex items-center gap-3 " style="margin-top: 15px !important;">
-                        <label class="block text-sm font-medium text-gray-700 mb-1 w-1/5">Status</label>
-                        <div class="flex-1">
-                            @if($isEditMode)
-                            <select wire:model="form.status"
-                                class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                                <option value="draft">Draft</option>
-                                <option value="confirmed">Confirmed</option>
-                                <option value="in_production">In Production</option>
-                                <option value="completed">Completed</option>
-                                <option value="cancelled">Cancelled</option>
-                            </select>
-                            @error('form.status') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                            @else
-                            <div class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-900">
-                                {{ ucfirst(str_replace('_', ' ', $jobOrder->status)) }}
-                            </div>
-                            @endif
-                        </div>
-                    </div>
+
 
                     <!-- Items Count -->
                     <div class="flex items-center gap-3" style="margin-top: 18px !important;">
@@ -456,6 +450,17 @@
             <div class="flex justify-between items-center">
                 <h3 class="text-lg font-medium text-gray-900">Job Order Items</h3>
                 @if(count($boxes) > 0 || count($dividers) > 0)
+                @if($jobOrder->status === 'confirmed')
+                <button disabled
+                        class="bg-gray-400 text-white px-4 py-2 rounded-md text-sm font-medium cursor-not-allowed flex items-center"
+                        title="Cannot add items to confirmed job orders">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                        </svg>
+                        Add Box/Divider
+                    </button>
+                @else
                 <button wire:click="openBoxDividerModal"
                         class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -464,6 +469,7 @@
                         </svg>
                         Add Box/Divider
                     </button>
+                @endif
                 @endif
             </div>
         </div>
@@ -633,6 +639,17 @@
             <p class="mt-1 text-sm text-gray-500">Get started by adding boxes or dividers to this job order.</p>
 
             <div class="mt-6">
+                @if($jobOrder->status === 'confirmed')
+                <button disabled
+                        class="bg-gray-400 text-white px-4 py-2 rounded-md text-sm font-medium cursor-not-allowed flex items-center mx-auto"
+                        title="Cannot add items to confirmed job orders">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                        </svg>
+                        Add Box/Divider
+                    </button>
+                @else
                 <button wire:click="openBoxDividerModal"
                         class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center mx-auto">
                         <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -641,6 +658,7 @@
                         </svg>
                         Add Box/Divider
                     </button>
+                @endif
             </div>
         </div>
         @endif

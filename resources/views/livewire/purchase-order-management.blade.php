@@ -32,7 +32,7 @@
                 <div class="flex items-center space-x-4">
                     <input type="text" wire:model.live="search" placeholder="Search purchase orders..."
                         class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[200px]">
-                    @if($filterSupplier || $filterStatus || $filterDateFrom || $filterDateTo)
+                    @if($filterSupplier || $filterStatus || ($filterGRNStatus && $filterGRNStatus !== 'partial') || $filterDateFrom || $filterDateTo)
                     <button wire:click="resetFilters"
                         class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center">
                         <svg class="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
@@ -73,6 +73,8 @@
                         </th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Supplier</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Customer</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Job
                             Order</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items
@@ -101,8 +103,11 @@
                             <div class="text-xs text-gray-500">{{ $po->supplier->code ?? '' }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="text-sm text-gray-900">{{ $po->jobOrder->customer->name ?? 'N/A' }}</div>
+                            <div class="text-xs text-gray-500">{{ $po->jobOrder->customer->code ?? '' }}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm text-gray-900">{{ $po->jobOrder->supplier_po_number ?? 'N/A' }}</div>
-                            <div class="text-xs text-gray-500">{{ $po->jobOrder->job_number ?? '' }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {{ $po->items->count() }} items
@@ -260,7 +265,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="9" class="px-6 py-12 text-center text-gray-500">
+                        <td colspan="10" class="px-6 py-12 text-center text-gray-500">
                             <div class="flex flex-col items-center justify-center">
                                 <svg class="h-12 w-12 text-gray-400" fill="none" stroke="currentColor"
                                     viewBox="0 0 24 24">
@@ -1157,6 +1162,23 @@
                                             <option value="draft">Draft</option>
                                             <option value="confirmed">Confirmed</option>
                                             <option value="cancelled">Cancelled</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Row 3: GRN Status -->
+                            <div class="flex gap-3">
+                                <div class="flex items-center gap-3 flex-1">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1 w-1/5">GRN Status</label>
+                                    <div class="flex-1">
+                                        <select wire:model.live="filterGRNStatus"
+                                            class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                            <option value="">All GRN Status</option>
+                                            <option value="no_grn">No GRN</option>
+                                            <option value="not_received">Not Received</option>
+                                            <option value="partial">Partial</option>
+                                            <option value="fully_received">Fully Received</option>
                                         </select>
                                     </div>
                                 </div>
