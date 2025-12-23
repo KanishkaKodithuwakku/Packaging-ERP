@@ -664,6 +664,89 @@
         @endif
     </div>
 
+    <!-- Purchase Order Details Section -->
+    @if(count($purchaseOrders) > 0)
+    <div class="bg-white rounded-lg shadow-sm border mt-6">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-medium text-gray-900">Purchase Order Details</h3>
+        </div>
+
+        <div class="p-6">
+            @foreach($purchaseOrders as $po)
+            <div class="mb-8 last:mb-0 {{ !$loop->last ? 'border-b border-gray-200 pb-8' : '' }}">
+                <!-- Purchase Order Header -->
+                <div class="mb-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <div>
+                            <h4 class="text-md font-semibold text-gray-900">{{ $po['po_number'] }}</h4>
+                            <p class="text-sm text-gray-600">
+                                Date: {{ $po['date_formatted'] }}
+                                @if($po['supplier'])
+                                    | Supplier: {{ $po['supplier']['name'] }} ({{ $po['supplier']['code'] }})
+                                @endif
+                            </p>
+                        </div>
+                        <div>
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                {{ $po['status'] === 'draft' ? 'bg-gray-100 text-gray-800' : '' }}
+                                {{ $po['status'] === 'sent' ? 'bg-blue-100 text-blue-800' : '' }}
+                                {{ $po['status'] === 'confirmed' ? 'bg-green-100 text-green-800' : '' }}
+                                {{ $po['status'] === 'received' ? 'bg-purple-100 text-purple-800' : '' }}">
+                                {{ ucfirst($po['status']) }}
+                            </span>
+                        </div>
+                    </div>
+                    @if($po['notes'])
+                    <p class="text-sm text-gray-600 mt-2">
+                        <strong>Notes:</strong> {{ $po['notes'] }}
+                    </p>
+                    @endif
+                </div>
+
+                <!-- Purchase Order Items Table -->
+                @if(count($po['items']) > 0)
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item Type</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                                <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                                <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Unit Price</th>
+                                <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">
+                            @foreach($po['items'] as $item)
+                            <tr>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $item['item_type'] === 'box' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800' }}">
+                                        {{ ucfirst($item['item_type']) }}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3 text-sm text-gray-900">{{ $item['description'] }}</td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-right">{{ number_format($item['quantity']) }}</td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-right">Rs. {{ number_format($item['unit_price'], 2) }}</td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 text-right">Rs. {{ number_format($item['total_price'], 2) }}</td>
+                            </tr>
+                            @endforeach
+                            <!-- Total Row -->
+                            <tr class="bg-gray-50">
+                                <td colspan="4" class="px-4 py-3 text-sm font-semibold text-gray-900 text-right">Total Amount:</td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold text-gray-900 text-right">Rs. {{ number_format($po['total_amount'], 2) }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                @else
+                <p class="text-sm text-gray-500">No items in this purchase order.</p>
+                @endif
+            </div>
+            @endforeach
+        </div>
+    </div>
+    @endif
+
     <!-- Add Box/Divider Modal -->
     @if($showBoxDividerModal)
     <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">

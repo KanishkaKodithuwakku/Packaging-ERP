@@ -45,6 +45,7 @@ class JobOrderDetail extends Component
     public int $grnProcessedCount = 0;
     public int $deliveryCount = 0;
     public float $dispatchedQuantity = 0;
+    public $purchaseOrders = [];
 
     // Box form
     public $boxForm = [
@@ -155,6 +156,7 @@ class JobOrderDetail extends Component
         // Purchase Orders status summary
         $purchaseOrders = \App\Models\PurchaseOrder::where('job_order_id', $this->jobOrderId)
             ->where('status', '!=', 'cancelled')
+            ->with(['items', 'supplier'])
             ->get();
         $this->poCount = $purchaseOrders->count();
         // Count confirmed purchase orders
@@ -164,6 +166,36 @@ class JobOrderDetail extends Component
         } else {
             $this->poStatusText = $this->poProcessedCount . ' / ' . $this->poCount . ' confirmed';
         }
+        
+        // Store purchase orders for display
+        $this->purchaseOrders = $purchaseOrders->map(function($po) {
+            return [
+                'id' => $po->id,
+                'po_number' => $po->po_number,
+                'date' => $po->date ? $po->date->format('Y-m-d') : null,
+                'date_formatted' => $po->date ? $po->date->format('M d, Y') : 'N/A',
+                'status' => $po->status,
+                'notes' => $po->notes,
+                'supplier' => $po->supplier ? [
+                    'name' => $po->supplier->name,
+                    'code' => $po->supplier->code,
+                    'address' => $po->supplier->address,
+                ] : null,
+                'items' => $po->items->map(function($item) {
+                    return [
+                        'id' => $item->id,
+                        'item_type' => $item->item_type,
+                        'description' => $item->description,
+                        'reel_size' => $item->reel_size,
+                        'cut_size' => $item->cut_size,
+                        'quantity' => $item->quantity,
+                        'unit_price' => $item->unit_price,
+                        'total_price' => $item->total_price,
+                    ];
+                })->toArray(),
+                'total_amount' => $po->getTotalAmount(),
+            ];
+        })->toArray();
 
         // Get production orders for GRN status summary
         $productionOrders = \App\Models\ProductionOrder::where('job_order_id', $this->jobOrderId)->get();
