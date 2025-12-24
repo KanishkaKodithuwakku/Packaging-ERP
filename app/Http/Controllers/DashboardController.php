@@ -31,7 +31,7 @@ class DashboardController extends Controller
             ->pluck('count', 'status')
             ->toArray();
 
-        return view('dashboard', compact(
+        return view('dashboard.dashboard', compact(
             'stats',
             'recent_quotations',
             'recent_customer_orders',
