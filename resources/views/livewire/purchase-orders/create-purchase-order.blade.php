@@ -70,7 +70,8 @@
                                 @endphp
                                 <div class="border border-gray-200 rounded-lg p-4 transition-colors {{ $isSelected ? 'border-blue-500 bg-blue-50' : ($isDisabled ? 'border-gray-200 bg-gray-50 opacity-60' : 'hover:bg-gray-50 cursor-pointer') }}"
                                      @if(!$isDisabled) wire:click="toggleJobOrder({{ $jobOrder->id }})" @endif>
-                                    <div class="flex justify-between items-center">
+                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-center">
+                                        <!-- Column 1: Selection and Basic Info -->
                                         <div class="flex items-center space-x-3">
                                             <input type="checkbox"
                                                    {{ $isSelected ? 'checked' : '' }}
@@ -90,7 +91,9 @@
                                                 <p class="text-sm text-gray-500">Status: {{ ucfirst($jobOrder->status) }}</p>
                                             </div>
                                         </div>
-                                        <div class="flex-1 flex flex-col justify-center items-center">
+                                        
+                                        <!-- Column 2: Job Order Details -->
+                                        <div class="flex flex-col justify-center">
                                             <p class="text-sm text-gray-600">
                                                 <span class="font-medium">Job Order Number:</span> 
                                                 <span class="font-semibold text-gray-900">{{ $jobOrder->job_order_number ?? $jobOrder->job_number }}</span>
@@ -102,6 +105,38 @@
                                                 </p>
                                             @endif
                                         </div>
+                                        
+                                        <!-- Column 3: Dimensions (Separate Column) -->
+                                        <div class="flex flex-col justify-center">
+                                            @php
+                                                // Hybrid approach: Show box dimensions if boxes exist, otherwise show divider info
+                                                $hasBoxes = $jobOrder->boxes->count() > 0;
+                                                $hasDividers = $jobOrder->dividers->count() > 0;
+                                                
+                                                if ($hasBoxes) {
+                                                    // Get first box dimensions
+                                                    $firstBox = $jobOrder->boxes->first();
+                                                    $dimensions = $firstBox->length . ' x ' . $firstBox->width . ' x ' . $firstBox->height . ' ' . $firstBox->unit;
+                                                } elseif ($hasDividers) {
+                                                    // Show divider combination info
+                                                    $firstDivider = $jobOrder->dividers->first();
+                                                    $combination = $firstDivider->combination_1 ?? 'N/A';
+                                                    $dimensions = 'DIVIDER - ' . $combination . ($firstDivider->unit ? ' ' . $firstDivider->unit : '');
+                                                } else {
+                                                    $dimensions = null;
+                                                }
+                                            @endphp
+                                            @if($dimensions)
+                                                <p class="text-sm text-gray-600">
+                                                    <span class="font-medium">Dimensions:</span> 
+                                                </p>
+                                                <p class="text-sm font-semibold text-gray-900 mt-1">{{ $dimensions }}</p>
+                                            @else
+                                                <p class="text-sm text-gray-400">No dimensions</p>
+                                            @endif
+                                        </div>
+                                        
+                                        <!-- Column 4: Quantity and Date -->
                                         <div class="text-right">
                                             <p class="text-sm text-gray-600">{{ $jobOrder->boxes->count() }} Boxes, {{ $jobOrder->dividers->count() }} Dividers</p>
                                             <p class="text-sm text-gray-500">{{ $jobOrder->created_at->format('M d, Y') }}</p>
