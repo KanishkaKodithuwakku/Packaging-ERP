@@ -595,15 +595,20 @@
             @endif
 
             <!-- Flash Messages -->
-            @if (session()->has('success'))
+            @php
+                $successMessage = session()->pull('success');
+                $errorMessage = session()->pull('error');
+            @endphp
+            
+            @if ($successMessage)
                 <div class="mt-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
-                    {{ session('success') }}
+                    {{ $successMessage }}
                 </div>
             @endif
 
-            @if (session()->has('error'))
+            @if ($errorMessage)
                 <div class="mt-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-                    {{ session('error') }}
+                    {{ $errorMessage }}
                 </div>
             @endif
         </div>

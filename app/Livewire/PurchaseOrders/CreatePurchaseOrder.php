@@ -65,7 +65,7 @@ class CreatePurchaseOrder extends Component
     public function loadJobOrders()
     {
         // Only show confirmed job orders when creating a purchase order
-        $this->jobOrders = JobOrder::with(['supplier', 'boxes.supplier', 'dividers.supplier', 'customer'])
+        $allJobOrders = JobOrder::with(['supplier', 'boxes.supplier', 'dividers.supplier', 'customer'])
             ->where('status', 'confirmed')
             ->where(function($query) {
                 $query->whereHas('boxes', function($q) {
@@ -77,9 +77,31 @@ class CreatePurchaseOrder extends Component
             })
             ->orderBy('created_at', 'desc')
             ->get();
+        
+        // Filter out job orders that don't have any available items (remaining quantities > 0)
+        $this->jobOrders = $allJobOrders->filter(function($jobOrder) {
+            // Check if job order has boxes with remaining quantities
+            foreach ($jobOrder->boxes as $box) {
+                $remainingQty = $this->calculateRemainingQuantity($box);
+                if ($remainingQty > 0) {
+                    return true; // Job order has available items
+                }
+            }
+            
+            // Check if job order has dividers with remaining quantities
+            foreach ($jobOrder->dividers as $divider) {
+                $remainingQty = $this->calculateRemainingQuantity($divider);
+                if ($remainingQty > 0) {
+                    return true; // Job order has available items
+                }
+            }
+            
+            return false; // No available items for this job order
+        })->values(); // Re-index the collection
             
         Log::info('Loaded job orders', [
-            'count' => $this->jobOrders->count(),
+            'total_count' => $allJobOrders->count(),
+            'available_count' => $this->jobOrders->count(),
             'job_orders' => $this->jobOrders->map(function($jo) {
                 return [
                     'id' => $jo->id,
@@ -832,9 +854,11 @@ class CreatePurchaseOrder extends Component
             DB::beginTransaction();
             
             // Create purchase order
+            // Note: job_order_id is now nullable to support multiple job orders in a single PO
+            // Job orders are derived from purchase order items (boxes/dividers)
             $purchaseOrder = PurchaseOrder::create([
                 'po_number' => $this->generatePONumber(),
-                'job_order_id' => $this->selectedJobOrderIds[0], // Use first selected job order
+                'job_order_id' => null, // Nullable - job orders are derived from items
                 'supplier_id' => $supplierId,
                 'date' => $this->poDate, // Note: database field is 'date', not 'po_date'
                 'status' => 'draft',
@@ -867,9 +891,24 @@ class CreatePurchaseOrder extends Component
                     }
                 }
                 
+                // Get job_order_id from the item data (already stored in loadAvailableItems)
+                $jobOrderId = $item['job_order_id'] ?? null;
+                
+                // If not in item data, derive it from the box/divider
+                if (!$jobOrderId) {
+                    if ($item['type'] === 'BOX') {
+                        $box = JobOrderBox::find($item['item_id']);
+                        $jobOrderId = $box ? $box->job_order_id : null;
+                    } elseif ($item['type'] === 'DIVIDER') {
+                        $divider = JobOrderDivider::find($item['item_id']);
+                        $jobOrderId = $divider ? $divider->job_order_id : null;
+                    }
+                }
+                
                 // Create purchase order item
                 PurchaseOrderItem::create([
                     'purchase_order_id' => $purchaseOrder->id,
+                    'job_order_id' => $jobOrderId,
                     'item_type' => strtolower($item['type']),
                     'item_id' => $item['item_id'],
                     'description' => $item['description'],

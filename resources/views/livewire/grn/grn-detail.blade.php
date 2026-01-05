@@ -71,6 +71,23 @@
                     @endif
                 </div>
             </div>
+            @if($grn->isFromPurchaseOrder() && $grn->purchaseOrder)
+                @php
+                    $jobOrders = $grn->purchaseOrder->jobOrders();
+                @endphp
+                @if($jobOrders->count() > 0)
+                <div>
+                    <label class="text-xs text-gray-500">Job Order</label>
+                    <div class="font-medium">
+                        @if($jobOrders->count() === 1)
+                            {{ $jobOrders->first()->supplier_po_number ?? $jobOrders->first()->job_number ?? 'N/A' }}
+                        @else
+                            {{ $jobOrders->count() }} Job Orders: {{ $jobOrders->pluck('supplier_po_number')->filter()->join(', ') ?: $jobOrders->pluck('job_number')->filter()->join(', ') }}
+                        @endif
+                    </div>
+                </div>
+                @endif
+            @endif
             @if(!$grn->isFromProductionOrder() && !$grn->isFromPurchaseOrder() && !$grn->supplierOrder && $grn->supplier)
             <div>
                 <label class="text-xs text-gray-500">Supplier</label>
@@ -151,6 +168,10 @@
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item Type</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Material Code</th>
+                            @if($grn->isFromPurchaseOrder())
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Job Order</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                            @endif
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expected</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Received</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pending</th>
@@ -161,10 +182,23 @@
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
                         @forelse($grn->items as $item)
+                            @php
+                                $purchaseOrderItem = $item->getPurchaseOrderItem();
+                                $jobOrder = $purchaseOrderItem ? $purchaseOrderItem->jobOrder : null;
+                                $customer = $jobOrder ? $jobOrder->customer : null;
+                            @endphp
                             <tr>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ ucfirst($item->item_type) }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $item->description }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $item->material_code }}</td>
+                                @if($grn->isFromPurchaseOrder())
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    {{ $jobOrder ? ($jobOrder->supplier_po_number ?? $jobOrder->job_number ?? 'N/A') : 'N/A' }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    {{ $customer ? $customer->name : 'N/A' }}
+                                </td>
+                                @endif
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ number_format($item->qty_expected ?? $item->qty_received, 2) }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ number_format($item->qty_received_partial ?? 0, 2) }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ number_format($item->qty_pending ?? ($item->qty_expected ?? $item->qty_received), 2) }}</td>
@@ -221,7 +255,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="px-6 py-8 text-center text-gray-500">No items</td>
+                                <td colspan="{{ $grn->isFromPurchaseOrder() ? '11' : '9' }}" class="px-6 py-8 text-center text-gray-500">No items</td>
                             </tr>
                         @endforelse
                     </tbody>

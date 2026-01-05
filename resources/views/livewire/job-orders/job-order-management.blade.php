@@ -1,14 +1,19 @@
 <div>
     <!-- Success/Error Messages -->
-    @if (session()->has('success'))
+    @php
+        $successMessage = session()->pull('success');
+        $errorMessage = session()->pull('error');
+    @endphp
+    
+    @if ($successMessage)
     <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-        {{ session('success') }}
+        {{ $successMessage }}
     </div>
     @endif
 
-    @if (session()->has('error'))
+    @if ($errorMessage)
     <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-        {{ session('error') }}
+        {{ $errorMessage }}
     </div>
     @endif
 
@@ -81,7 +86,6 @@
                             <td class="px-6 py-4 whitespace-nowrap" wire:navigate
                             href="{{ route('job-order-detail', $jobOrder->id) }}">
                                 <div class="text-sm font-medium text-gray-900">{{ $jobOrder->supplier_po_number }}</div>
-                                <div class="text-xs text-gray-500">JO #{{ $jobOrder->job_number }}</div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900" wire:navigate
                             href="{{ route('job-order-detail', $jobOrder->id) }}">

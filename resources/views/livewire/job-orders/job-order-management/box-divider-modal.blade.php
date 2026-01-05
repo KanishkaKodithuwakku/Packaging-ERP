@@ -1,8 +1,15 @@
 <!-- Add Box/Divider Modal -->
+<style>
+    #add-box-divider-modal {
+        width: 40vw !important;
+        max-width: 40vw !important;
+        min-width: 400px;
+    }
+</style>
 @if($showBoxDividerModal)
-    <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-        <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-[95vw] shadow-lg rounded-md bg-white">
-            <div class="mt-3">
+    <div class="fixed inset-0 bg-transparent overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto border shadow-lg rounded-md bg-white" style="width: 40vw !important; max-width: 40vw !important; min-width: 400px; padding: 1rem; box-sizing: border-box;" id="add-box-divider-modal">
+            <div>
                 <!-- Modal Header -->
                 <div class="flex justify-between items-center pb-4 border-b">
                     <h3 class="text-lg font-medium text-gray-900">
@@ -30,7 +37,7 @@
                 </div>
 
                 <!-- Tab Content -->
-                <div class="mt-6">
+                <div class="mt-6" style="width: 100%; overflow-x: hidden;">
                     @if($activeTab === 'boxes')
                         @include('livewire.job-orders.job-order-management.boxes-tab')
                     @elseif($activeTab === 'dividers')

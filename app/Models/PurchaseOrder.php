@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Collection;
 
 class PurchaseOrder extends Model
 {
@@ -35,10 +36,31 @@ class PurchaseOrder extends Model
 
     /**
      * Get the job order that owns the purchase order.
+     * Note: This may be null if purchase order contains items from multiple job orders.
+     * Use jobOrders() method to get all job orders from items.
      */
     public function jobOrder(): BelongsTo
     {
         return $this->belongsTo(JobOrder::class);
+    }
+
+    /**
+     * Get all unique job orders associated with this purchase order through items.
+     * This method uses the job_order_id column directly from purchase_order_items.
+     * 
+     * @return Collection
+     */
+    public function jobOrders(): Collection
+    {
+        // Get unique job order IDs directly from purchase order items
+        $jobOrderIds = $this->items()
+            ->whereNotNull('job_order_id')
+            ->pluck('job_order_id')
+            ->unique()
+            ->filter();
+        
+        // Return unique job orders
+        return JobOrder::whereIn('id', $jobOrderIds)->get();
     }
 
     /**

@@ -37,7 +37,7 @@ class GRNDetail extends Component
     public function mount(int $id)
     {
         $this->grnId = $id;
-        $this->grn = GRN::with(['supplierOrder.supplier', 'productionOrder.supplier', 'purchaseOrder.supplier', 'supplier', 'items'])->findOrFail($id);
+        $this->grn = GRN::with(['supplierOrder.supplier', 'productionOrder.supplier', 'purchaseOrder.supplier', 'purchaseOrder.items.jobOrder.customer', 'supplier', 'items'])->findOrFail($id);
         
         // Set default status if not set
         if (!$this->grn->status) {
@@ -476,7 +476,7 @@ class GRNDetail extends Component
                 $this->showProcessingModal = false;
                 
                 // Refresh GRN data
-                $this->grn = GRN::with(['supplierOrder.supplier', 'productionOrder.supplier', 'purchaseOrder.supplier', 'supplier', 'items'])->findOrFail($this->grnId);
+                $this->grn = GRN::with(['supplierOrder.supplier', 'productionOrder.supplier', 'purchaseOrder.supplier', 'purchaseOrder.items.jobOrder.customer', 'supplier', 'items'])->findOrFail($this->grnId);
                 
                 // Sync all items status in case any updates were needed
                 $this->syncItemsReceivingStatus();

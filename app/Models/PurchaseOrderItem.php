@@ -9,6 +9,7 @@ class PurchaseOrderItem extends Model
 {
     protected $fillable = [
         'purchase_order_id',
+        'job_order_id',
         'item_type',
         'item_id',
         'description',
@@ -32,6 +33,14 @@ class PurchaseOrderItem extends Model
     public function purchaseOrder(): BelongsTo
     {
         return $this->belongsTo(PurchaseOrder::class);
+    }
+
+    /**
+     * Get the job order that this item belongs to.
+     */
+    public function jobOrder(): BelongsTo
+    {
+        return $this->belongsTo(JobOrder::class);
     }
 
     /**

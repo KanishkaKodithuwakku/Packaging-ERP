@@ -6,15 +6,20 @@
     </div>
 
     <!-- Success/Error Messages -->
-    @if (session()->has('success'))
+    @php
+        $successMessage = session()->pull('success');
+        $errorMessage = session()->pull('error');
+    @endphp
+    
+    @if ($successMessage)
     <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-        {!! session('success') !!}
+        {!! $successMessage !!}
     </div>
     @endif
 
-    @if (session()->has('error'))
+    @if ($errorMessage)
     <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-        {{ session('error') }}
+        {{ $errorMessage }}
     </div>
     @endif
 
@@ -32,7 +37,7 @@
                 <div class="flex items-center space-x-4">
                     <input type="text" wire:model.live="search" placeholder="Search purchase orders..."
                         class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[200px]">
-                    @if($filterSupplier || $filterStatus || ($filterGRNStatus && $filterGRNStatus !== 'partial') || $filterDateFrom || $filterDateTo)
+                    @if($filterSupplier || $filterStatus || $filterGRNStatus || $filterDateFrom || $filterDateTo)
                     <button wire:click="resetFilters"
                         class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center">
                         <svg class="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
@@ -103,11 +108,40 @@
                             <div class="text-xs text-gray-500">{{ $po->supplier->code ?? '' }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm text-gray-900">{{ $po->jobOrder->customer->name ?? 'N/A' }}</div>
-                            <div class="text-xs text-gray-500">{{ $po->jobOrder->customer->code ?? '' }}</div>
+                            @php
+                                $jobOrders = $po->jobOrders();
+                                $customers = $jobOrders->pluck('customer')->filter()->unique('id');
+                            @endphp
+                            @if($customers->count() > 0)
+                                @if($customers->count() == 1)
+                                    <div class="text-sm text-gray-900">{{ $customers->first()->name ?? 'N/A' }}</div>
+                                    <div class="text-xs text-gray-500">{{ $customers->first()->code ?? '' }}</div>
+                                @else
+                                    <div class="text-sm text-gray-900">{{ $customers->count() }} Customers</div>
+                                    <div class="text-xs text-gray-500">
+                                        {{ $customers->pluck('name')->take(2)->implode(', ') }}{{ $customers->count() > 2 ? '...' : '' }}
+                                    </div>
+                                @endif
+                            @else
+                                <div class="text-sm text-gray-500">N/A</div>
+                            @endif
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm text-gray-900">{{ $po->jobOrder->supplier_po_number ?? 'N/A' }}</div>
+                            @php
+                                $jobOrders = $po->jobOrders();
+                            @endphp
+                            @if($jobOrders->count() > 0)
+                                @if($jobOrders->count() == 1)
+                                    <div class="text-sm text-gray-900">{{ $jobOrders->first()->supplier_po_number ?? $jobOrders->first()->job_order_number ?? $jobOrders->first()->job_number ?? 'N/A' }}</div>
+                                @else
+                                    <div class="text-sm text-gray-900">{{ $jobOrders->count() }} Job Orders</div>
+                                    <div class="text-xs text-gray-500">
+                                        {{ $jobOrders->take(2)->map(function($jo) { return $jo->supplier_po_number ?? $jo->job_order_number ?? $jo->job_number ?? 'N/A'; })->implode(', ') }}{{ $jobOrders->count() > 2 ? '...' : '' }}
+                                    </div>
+                                @endif
+                            @else
+                                <div class="text-sm text-gray-500">N/A</div>
+                            @endif
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {{ $po->items->count() }} items
@@ -437,7 +471,17 @@
                         </div>
                         <div>
                             <h4 class="font-semibold text-gray-900 mb-2">Order Information</h4>
-                            <p class="text-sm text-gray-700"><strong>Job Order:</strong> {{ $selectedPurchaseOrder->jobOrder->supplier_po_number ?? 'N/A' }}</p>
+                            @php
+                                $jobOrders = $selectedPurchaseOrder->jobOrders();
+                            @endphp
+                            <p class="text-sm text-gray-700">
+                                <strong>Job Order{{ $jobOrders->count() > 1 ? 's' : '' }}:</strong> 
+                                @if($jobOrders->count() > 0)
+                                    {{ $jobOrders->map(function($jo) { return $jo->supplier_po_number ?? $jo->job_order_number ?? $jo->job_number ?? 'N/A'; })->implode(', ') }}
+                                @else
+                                    N/A
+                                @endif
+                            </p>
                             <p class="text-sm text-gray-700"><strong>Total Amount:</strong> Rs. {{ number_format($selectedPurchaseOrder->getTotalAmount(), 2) }}</p>
                         </div>
                     </div>
@@ -449,6 +493,7 @@
                             <thead>
                                 <tr class="bg-gray-100">
                                     <th class="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">Item Type</th>
+                                    <th class="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">Job Order</th>
                                     <th class="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">Description</th>
                                     @if($displayFormat === 'reel_cuts')
                                     <th class="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">Reel Size</th>
@@ -465,6 +510,13 @@
                                 @foreach($selectedPurchaseOrder->items as $item)
                                 <tr>
                                     <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">{{ ucfirst($item->item_type) }}</td>
+                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">
+                                        @if($item->jobOrder)
+                                            {{ $item->jobOrder->supplier_po_number ?? $item->jobOrder->job_order_number ?? $item->jobOrder->job_number ?? 'N/A' }}
+                                        @else
+                                            N/A
+                                        @endif
+                                    </td>
                                     <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">{{ $item->description }}</td>
                                     @if($displayFormat === 'reel_cuts')
                                     @php
@@ -551,9 +603,29 @@
                                 <label class="block text-sm font-bold text-gray-700">Supplier Address: <span class="text-xs font-normal text-gray-900">{{ $selectedPurchaseOrder->supplier->address ?? 'N/A' }}</span></label>
                             </div>
                             <div>
-                                <label class="block text-sm font-bold text-gray-700">Job Order: <span class="text-xs font-normal text-gray-900">{{ $selectedPurchaseOrder->jobOrder->supplier_po_number ?? 'N/A' }}</span>
-                                    @if($selectedPurchaseOrder->jobOrder->job_number ?? '')
-                                        <span class="text-xs text-gray-500">({{ $selectedPurchaseOrder->jobOrder->job_number }})</span>
+                                @php
+                                    $jobOrders = $selectedPurchaseOrder->jobOrders();
+                                @endphp
+                                <label class="block text-sm font-bold text-gray-700">
+                                    @if($jobOrders->count() == 1)
+                                        Job Order: <span class="text-xs font-normal text-gray-900">{{ $jobOrders->first()->supplier_po_number ?? $jobOrders->first()->job_order_number ?? $jobOrders->first()->job_number ?? 'N/A' }}</span>
+                                        @if($jobOrders->first()->job_number ?? '')
+                                            <span class="text-xs text-gray-500">({{ $jobOrders->first()->job_number }})</span>
+                                        @endif
+                                    @elseif($jobOrders->count() > 1)
+                                        Job Orders ({{ $jobOrders->count() }}):
+                                        <div class="mt-1 space-y-1">
+                                            @foreach($jobOrders as $jo)
+                                                <div class="text-xs font-normal text-gray-900">
+                                                    • {{ $jo->supplier_po_number ?? $jo->job_order_number ?? $jo->job_number ?? 'N/A' }}
+                                                    @if($jo->job_number ?? '')
+                                                        <span class="text-gray-500">({{ $jo->job_number }})</span>
+                                                    @endif
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @else
+                                        Job Order: <span class="text-xs font-normal text-gray-900">N/A</span>
                                     @endif
                                 </label>
                             </div>
@@ -599,6 +671,9 @@
                                             Item Type</th>
                                         <th
                                             class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                            Job Order</th>
+                                        <th
+                                            class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                             Description</th>
                                         @if($displayFormat === 'reel_cuts')
                                         <th
@@ -642,6 +717,13 @@
                                                 class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $item->item_type === 'box' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800' }}">
                                                 {{ ucfirst($item->item_type) }}
                                             </span>
+                                        </td>
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                            @if($item->jobOrder)
+                                                {{ $item->jobOrder->supplier_po_number ?? $item->jobOrder->job_order_number ?? $item->jobOrder->job_number ?? 'N/A' }}
+                                            @else
+                                                N/A
+                                            @endif
                                         </td>
                                         <td class="px-6 py-4 text-sm text-gray-900">{{ $item->description }}</td>
                                         @if($displayFormat === 'reel_cuts')
@@ -815,9 +897,29 @@
                                 <label class="block text-sm font-bold text-gray-700">Supplier Address : <span class="text-xs font-normal text-gray-900">{{ $selectedPurchaseOrder->supplier->address ?? 'N/A' }}</span></label>
                             </div>
                             <div>
-                                <label class="block text-sm font-bold text-gray-700">Job Order : <span class="text-xs font-normal text-gray-900">{{ $selectedPurchaseOrder->jobOrder->supplier_po_number ?? 'N/A' }}</span>
-                                    @if($selectedPurchaseOrder->jobOrder->job_number ?? '')
-                                        <span class="text-xs text-gray-500">({{ $selectedPurchaseOrder->jobOrder->job_number }})</span>
+                                @php
+                                    $jobOrders = $selectedPurchaseOrder->jobOrders();
+                                @endphp
+                                <label class="block text-sm font-bold text-gray-700">
+                                    @if($jobOrders->count() == 1)
+                                        Job Order: <span class="text-xs font-normal text-gray-900">{{ $jobOrders->first()->supplier_po_number ?? $jobOrders->first()->job_order_number ?? $jobOrders->first()->job_number ?? 'N/A' }}</span>
+                                        @if($jobOrders->first()->job_number ?? '')
+                                            <span class="text-xs text-gray-500">({{ $jobOrders->first()->job_number }})</span>
+                                        @endif
+                                    @elseif($jobOrders->count() > 1)
+                                        Job Orders ({{ $jobOrders->count() }}):
+                                        <div class="mt-1 space-y-1">
+                                            @foreach($jobOrders as $jo)
+                                                <div class="text-xs font-normal text-gray-900">
+                                                    • {{ $jo->supplier_po_number ?? $jo->job_order_number ?? $jo->job_number ?? 'N/A' }}
+                                                    @if($jo->job_number ?? '')
+                                                        <span class="text-gray-500">({{ $jo->job_number }})</span>
+                                                    @endif
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @else
+                                        Job Order: <span class="text-xs font-normal text-gray-900">N/A</span>
                                     @endif
                                 </label>
                             </div>

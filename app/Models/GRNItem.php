@@ -196,4 +196,21 @@ class GRNItem extends Model
         }
         return ($this->qty_received_partial / $this->qty_expected) * 100;
     }
+
+    /**
+     * Get the purchase order item that corresponds to this GRN item
+     * This is found by matching item_type and item_id from the GRN's purchase order
+     */
+    public function getPurchaseOrderItem()
+    {
+        if (!$this->grn || !$this->grn->purchase_order_id) {
+            return null;
+        }
+
+        return \App\Models\PurchaseOrderItem::where('purchase_order_id', $this->grn->purchase_order_id)
+            ->where('item_type', $this->item_type)
+            ->where('item_id', $this->item_id)
+            ->with('jobOrder.customer')
+            ->first();
+    }
 }

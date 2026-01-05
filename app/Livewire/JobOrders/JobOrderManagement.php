@@ -26,6 +26,7 @@ class JobOrderManagement extends Component
     public $dispatchComparison = [];
     public $editingJobOrder = false;
     public $activeTab = 'main';
+    public $boxFormTab = 'basic'; // Sub-tab for box form: 'basic', 'dimensions', 'material', 'calculated'
 
     // Search and filters
     public $search = '';
@@ -342,6 +343,8 @@ class JobOrderManagement extends Component
         \Log::info('=== BOX FORM FIELD CHANGED ===', [
             'field' => $field,
             'value' => $value,
+            'current_length' => $this->boxForm['length'] ?? 'not set',
+            'current_order_qty' => $this->boxForm['order_qty'] ?? 'not set',
             'boxForm' => $this->boxForm
         ]);
 
@@ -351,12 +354,25 @@ class JobOrderManagement extends Component
             return;
         }
 
+        // Safeguard: Ensure order_qty changes don't affect length
+        $originalLength = $this->boxForm['length'] ?? '';
+        
         if (in_array($field, ['length', 'width', 'height', 'ply', 'unit', 'dimension_type'])) {
             $this->calculateDimensions();
         }
 
         if (in_array($field, ['order_qty', 'no_of_ups'])) {
             $this->calculateBoardQty();
+            // Ensure length wasn't accidentally modified
+            if (isset($this->boxForm['length']) && $this->boxForm['length'] != $originalLength && $field === 'order_qty') {
+                \Log::warning('Length was modified when order_qty changed!', [
+                    'original_length' => $originalLength,
+                    'new_length' => $this->boxForm['length'],
+                    'order_qty' => $value
+                ]);
+                // Restore original length
+                $this->boxForm['length'] = $originalLength;
+            }
         }
     }
     
@@ -735,9 +751,19 @@ class JobOrderManagement extends Component
             throw $e;
         }
 
+        // Ensure order_qty is properly cast to integer
+        $orderQty = (int) $this->boxForm['order_qty'];
+        
+        \Log::info('Adding box with order_qty', [
+            'original' => $this->boxForm['order_qty'],
+            'casted' => $orderQty,
+            'board_qty' => $this->boxForm['board_qty'] ?? null,
+            'calculated_board_qty' => $this->calculatedBoardQty ?? null
+        ]);
+        
         $this->boxes[] = [
             'id' => 'temp_' . count($this->boxes),
-            'order_qty' => $this->boxForm['order_qty'],
+            'order_qty' => $orderQty,
             'selling_price' => $this->boxForm['selling_price'],
             'activity' => $this->boxForm['activity'],
             'printing_instruction' => $this->boxForm['printing_instruction'],
@@ -1071,8 +1097,28 @@ class JobOrderManagement extends Component
             foreach ($this->boxes as $boxData) {
                 unset($boxData['id']); // Remove temporary ID
                 $boxData['job_order_id'] = $jobOrder->id;
-                \Log::info('Creating box with data:', $boxData);
-                JobOrderBox::create($boxData);
+                
+                // Ensure order_qty is properly set and not overwritten
+                if (!isset($boxData['order_qty']) || $boxData['order_qty'] === null || $boxData['order_qty'] === '') {
+                    \Log::error('Order Qty is missing or empty when creating box', ['box_data' => $boxData]);
+                }
+                
+                // Ensure order_qty is an integer, not board_qty
+                $originalOrderQty = $boxData['order_qty'] ?? 0;
+                $boxData['order_qty'] = (int) $originalOrderQty;
+                
+                \Log::info('Creating box with data:', [
+                    'order_qty' => $boxData['order_qty'],
+                    'board_qty' => $boxData['board_qty'] ?? null,
+                    'no_of_ups' => $boxData['no_of_ups'] ?? null
+                ]);
+                
+                $createdBox = JobOrderBox::create($boxData);
+                \Log::info('Box created in database', [
+                    'box_id' => $createdBox->id,
+                    'saved_order_qty' => $createdBox->order_qty,
+                    'saved_board_qty' => $createdBox->board_qty
+                ]);
             }
 
             // Create/Update dividers
@@ -1152,6 +1198,7 @@ class JobOrderManagement extends Component
 
     public function resetBoxForm()
     {
+        $this->boxFormTab = 'basic'; // Reset to first tab
         $this->boxForm = [
             'order_qty' => '',
             'selling_price' => '',
@@ -1209,6 +1256,11 @@ class JobOrderManagement extends Component
     public function setActiveTab($tab)
     {
         $this->activeTab = $tab;
+    }
+
+    public function setBoxFormTab($tab)
+    {
+        $this->boxFormTab = $tab;
     }
 
     public function render()

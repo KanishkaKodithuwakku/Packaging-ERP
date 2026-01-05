@@ -16,6 +16,7 @@ class JobOrderDetail extends Component
     public $jobOrderId;
     public $showBoxDividerModal = false;
     public $activeTab = 'boxes';
+    public $boxFormTab = 'basic'; // Sub-tab for box form: 'basic', 'dimensions', 'material', 'calculated'
     public $isEditMode = false;
     public $hasPurchaseOrder = false;
     public $showPrintPreviewModal = false;
@@ -244,6 +245,11 @@ class JobOrderDetail extends Component
     public function setActiveTab($tab)
     {
         $this->activeTab = $tab;
+    }
+
+    public function setBoxFormTab($tab)
+    {
+        $this->boxFormTab = $tab;
     }
 
     public function updatedBoxFormPly($value)
@@ -1092,6 +1098,7 @@ class JobOrderDetail extends Component
 
     public function resetBoxForm()
     {
+        $this->boxFormTab = 'basic'; // Reset to first tab
         $this->boxForm = [
             'order_qty' => '',
             'selling_price' => '',

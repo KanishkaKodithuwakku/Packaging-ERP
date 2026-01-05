@@ -31,8 +31,8 @@ class PurchaseOrderManagement extends Component
     // Filter modal and filters
     public $showFilterModal = false;
     public $filterSupplier = '';
-    public $filterStatus = '';
-    public $filterGRNStatus = 'partial';
+    public $filterStatus = ''; // Default to all status
+    public $filterGRNStatus = ''; // Default to all GRN status
     public $filterDateFrom = '';
     public $filterDateTo = '';
     public $search = '';
@@ -179,8 +179,8 @@ class PurchaseOrderManagement extends Component
     public function resetFilters()
     {
         $this->filterSupplier = '';
-        $this->filterStatus = '';
-        $this->filterGRNStatus = 'partial';
+        $this->filterStatus = ''; // Reset to default: all status
+        $this->filterGRNStatus = ''; // Reset to default: all GRN status
         $this->filterDateFrom = '';
         $this->filterDateTo = '';
         $this->search = '';
@@ -216,7 +216,7 @@ class PurchaseOrderManagement extends Component
 
     public function viewPurchaseOrder($id)
     {
-        $this->selectedPurchaseOrder = PurchaseOrder::with(['supplier', 'jobOrder.customer', 'jobOrder.boxes', 'jobOrder.dividers', 'items'])->find($id);
+        $this->selectedPurchaseOrder = PurchaseOrder::with(['supplier', 'jobOrder.customer', 'jobOrder.boxes', 'jobOrder.dividers', 'items.jobOrder'])->find($id);
         if ($this->selectedPurchaseOrder) {
             // Initialize item quantities for editing
             $this->itemQuantities = [];
@@ -399,7 +399,7 @@ class PurchaseOrderManagement extends Component
 
     public function openGRNConfirmModal($id)
     {
-        $this->selectedPurchaseOrder = PurchaseOrder::with(['items', 'jobOrder.customer', 'jobOrder.boxes', 'jobOrder.dividers'])->find($id);
+        $this->selectedPurchaseOrder = PurchaseOrder::with(['items.jobOrder', 'jobOrder.customer', 'jobOrder.boxes', 'jobOrder.dividers'])->find($id);
         
         if (!$this->selectedPurchaseOrder) {
             session()->flash('error', 'Purchase order not found.');
@@ -459,7 +459,7 @@ class PurchaseOrderManagement extends Component
     public function createGRNFromPurchaseOrder($id)
     {
         try {
-            $purchaseOrder = PurchaseOrder::with(['items', 'jobOrder.customer'])->find($id);
+            $purchaseOrder = PurchaseOrder::with(['items.jobOrder', 'jobOrder.customer'])->find($id);
             
             if (!$purchaseOrder) {
                 session()->flash('error', 'Purchase order not found.');
@@ -541,7 +541,7 @@ class PurchaseOrderManagement extends Component
     public function cancelPurchaseOrder($id)
     {
         try {
-            $purchaseOrder = PurchaseOrder::with(['grn', 'grn.items', 'items'])->find($id);
+            $purchaseOrder = PurchaseOrder::with(['grn', 'grn.items', 'items.jobOrder'])->find($id);
             
             if (!$purchaseOrder) {
                 session()->flash('error', 'Purchase order not found.');
@@ -701,7 +701,7 @@ class PurchaseOrderManagement extends Component
 
     public function openPhoneConfirmModal($id)
     {
-        $this->selectedPurchaseOrder = PurchaseOrder::with(['items', 'jobOrder.customer'])->find($id);
+        $this->selectedPurchaseOrder = PurchaseOrder::with(['items.jobOrder', 'jobOrder.customer'])->find($id);
         if ($this->selectedPurchaseOrder) {
             // Initialize phone confirm form with current item prices
             $this->phoneConfirmForm = [];
