@@ -53,12 +53,21 @@ class GRNProcessingService
                 $totalValue += $result['total_cost'];
             }
 
-            // Update GRN status only if all items are fully processed
+            // Update GRN status based on processing result
             $allItemsFullyProcessed = $this->areAllItemsFullyProcessed($grn);
-            if ($allItemsFullyProcessed) {
+            $hasPending = $grn->getTotalPendingQuantity() > 0;
+            
+            if ($allItemsFullyProcessed && !$hasPending) {
+                // All received items processed and no pending quantities
                 $grn->update([
                     'status' => 'processed',
                     'processed_at' => now(),
+                    'total_value' => $totalValue
+                ]);
+            } elseif (!$allItemsFullyProcessed || $hasPending) {
+                // Some items processed but balance remains
+                $grn->update([
+                    'status' => 'partially_processed',
                     'total_value' => $totalValue
                 ]);
             }
@@ -158,6 +167,16 @@ class GRNProcessingService
                 }
             }
             
+            // For production GRNs, quantityToProcess is board quantity, need to convert to FG quantity
+            $boardQuantityToProcess = $quantityToProcess;
+            $fgQuantityToProcess = $boardQuantityToProcess;
+            if ($grnItem->grn && $grnItem->grn->isFromProductionOrder() && $grnItem->productionOrderItem) {
+                $noOfUps = $grnItem->productionOrderItem->getNoOfUps();
+                if ($noOfUps > 0) {
+                    $fgQuantityToProcess = $boardQuantityToProcess * $noOfUps;
+                }
+            }
+            
             // Always create a new transaction for each processing batch
             // This ensures we have a complete audit trail
             $transaction = $this->inventoryService->recordTransaction([
@@ -166,37 +185,38 @@ class GRNProcessingService
                 'category' => $category,
                 'material_type' => $materialType,
                 'txn_type' => 'receipt',
-                'qty' => $quantityToProcess,
+                'qty' => $fgQuantityToProcess, // Use FG quantity for production GRNs
                 'unit_cost' => $unitCost,
                 'uom' => $grnItem->uom,
                 'warehouse' => $this->getWarehouseForCategory($category),
                 'related_doc_type' => 'GRN',
                 'related_doc_id' => $grnItem->grn_id,
                 'txn_date' => now()->toDateString(),
-                'remarks' => "GRN Item: {$grnItem->description} (Batch: {$quantityToProcess}, Total Processed: " . ($qtyProcessed + $quantityToProcess) . ")",
+                'remarks' => "GRN Item: {$grnItem->description} (Batch: {$fgQuantityToProcess}, Total Processed: " . ($qtyProcessed + $boardQuantityToProcess) . ")",
             ], $costingMethod);
 
             // Update GRN item with partial processing details
+            // Track board quantity in qty_processed
             $currentProcessed = $grnItem->qty_processed ?? 0;
-            $newProcessed = $currentProcessed + $quantityToProcess;
+            $newProcessed = $currentProcessed + $boardQuantityToProcess;
             $remaining = $grnItem->qty_received_partial - $newProcessed;
             
             $grnItem->update([
-                'qty_processed' => $newProcessed,
+                'qty_processed' => $newProcessed, // Store board quantity
                 'qty_remaining' => $remaining,
                 'inventory_lot_code' => $lotCode,
                 'unit_cost' => $unitCost,
-                'total_cost' => $newProcessed * $unitCost,
+                'total_cost' => $fgQuantityToProcess * $unitCost, // Use FG quantity for cost
                 'processed_at' => now(),
             ]);
 
             return [
                 'grn_item_id' => $grnItem->id,
                 'material_code' => $grnItem->material_code,
-                'qty_processed' => $quantityToProcess,
+                'qty_processed' => $fgQuantityToProcess, // Return FG quantity for display
                 'qty_remaining' => $remaining,
                 'unit_cost' => $unitCost,
-                'total_cost' => $quantityToProcess * $unitCost,
+                'total_cost' => $fgQuantityToProcess * $unitCost,
                 'lot_code' => $lotCode,
                 'category' => $category,
                 'success' => true
@@ -263,16 +283,26 @@ class GRNProcessingService
             }
             
             // Get the quantity to process (use partial received if available, otherwise use received)
-            $qtyToProcess = $grnItem->qty_received_partial ?? $grnItem->qty_received ?? 0;
+            // For production GRNs, qty_received stores board quantity, need to multiply by No of Ups to get FG quantity
+            $boardQuantity = $grnItem->qty_received_partial ?? $grnItem->qty_received ?? 0;
             
-            // Create inventory transaction
+            // For production orders, convert board quantity to FG quantity
+            $fgQuantity = $boardQuantity;
+            if ($grnItem->grn && $grnItem->grn->isFromProductionOrder() && $grnItem->productionOrderItem) {
+                $noOfUps = $grnItem->productionOrderItem->getNoOfUps();
+                if ($noOfUps > 0) {
+                    $fgQuantity = $boardQuantity * $noOfUps;
+                }
+            }
+            
+            // Create inventory transaction - use FG quantity for production GRNs
             $transaction = $this->inventoryService->recordTransaction([
                 'lot_code' => $lotCode,
                 'item_code' => $grnItem->material_code,
                 'category' => $category,
                 'material_type' => $materialType,
                 'txn_type' => 'receipt',
-                'qty' => $qtyToProcess,
+                'qty' => $fgQuantity, // Use FG quantity for production GRNs
                 'unit_cost' => $unitCost,
                 'uom' => $grnItem->uom,
                 'warehouse' => $this->getWarehouseForCategory($category),
@@ -283,12 +313,12 @@ class GRNProcessingService
             ], $costingMethod);
 
             // Update GRN item with inventory details
-            // Mark the full received quantity as processed
+            // Mark the full received quantity as processed (use board quantity for tracking)
             $grnItem->update([
                 'inventory_lot_code' => $lotCode,
                 'unit_cost' => $unitCost,
-                'total_cost' => $qtyToProcess * $unitCost,
-                'qty_processed' => $qtyToProcess,
+                'total_cost' => $fgQuantity * $unitCost, // Use FG quantity for cost calculation
+                'qty_processed' => $boardQuantity, // Store board quantity in qty_processed for tracking
                 'qty_remaining' => 0,
                 'processed_at' => now(),
             ]);
@@ -296,10 +326,10 @@ class GRNProcessingService
             return [
                 'grn_item_id' => $grnItem->id,
                 'material_code' => $grnItem->material_code,
-                'qty_received' => $qtyToProcess,
-                'qty_processed' => $qtyToProcess,
+                'qty_received' => $boardQuantity, // Board quantity
+                'qty_processed' => $fgQuantity, // FG quantity for display
                 'unit_cost' => $unitCost,
-                'total_cost' => $qtyToProcess * $unitCost,
+                'total_cost' => $fgQuantity * $unitCost,
                 'lot_code' => $lotCode,
                 'category' => $category,
                 'success' => true

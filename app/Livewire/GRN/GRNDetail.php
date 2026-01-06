@@ -33,6 +33,9 @@ class GRNDetail extends Component
     public $itemNotes = '';
     public $itemSearchTerm = '';
     public bool $showItemDropdown = false;
+    
+    // Balance cancellation
+    public bool $showCancelBalanceModal = false;
 
     public function mount(int $id)
     {
@@ -466,9 +469,34 @@ class GRNDetail extends Component
             }
             
             if ($result['success']) {
+                // Refresh GRN data to get latest status
+                $this->grn->refresh();
+                $this->grn->load('items');
+                
+                // Update GRN status based on processing result
+                $hasPending = $this->grn->getTotalPendingQuantity() > 0;
+                $hasUnprocessed = $this->grn->hasUnprocessedItems();
+                
+                if ($hasPending || $hasUnprocessed) {
+                    // Set to partially_processed if there's balance or unprocessed items
+                    if ($this->grn->status !== 'partially_processed') {
+                        $this->grn->update(['status' => 'partially_processed']);
+                    }
+                } elseif ($this->grn->isFullyProcessed()) {
+                    // All received items processed, set to processed
+                    $this->grn->update([
+                        'status' => 'processed',
+                        'processed_at' => now()
+                    ]);
+                }
+                
                 $message = $enablePartialProcessing 
                     ? 'GRN items processed to stock successfully! Total value: $' . number_format($result['total_value'], 2)
                     : 'GRN processed to stock successfully! Total value: $' . number_format($result['total_value'], 2);
+                    
+                if ($hasPending) {
+                    $message .= ' Balance quantity (' . number_format($this->grn->getTotalPendingQuantity(), 2) . ' units) remains pending.';
+                }
                     
                 session()->flash('success', $message);
                 
@@ -578,6 +606,70 @@ class GRNDetail extends Component
             
         } catch (\Exception $e) {
             session()->flash('error', 'Failed to add partial receipt: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Open cancel balance modal
+     */
+    public function openCancelBalanceModal()
+    {
+        $this->showCancelBalanceModal = true;
+    }
+
+    /**
+     * Close cancel balance modal
+     */
+    public function closeCancelBalanceModal()
+    {
+        $this->showCancelBalanceModal = false;
+    }
+
+    /**
+     * Cancel balance quantities
+     */
+    public function cancelBalance()
+    {
+        try {
+            $this->grn->refresh();
+            $this->grn->load('items');
+            
+            // Only allow cancellation if there are pending quantities
+            if ($this->grn->getTotalPendingQuantity() <= 0) {
+                session()->flash('error', 'No balance quantity to cancel.');
+                return;
+            }
+            
+            // Update all items to mark pending quantities as cancelled
+            foreach ($this->grn->items as $item) {
+                if ($item->qty_pending > 0) {
+                    // Set pending to 0 and mark as fully received (even though we're cancelling the balance)
+                    // This effectively closes the balance
+                    $item->update([
+                        'qty_pending' => 0,
+                        'qty_expected' => $item->qty_received_partial, // Adjust expected to match received
+                    ]);
+                }
+            }
+            
+            // Update GRN status
+            if ($this->grn->hasUnprocessedItems()) {
+                $this->grn->update(['status' => 'partially_processed']);
+            } else {
+                $this->grn->update(['status' => 'processed']);
+            }
+            
+            session()->flash('success', 'Balance quantities have been cancelled successfully.');
+            
+            // Refresh GRN data
+            $this->grn->refresh();
+            $this->grn->load('items');
+            $this->syncItemsReceivingStatus();
+            
+            $this->closeCancelBalanceModal();
+            
+        } catch (\Exception $e) {
+            session()->flash('error', 'Failed to cancel balance: ' . $e->getMessage());
         }
     }
 

@@ -118,15 +118,27 @@
                                     : 0;
 
                                     // Get GRN received quantities from Purchase Orders
-                                    $grnReceivedQty = \App\Models\GRNItem::whereHas('grn', function($q) use ($jobOrder)
-                                    {
-                                        $q->whereHas('purchaseOrder', function($po) use ($jobOrder) {
-                                            $po->where('job_order_id', $jobOrder->id);
+                                    // Get all purchase orders for this job order (both direct and through items)
+                                    $purchaseOrderIds = \App\Models\PurchaseOrder::where(function($po) use ($jobOrder) {
+                                        $po->where('job_order_id', $jobOrder->id)
+                                           ->orWhereHas('items', function($item) use ($jobOrder) {
+                                               $item->where('job_order_id', $jobOrder->id);
+                                           });
+                                    })->pluck('id')->toArray();
+                                    
+                                    // Get GRN items from GRNs linked to these purchase orders
+                                    $grnReceivedQty = 0;
+                                    if (!empty($purchaseOrderIds)) {
+                                        $grnReceivedQty = \App\Models\GRNItem::whereHas('grn', function($q) use ($purchaseOrderIds) {
+                                            $q->whereIn('purchase_order_id', $purchaseOrderIds);
+                                        })
+                                        ->where('item_type', 'box')
+                                        ->where('item_id', $box->id)
+                                        ->get()
+                                        ->sum(function($item) {
+                                            return $item->qty_received_partial > 0 ? $item->qty_received_partial : ($item->qty_received ?? 0);
                                         });
-                                    })
-                                    ->where('item_type', 'box')
-                                    ->where('item_id', $box->id)
-                                    ->sum('qty_received_partial');
+                                    }
 
                                     $grnProgress = $boxQty > 0 ? min(100, ($grnReceivedQty / $boxQty) *
                                     100) : 0;
@@ -175,15 +187,27 @@
                                     100) : 0;
 
                                     // Get GRN received quantities from Purchase Orders
-                                    $grnReceivedQty = \App\Models\GRNItem::whereHas('grn', function($q) use ($jobOrder)
-                                    {
-                                        $q->whereHas('purchaseOrder', function($po) use ($jobOrder) {
-                                            $po->where('job_order_id', $jobOrder->id);
+                                    // Get all purchase orders for this job order (both direct and through items)
+                                    $purchaseOrderIds = \App\Models\PurchaseOrder::where(function($po) use ($jobOrder) {
+                                        $po->where('job_order_id', $jobOrder->id)
+                                           ->orWhereHas('items', function($item) use ($jobOrder) {
+                                               $item->where('job_order_id', $jobOrder->id);
+                                           });
+                                    })->pluck('id')->toArray();
+                                    
+                                    // Get GRN items from GRNs linked to these purchase orders
+                                    $grnReceivedQty = 0;
+                                    if (!empty($purchaseOrderIds)) {
+                                        $grnReceivedQty = \App\Models\GRNItem::whereHas('grn', function($q) use ($purchaseOrderIds) {
+                                            $q->whereIn('purchase_order_id', $purchaseOrderIds);
+                                        })
+                                        ->where('item_type', 'divider')
+                                        ->where('item_id', $divider->id)
+                                        ->get()
+                                        ->sum(function($item) {
+                                            return $item->qty_received_partial > 0 ? $item->qty_received_partial : ($item->qty_received ?? 0);
                                         });
-                                    })
-                                    ->where('item_type', 'divider')
-                                    ->where('item_id', $divider->id)
-                                    ->sum('qty_received_partial');
+                                    }
 
                                     $grnProgress = $divider->quantity > 0 ? min(100, ($grnReceivedQty /
                                     $divider->quantity) * 100) : 0;
@@ -229,17 +253,66 @@
                                     $totalOrderedQty = $jobOrder->boxes->sum(function($box) {
                                         return $box->board_qty ?? $box->order_qty;
                                     }) + $jobOrder->dividers->sum('quantity');
-                                    $totalGRNReceivedQty = \App\Models\GRNItem::whereHas('grn', function($q) use ($jobOrder) {
-                                        $q->whereHas('purchaseOrder', function($po) use ($jobOrder) {
-                                            $po->where('job_order_id', $jobOrder->id);
+                                    // Calculate total GRN received quantity
+                                    // Get all purchase orders for this job order (both direct and through items)
+                                    $purchaseOrderIds = \App\Models\PurchaseOrder::where(function($po) use ($jobOrder) {
+                                        $po->where('job_order_id', $jobOrder->id)
+                                           ->orWhereHas('items', function($item) use ($jobOrder) {
+                                               $item->where('job_order_id', $jobOrder->id);
+                                           });
+                                    })->pluck('id')->toArray();
+                                    
+                                    // Get GRN items from GRNs linked to these purchase orders
+                                    $totalGRNReceivedQty = 0;
+                                    if (!empty($purchaseOrderIds)) {
+                                        $totalGRNReceivedQty = \App\Models\GRNItem::whereHas('grn', function($q) use ($purchaseOrderIds) {
+                                            $q->whereIn('purchase_order_id', $purchaseOrderIds);
+                                        })
+                                        ->get()
+                                        ->sum(function($item) {
+                                            return $item->qty_received_partial > 0 ? $item->qty_received_partial : ($item->qty_received ?? 0);
                                         });
-                                    })->sum('qty_received_partial');
+                                    }
                                     $overallGRNProgress = $totalOrderedQty > 0 ? min(100, ($totalGRNReceivedQty / $totalOrderedQty) * 100) : 0;
+                                    
+                                    // Get GRN statuses for this job order
+                                    $grns = \App\Models\GRN::whereHas('purchaseOrder', function($po) use ($jobOrder) {
+                                        $po->where('job_order_id', $jobOrder->id);
+                                    })->get();
+                                    
+                                    // Count GRNs by status
+                                    $grnStatusCounts = [
+                                        'pending' => $grns->where('status', 'pending')->count(),
+                                        'partially_processed' => $grns->where('status', 'partially_processed')->count(),
+                                        'processed' => $grns->where('status', 'processed')->count(),
+                                        'cancelled' => $grns->where('status', 'cancelled')->count(),
+                                    ];
+                                    
+                                    // Determine overall GRN status
+                                    $overallGRNStatus = null;
+                                    if ($grns->count() > 0) {
+                                        if ($grnStatusCounts['processed'] == $grns->count()) {
+                                            $overallGRNStatus = 'processed';
+                                        } elseif ($grnStatusCounts['cancelled'] == $grns->count()) {
+                                            $overallGRNStatus = 'cancelled';
+                                        } elseif ($grnStatusCounts['partially_processed'] > 0 || ($grnStatusCounts['processed'] > 0 && $grnStatusCounts['pending'] > 0)) {
+                                            $overallGRNStatus = 'partially_processed';
+                                        } elseif ($grnStatusCounts['pending'] > 0) {
+                                            $overallGRNStatus = 'pending';
+                                        }
+                                    }
+                                    
+                                    $grnStatusColors = [
+                                        'pending' => 'bg-yellow-100 text-yellow-800',
+                                        'partially_processed' => 'bg-blue-100 text-blue-800',
+                                        'processed' => 'bg-green-100 text-green-800',
+                                        'cancelled' => 'bg-red-100 text-red-800',
+                                    ];
                                     @endphp
 
                                     @if($totalOrderedQty > 0)
                                     <div class="mt-2 pt-2 border-t border-gray-200">
-                                        <div class="flex items-center justify-between">
+                                        <div class="flex items-center justify-between mb-1">
                                             <span class="text-xs font-medium text-gray-700">Overall GRN Progress:</span>
                                             <span class="text-xs {{ $totalGRNReceivedQty > 0 ? 'text-orange-600' : 'text-gray-400' }}">
                                                 {{ number_format($overallGRNProgress, 1) }}%
@@ -251,6 +324,17 @@
                                         <div class="text-xs text-gray-500 mt-1">
                                             {{ number_format($totalGRNReceivedQty, 0) }}/{{ number_format($totalOrderedQty, 0) }} received
                                         </div>
+                                        @if($overallGRNStatus)
+                                        <div class="mt-2 flex items-center space-x-2">
+                                            <span class="text-xs text-gray-500">GRN Status:</span>
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {{ $grnStatusColors[$overallGRNStatus] ?? 'bg-gray-100 text-gray-800' }}">
+                                                {{ ucfirst(str_replace('_', ' ', $overallGRNStatus)) }}
+                                            </span>
+                                            @if($grns->count() > 1)
+                                                <span class="text-xs text-gray-400">({{ $grns->count() }} GRNs)</span>
+                                            @endif
+                                        </div>
+                                        @endif
                                     </div>
                                     @endif
                                 </div>

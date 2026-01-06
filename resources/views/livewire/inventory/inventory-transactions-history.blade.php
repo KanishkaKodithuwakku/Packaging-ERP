@@ -59,19 +59,6 @@
                 </div>
             </div>
 
-            <!-- Transaction Stats -->
-            @if($stats->count() > 0)
-                <div class="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
-                    @foreach($stats as $stat)
-                        <div class="bg-blue-50 p-4 rounded-lg">
-                            <h3 class="text-sm font-medium text-blue-800">{{ ucfirst($stat->txn_type) }}</h3>
-                            <p class="text-2xl font-bold text-blue-600">{{ $stat->count }}</p>
-                            <p class="text-sm text-blue-500">{{ $stat->total_qty }} units</p>
-                        </div>
-                    @endforeach
-                </div>
-            @endif
-
             <!-- Transactions Table -->
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
@@ -82,6 +69,7 @@
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Job Order</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Warehouse</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remarks</th>
@@ -89,6 +77,10 @@
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
                         @forelse($transactions as $transaction)
+                            @php
+                                $jobOrder = $transaction->getJobOrder();
+                                $jobOrderNumber = $jobOrder ? ($jobOrder->supplier_po_number ?? $jobOrder->job_number ?? 'N/A') : 'N/A';
+                            @endphp
                             <tr>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $transaction->txn_date }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $transaction->lot_code }}</td>
@@ -112,13 +104,14 @@
                                         {{ ucfirst($transaction->txn_type) }}
                                     </span>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $transaction->qty }} {{ $transaction->uom }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $jobOrderNumber }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ number_format($transaction->qty, 0) }} {{ $transaction->uom }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $transaction->warehouse }}</td>
                                 <td class="px-6 py-4 text-sm text-gray-500">{{ $transaction->remarks }}</td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="8" class="px-6 py-4 text-center text-sm text-gray-500">No transactions found</td>
+                                <td colspan="9" class="px-6 py-4 text-center text-sm text-gray-500">No transactions found</td>
                             </tr>
                         @endforelse
                     </tbody>

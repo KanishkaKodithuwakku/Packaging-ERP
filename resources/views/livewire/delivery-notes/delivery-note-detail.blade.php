@@ -6,7 +6,7 @@
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                 </svg>
-                <div class="font-medium">{!! session('success') !!}</div>
+                <div class="font-medium">{!! session()->pull('success') !!}</div>
             </div>
         </div>
     @endif
@@ -17,7 +17,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                 </svg>
                 <div>
-                    <div class="font-medium">{{ session('error') }}</div>
+                    <div class="font-medium">{{ session()->pull('error') }}</div>
                 </div>
             </div>
         </div>
@@ -28,7 +28,7 @@
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                 </svg>
-                <div class="font-medium">{!! session('info') !!}</div>
+                <div class="font-medium">{!! session()->pull('info') !!}</div>
             </div>
         </div>
     @endif
@@ -192,7 +192,7 @@
                                 @if($item->remaining_qty > 0)
                                     <div class="flex space-x-2">
                                         <input type="number" wire:model="dispatchQuantities.{{ $item->id }}"
-                                            step="0.01" min="0.01" max="{{ $item->remaining_qty }}"
+                                            step="1" min="1" max="{{ $item->remaining_qty }}"
                                             class="w-24 px-2 py-1 border border-gray-300 rounded-md text-sm">
                                         <button wire:click="dispatchItem({{ $item->id }}, {{ $dispatchQuantities[$item->id] ?? 0 }})"
                                             class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-md text-sm">
@@ -408,15 +408,30 @@
 
     @script
     <script>
-        // Listen for Livewire browser events dispatched from the component
-        window.addEventListener('openPrintDialog', () => {
-            // Print full delivery note (#printContent handles its own print styling)
-            window.print();
-        });
+        // Initialize print state
+        window.deliveryNotePrintState = window.deliveryNotePrintState || {
+            isPrinting: false
+        };
 
-        window.addEventListener('openDispatchPrintDialog', (event) => {
-            const transactionId = event.detail?.transactionId;
-            if (!transactionId) return;
+        // Function to handle full delivery note print
+        function handlePrintDeliveryNote() {
+            if (window.deliveryNotePrintState.isPrinting) return;
+            window.deliveryNotePrintState.isPrinting = true;
+            window.print();
+            setTimeout(() => { 
+                window.deliveryNotePrintState.isPrinting = false; 
+            }, 1000);
+        }
+
+        // Function to handle dispatch print
+        function handlePrintDispatch(transactionId) {
+            if (window.deliveryNotePrintState.isPrinting) return;
+            if (!transactionId) {
+                console.error('No transaction ID provided');
+                return;
+            }
+
+            window.deliveryNotePrintState.isPrinting = true;
 
             // Hide all print contents
             document.querySelectorAll('[id^="printContent"], [id^="printDispatch-"]').forEach(el => {
@@ -429,10 +444,54 @@
                 dispatchPrint.style.display = 'block';
                 setTimeout(() => {
                     window.print();
-                    dispatchPrint.style.display = 'none';
+                    setTimeout(() => {
+                        dispatchPrint.style.display = 'none';
+                        window.deliveryNotePrintState.isPrinting = false;
+                    }, 100);
                 }, 100);
+            } else {
+                console.error('Print element not found for transaction:', transactionId);
+                window.deliveryNotePrintState.isPrinting = false;
             }
-        });
+        }
+
+        // Register event listeners (remove old ones first to prevent duplicates)
+        const existingPrintListener = window._deliveryNotePrintListener;
+        const existingDispatchListener = window._deliveryNoteDispatchListener;
+        
+        if (existingPrintListener) {
+            window.removeEventListener('openPrintDialog', existingPrintListener);
+            if (typeof Livewire !== 'undefined') {
+                Livewire.off('openPrintDialog', existingPrintListener);
+            }
+        }
+        if (existingDispatchListener) {
+            window.removeEventListener('openDispatchPrintDialog', existingDispatchListener);
+            if (typeof Livewire !== 'undefined') {
+                Livewire.off('openDispatchPrintDialog', existingDispatchListener);
+            }
+        }
+
+        // Create new listeners
+        const printListener = () => handlePrintDeliveryNote();
+        const dispatchListener = (event) => {
+            const transactionId = event?.detail?.transactionId || event?.transactionId || (Array.isArray(event) ? event[0] : null);
+            handlePrintDispatch(transactionId);
+        };
+
+        // Store references
+        window._deliveryNotePrintListener = printListener;
+        window._deliveryNoteDispatchListener = dispatchListener;
+
+        // Register both browser events and Livewire events
+        window.addEventListener('openPrintDialog', printListener);
+        window.addEventListener('openDispatchPrintDialog', dispatchListener);
+
+        // Also listen via Livewire if available
+        if (typeof Livewire !== 'undefined') {
+            Livewire.on('openPrintDialog', printListener);
+            Livewire.on('openDispatchPrintDialog', dispatchListener);
+        }
     </script>
     @endscript
 </div>

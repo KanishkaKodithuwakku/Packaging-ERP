@@ -6,7 +6,7 @@
     <div class="flex justify-between items-center">
         <h1 class="mt-2 text-2xl font-bold">GRN Details</h1>
         
-        @if($grn && $grn->isFullyReceived() && $grn->hasUnprocessedItems())
+        @if($grn && $grn->hasUnprocessedItems() && $grn->hasPartialReceiving())
             <div class="flex space-x-2">
                 <button wire:click="openModal" 
                         wire:loading.attr="disabled"
@@ -14,22 +14,29 @@
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                     </svg>
-                    Process to Stock
+                    {{ $grn->isFullyReceived() ? 'Process to Stock' : 'Process Partial to Stock' }}
                 </button>
             </div>
-        @elseif($grn && !$grn->isFullyReceived())
+        @elseif($grn && !$grn->hasPartialReceiving() && $grn->status !== 'processed')
             <div class="inline-flex items-center px-4 py-3 bg-yellow-50 border-2 border-yellow-400 rounded-lg shadow-md">
                 <svg class="w-6 h-6 text-yellow-600 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
                 </svg>
                 <span class="text-base font-bold text-yellow-800">
-                    All items must be received before processing to stock
+                    No items received yet. Please receive items before processing to stock.
                 </span>
             </div>
         @endif
     </div>
 
     @if($grn)
+        @php
+            // Calculate balance management figures for header
+            $totalReceived = $grn->getTotalPartiallyReceivedQuantity();
+            $totalProcessed = $grn->getTotalProcessedQuantity();
+            $totalPending = $grn->getTotalPendingQuantity();
+            $availableToProcess = max(0, $totalReceived - $totalProcessed);
+        @endphp
 
         <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -148,9 +155,47 @@
             @endif
         </div>
 
+        <!-- Balance Management Summary in Header -->
+        <div class="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <p class="text-xs font-medium text-blue-600 uppercase mb-1">Total Received</p>
+                <p class="text-2xl font-bold text-blue-900">{{ number_format($totalReceived, 2) }}</p>
+            </div>
+            <div class="bg-green-50 p-4 rounded-lg border border-green-200">
+                <p class="text-xs font-medium text-green-600 uppercase mb-1">Processed to Stock</p>
+                <p class="text-2xl font-bold text-green-900">{{ number_format($totalProcessed, 2) }}</p>
+            </div>
+            <div class="bg-orange-50 p-4 rounded-lg border border-orange-200">
+                <p class="text-xs font-medium text-orange-600 uppercase mb-1">Pending to Receive</p>
+                <p class="text-2xl font-bold text-orange-900">{{ number_format($totalPending, 2) }}</p>
+            </div>
+            <div class="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                <p class="text-xs font-medium text-purple-600 uppercase mb-1">Available to Process</p>
+                <p class="text-2xl font-bold text-purple-900">{{ number_format($availableToProcess, 2) }}</p>
+            </div>
+        </div>
+
         <div class="mt-8">
             <div class="flex justify-between items-center mb-3">
-                <h2 class="text-lg font-semibold">Items</h2>
+                <div>
+                    <h2 class="text-lg font-semibold">Items</h2>
+                    @php
+                        $itemsWithAvailableQty = $grn->items->filter(function($item) {
+                            $availableToProcess = max(0, ($item->qty_received_partial ?? 0) - ($item->qty_processed ?? 0));
+                            return ($item->qty_received_partial ?? 0) > 0 && $availableToProcess > 0;
+                        });
+                    @endphp
+                    @if($itemsWithAvailableQty->count() > 0)
+                        <p class="text-sm text-gray-600 mt-1">
+                            <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-green-100 text-green-800">
+                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                {{ $itemsWithAvailableQty->count() }} item(s) available to process to stock
+                            </span>
+                        </p>
+                    @endif
+                </div>
                 @if(!$grn->supplier_po_id && !$grn->production_order_id && !$grn->purchase_order_id && $grn->status !== 'processed')
                     <button wire:click="openAddItemModal" 
                             class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
@@ -186,8 +231,10 @@
                                 $purchaseOrderItem = $item->getPurchaseOrderItem();
                                 $jobOrder = $purchaseOrderItem ? $purchaseOrderItem->jobOrder : null;
                                 $customer = $jobOrder ? $jobOrder->customer : null;
+                                $availableToProcess = max(0, ($item->qty_received_partial ?? 0) - ($item->qty_processed ?? 0));
+                                $hasAvailableToProcess = $availableToProcess > 0;
                             @endphp
-                            <tr>
+                            <tr class="{{ $hasAvailableToProcess ? 'bg-green-50 hover:bg-green-100' : '' }}">
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ ucfirst($item->item_type) }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $item->description }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $item->material_code }}</td>
@@ -200,7 +247,19 @@
                                 </td>
                                 @endif
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ number_format($item->qty_expected ?? $item->qty_received, 2) }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ number_format($item->qty_received_partial ?? 0, 2) }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    <div class="flex items-center space-x-2">
+                                        <span>{{ number_format($item->qty_received_partial ?? 0, 2) }}</span>
+                                        @if($hasAvailableToProcess)
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800" title="Available to process: {{ number_format($availableToProcess, 2) }}">
+                                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                </svg>
+                                                {{ number_format($availableToProcess, 2) }} available
+                                            </span>
+                                        @endif
+                                    </div>
+                                </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ number_format($item->qty_pending ?? ($item->qty_expected ?? $item->qty_received), 2) }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm">
                                     <div class="flex items-center">
@@ -263,6 +322,7 @@
             </div>
         </div>
 
+
             <!-- Processing Modal -->
             @if($showProcessingModal)
             <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
@@ -316,10 +376,17 @@
                             <h4 class="text-sm font-medium text-gray-700">Partial Quantities</h4>
                             <div class="text-xs text-gray-500">
                                 @php
+                                    $itemsWithAvailableQty = $grn->items->filter(function($item) {
+                                        $availableForProcessing = $item->qty_received_partial - ($item->qty_processed ?? 0);
+                                        return $item->qty_received_partial > 0 && $availableForProcessing > 0;
+                                    });
                                     $receivedItems = $grn->items->where('qty_received_partial', '>', 0);
                                     $notReceivedItems = $grn->items->where('qty_received_partial', '=', 0);
                                 @endphp
-                                <span class="text-green-600">{{ $receivedItems->count() }} received</span>
+                                <span class="text-green-600">{{ $itemsWithAvailableQty->count() }} available to process</span>
+                                @if($receivedItems->count() > $itemsWithAvailableQty->count())
+                                    <span class="text-gray-400">• {{ $receivedItems->count() - $itemsWithAvailableQty->count() }} already processed</span>
+                                @endif
                                 @if($notReceivedItems->count() > 0)
                                     <span class="text-gray-400">• {{ $notReceivedItems->count() }} not received</span>
                                 @endif
@@ -327,7 +394,10 @@
                         </div>
                         <div class="space-y-3 max-h-60 overflow-y-auto">
                             @foreach($grn->items as $item)
-                                @if($item->qty_received_partial > 0)
+                                @php
+                                    $availableForProcessing = $item->qty_received_partial - ($item->qty_processed ?? 0);
+                                @endphp
+                                @if($item->qty_received_partial > 0 && $availableForProcessing > 0)
                                 <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg border">
                                     <div class="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                         <div>
@@ -343,13 +413,17 @@
                                             <p class="text-sm font-medium text-green-600">{{ number_format($item->qty_received_partial, 2) }} {{ $item->uom }}</p>
                                         </div>
                                         <div>
-                                            <p class="text-xs text-gray-500">Pending</p>
+                                            <p class="text-xs text-gray-500">Pending to Receive</p>
                                             <p class="text-sm font-medium text-orange-600">{{ number_format($item->qty_pending, 2) }} {{ $item->uom }}</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-xs text-gray-500">Already Processed</p>
+                                            <p class="text-sm font-medium text-blue-600">{{ number_format($item->qty_processed ?? 0, 2) }} {{ $item->uom }}</p>
                                         </div>
                                     </div>
                                     <div class="ml-6 flex items-center space-x-2">
                                         @php
-                                            $availableForProcessing = $item->qty_received_partial - ($item->qty_processed ?? 0);
+                                            $balanceAfterProcessing = $item->qty_pending; // Balance will remain the same (pending to receive)
                                         @endphp
                                         <label class="text-sm font-medium text-gray-700">Process:</label>
                                         <input type="number" 
@@ -386,8 +460,12 @@
                                             <p class="text-sm font-medium text-gray-500">{{ number_format($item->qty_received_partial, 2) }} {{ $item->uom }}</p>
                                         </div>
                                         <div>
-                                            <p class="text-xs text-gray-400">Pending</p>
+                                            <p class="text-xs text-gray-400">Pending to Receive</p>
                                             <p class="text-sm font-medium text-gray-500">{{ number_format($item->qty_pending, 2) }} {{ $item->uom }}</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-xs text-gray-400">Already Processed</p>
+                                            <p class="text-sm font-medium text-gray-500">{{ number_format($item->qty_processed ?? 0, 2) }} {{ $item->uom }}</p>
                                         </div>
                                     </div>
                                     <div class="ml-6 flex items-center space-x-2">
@@ -418,7 +496,13 @@
 
                     <div class="flex justify-between items-center pt-4 border-t border-gray-200">
                         <div class="text-sm text-gray-500">
-                            <span class="font-medium">{{ $grn->items->where('qty_received_partial', '>', 0)->count() }}</span> items to process
+                            @php
+                                $itemsWithAvailableQty = $grn->items->filter(function($item) {
+                                    $availableForProcessing = $item->qty_received_partial - ($item->qty_processed ?? 0);
+                                    return $item->qty_received_partial > 0 && $availableForProcessing > 0;
+                                });
+                            @endphp
+                            <span class="font-medium">{{ $itemsWithAvailableQty->count() }}</span> items to process
                             @if($grn->items->where('qty_received_partial', '=', 0)->count() > 0)
                                 <span class="text-gray-400">({{ $grn->items->where('qty_received_partial', '=', 0)->count() }} not received)</span>
                             @endif
@@ -619,6 +703,46 @@
                         </button>
                     </div>
                 @endif
+            </div>
+        </div>
+    </div>
+    @endif
+
+    <!-- Cancel Balance Modal -->
+    @if($showCancelBalanceModal)
+    <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <div class="flex items-center justify-center w-12 h-12 mx-auto bg-red-100 rounded-full mb-4">
+                    <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                </div>
+
+                <h3 class="text-lg font-medium text-gray-900 text-center mb-2">
+                    Cancel Balance Quantities
+                </h3>
+
+                <div class="text-center text-sm text-gray-600 mb-6">
+                    <p class="mb-2">Are you sure you want to cancel the balance quantities?</p>
+                    <p class="font-semibold text-gray-900">
+                        Total Balance: {{ number_format($grn->getTotalPendingQuantity(), 2) }} units
+                    </p>
+                    <p class="text-xs text-gray-500 mt-2">
+                        This will mark all pending quantities as cancelled. This action cannot be undone.
+                    </p>
+                </div>
+
+                <div class="flex space-x-3">
+                    <button wire:click="closeCancelBalanceModal"
+                            class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-4 rounded-md transition-colors">
+                        Cancel
+                    </button>
+                    <button wire:click="cancelBalance"
+                            class="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-md transition-colors">
+                        Confirm Cancellation
+                    </button>
+                </div>
             </div>
         </div>
     </div>

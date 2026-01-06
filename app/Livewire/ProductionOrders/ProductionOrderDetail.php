@@ -80,6 +80,13 @@ class ProductionOrderDetail extends Component
     public function toggleEditMode()
     {
         $this->isEditMode = !$this->isEditMode;
+        
+        // Initialize item quantities when entering edit mode
+        if ($this->isEditMode) {
+            foreach ($this->productionOrder->items as $item) {
+                $this->itemQuantities[$item->id] = $item->quantity;
+            }
+        }
     }
 
     public function saveProductionOrder()
@@ -98,6 +105,16 @@ class ProductionOrderDetail extends Component
                 'status' => $this->form['status'],
                 'notes' => $this->form['notes'],
             ]);
+            
+            // Update item quantities if they were changed
+            if (!empty($this->itemQuantities)) {
+                foreach ($this->itemQuantities as $itemId => $quantity) {
+                    $item = $this->productionOrder->items()->find($itemId);
+                    if ($item && $item->completed_quantity == 0) { // Only update if nothing completed
+                        $item->update(['quantity' => (int) $quantity]);
+                    }
+                }
+            }
             
             // Reload the production order
             $this->loadProductionOrder();

@@ -126,141 +126,132 @@
                 </div>
             </div>
 
-            <!-- Inventory by Category Chart -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                <div class="bg-white border rounded-lg p-6">
-                    <h3 class="text-lg font-semibold mb-4">Inventory by Category</h3>
-                    <div class="space-y-3">
-                        @foreach($inventoryByCategory as $category)
-                            <div class="flex justify-between items-center">
-                                <span class="font-medium">{{ $category->category }}</span>
-                                <span class="text-lg font-bold">{{ number_format($category->total_qty, 0) }}</span>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-
-                <div class="bg-white border rounded-lg p-6">
-                    <h3 class="text-lg font-semibold mb-4">Inventory by Warehouse</h3>
-                    <div class="space-y-3">
-                        @foreach($inventoryByWarehouse as $warehouse)
-                            <div class="flex justify-between items-center">
-                                <span class="font-medium">{{ $warehouse->warehouse }}</span>
-                                <span class="text-lg font-bold">{{ number_format($warehouse->total_qty, 0) }}</span>
-                            </div>
-                        @endforeach
-                    </div>
-                </div>
-            </div>
-
-            <!-- Low Stock Items -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div class="bg-white border rounded-lg p-6">
-                    <h3 class="text-lg font-semibold mb-4 text-red-600">Low Stock Items</h3>
-                    <div class="space-y-3">
-                        @forelse($lowStockItems as $item)
-                            <div class="flex justify-between items-center p-3 bg-red-50 rounded">
-                                <div>
-                                    <p class="font-medium">{{ $item->item_code }}</p>
-                                    <p class="text-sm text-gray-600">{{ $item->lot_code }}</p>
-                                </div>
-                                <span class="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">
-                                    {{ number_format($item->qty_available, 0) }} {{ $item->uom }}
-                                </span>
-                            </div>
-                        @empty
-                            <p class="text-gray-500">No low stock items</p>
-                        @endforelse
-                    </div>
-                </div>
-
+            <!-- Available Raw Materials for Production -->
+            <div class="grid grid-cols-1 gap-6">
                 <div id="available-materials" class="bg-white border rounded-lg p-6">
                     <h3 class="text-lg font-semibold mb-4">Available Raw Materials for Production</h3>
-                    <div class="space-y-3">
-                        @forelse($availableRawMaterials as $transaction)
-                            <div class="flex justify-between items-center p-3 bg-blue-50 rounded-lg border border-blue-200">
-                                <div class="flex-1">
-                                    <div class="flex items-center justify-between mb-1">
-                                        <p class="font-medium text-gray-900">{{ $transaction->item_code }}</p>
-                                        <span class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800 font-semibold">
-                                            {{ number_format($transaction->qty, 0) }} {{ $transaction->uom }}
-                                        </span>
-                                    </div>
-                                    <div class="text-xs text-gray-600 space-y-1">
-                                        <p>Lot: <span class="font-mono">{{ $transaction->lot_code }}</span></p>
-                                        <p>Date: {{ $transaction->txn_date->format('Y-m-d') }}</p>
-                                        @if($transaction->getJobOrder())
-                                            <p>Job Order: <span class="font-medium">{{ $transaction->getJobOrder()->job_number }}</span></p>
-                                        @endif
-                                        @if(isset($transaction->customerName) && $transaction->customerName !== 'N/A')
-                                            <p>
-                                                <span class="font-medium text-gray-900">Customer:</span>
-                                                <span class="text-gray-700">{{ $transaction->customerName }}</span>
-                                            </p>
-                                        @endif
-                                        @if(isset($transaction->dimensions) && $transaction->dimensions !== 'N/A')
-                                            <p>
-                                                <span class="font-medium text-gray-900">Dimensions:</span>
-                                                <span class="text-gray-700">{{ $transaction->dimensions }}</span>
-                                            </p>
-                                        @endif
-                                        @if(isset($transaction->hasProductionOrder) && $transaction->hasProductionOrder)
-                                            <p class="mt-2">
-                                                <span class="font-medium text-gray-900">Production Order:</span> 
-                                                <span class="text-blue-600">{{ $transaction->productionOrderNumber ?? 'N/A' }}</span>
-                                            </p>
-                                            <p>
-                                                <span class="font-medium text-gray-900">Status:</span>
-                                                @if(isset($transaction->productionStatus))
-                                                    @if($transaction->productionStatus === 'completed')
-                                                        <span class="px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-800">Completed</span>
-                                                    @elseif($transaction->productionStatus === 'in_production')
-                                                        <span class="px-2 py-0.5 text-xs rounded-full bg-yellow-100 text-yellow-800">In Production</span>
-                                                    @else
-                                                        <span class="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-800">{{ ucfirst($transaction->productionStatus) }}</span>
-                                                    @endif
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Material Code</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lot</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Job Order</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Dimensions</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                @forelse($availableRawMaterials as $transaction)
+                                    <tr class="hover:bg-gray-50">
+                                        <td class="px-4 py-3 whitespace-nowrap">
+                                            <div class="flex items-center space-x-2">
+                                                <span class="text-sm font-medium text-gray-900">{{ $transaction->item_code }}</span>
+                                                @if(isset($transaction->itemType))
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {{ $transaction->itemType === 'Box' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800' }}">
+                                                        {{ $transaction->itemType }}
+                                                    </span>
                                                 @endif
-                                            </p>
-                                        @endif
-                                    </div>
-                                </div>
-                                <div class="ml-4">
-                                    @if(isset($transaction->hasProductionOrder) && $transaction->hasProductionOrder)
-                                        <!-- Show Progress -->
-                                        <div class="min-w-[120px]">
-                                            <div class="text-xs text-gray-600 mb-1 text-center">
-                                                Progress: {{ number_format($transaction->productionProgress ?? 0, 1) }}%
                                             </div>
-                                            <div class="w-full bg-gray-200 rounded-full h-2.5">
-                                                <div class="bg-green-600 h-2.5 rounded-full transition-all duration-300" 
-                                                     style="width: {{ min(100, max(0, $transaction->productionProgress ?? 0)) }}%"></div>
-                                            </div>
-                                            @if(isset($transaction->productionOrder))
-                                                @php
-                                                    $totalQty = $transaction->productionOrder->getTotalQuantity();
-                                                    $completedQty = $transaction->productionOrder->getCompletedQuantity();
-                                                @endphp
-                                                <div class="text-xs text-gray-500 mt-1 text-center">
-                                                    {{ number_format($completedQty, 0) }} / {{ number_format($totalQty, 0) }} PCS
+                                        </td>
+                                        <td class="px-4 py-3 whitespace-nowrap">
+                                            <span class="text-sm text-gray-900 font-mono">{{ $transaction->lot_code }}</span>
+                                        </td>
+                                        <td class="px-4 py-3 whitespace-nowrap">
+                                            <span class="text-sm text-gray-900">{{ $transaction->txn_date->format('Y-m-d') }}</span>
+                                        </td>
+                                        <td class="px-4 py-3 whitespace-nowrap">
+                                            <span class="text-sm text-gray-900">{{ $transaction->jobOrderNumber ?? 'N/A' }}</span>
+                                        </td>
+                                        <td class="px-4 py-3 whitespace-nowrap">
+                                            <span class="text-sm text-gray-900">{{ $transaction->customerName ?? 'N/A' }}</span>
+                                        </td>
+                                        <td class="px-4 py-3 whitespace-nowrap">
+                                            <span class="text-sm text-gray-900">{{ $transaction->dimensions ?? 'N/A' }}</span>
+                                        </td>
+                                        <td class="px-4 py-3 whitespace-nowrap">
+                                            <span class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800 font-semibold">
+                                                {{ number_format($transaction->qty, 0) }} {{ $transaction->uom }}
+                                            </span>
+                                        </td>
+                                        <td class="px-4 py-3 whitespace-nowrap">
+                                            @if(isset($transaction->hasProductionOrder) && $transaction->hasProductionOrder)
+                                                <div class="text-xs">
+                                                    <div class="text-gray-600 mb-1">Progress: {{ number_format($transaction->productionProgress ?? 0, 1) }}%</div>
+                                                    <div class="w-full bg-gray-200 rounded-full h-2">
+                                                        <div class="bg-green-600 h-2 rounded-full" style="width: {{ min(100, max(0, $transaction->productionProgress ?? 0)) }}%"></div>
+                                                    </div>
+                                                    @if(isset($transaction->productionStatus))
+                                                        <div class="mt-1">
+                                                            @if($transaction->productionStatus === 'completed')
+                                                                <span class="px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-800">Completed</span>
+                                                            @elseif($transaction->productionStatus === 'in_production')
+                                                                <span class="px-2 py-0.5 text-xs rounded-full bg-yellow-100 text-yellow-800">In Production</span>
+                                                            @else
+                                                                <span class="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-800">{{ ucfirst($transaction->productionStatus) }}</span>
+                                                            @endif
+                                                        </div>
+                                                    @endif
                                                 </div>
+                                            @else
+                                                <span class="text-sm text-gray-500">Ready</span>
                                             @endif
-                                        </div>
-                                    @else
-                                        <!-- Show Start Production Button -->
-                                        <button wire:click="openProductionOrderModal({{ $transaction->id }})"
-                                                class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
-                                                title="Start Production Order">
-                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                                            </svg>
-                                            Start Production
-                                        </button>
-                                    @endif
-                                </div>
-                            </div>
-                        @empty
-                            <p class="text-gray-500">No raw materials available for production</p>
-                        @endforelse
+                                        </td>
+                                        <td class="px-4 py-3 whitespace-nowrap">
+                                            @if(isset($transaction->hasProductionOrder) && $transaction->hasProductionOrder)
+                                                @if(isset($transaction->productionOrder))
+                                                    @php
+                                                        $totalQty = $transaction->productionOrder->getTotalQuantity();
+                                                        $completedQty = $transaction->productionOrder->getCompletedQuantity();
+                                                        // Check if production order quantity matches transaction quantity
+                                                        $qtyMismatch = $totalQty != $transaction->qty && $completedQty == 0;
+                                                        $isCompleted = $transaction->productionOrder->status === 'completed';
+                                                    @endphp
+                                                    <div class="space-y-2">
+                                                        <div class="text-xs text-gray-500">
+                                                            {{ number_format($completedQty, 0) }} / {{ number_format($totalQty, 0) }} PCS
+                                                        </div>
+                                                        @if($isCompleted)
+                                                            <button wire:click="openArchiveModal({{ $transaction->productionOrder->id }}, {{ $transaction->id }})"
+                                                                    class="inline-flex items-center px-2 py-1 text-xs font-medium rounded-md text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                                                                    title="Archive Production Order">
+                                                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path>
+                                                                </svg>
+                                                                Archive
+                                                            </button>
+                                                        @elseif($qtyMismatch)
+                                                            <button wire:click="deleteProductionOrder({{ $transaction->productionOrder->id }}, {{ $transaction->id }})"
+                                                                    wire:confirm="Delete this production order and create a new one with correct quantity ({{ number_format($transaction->qty, 0) }} PCS)?"
+                                                                    class="text-xs text-red-600 hover:text-red-800 underline">
+                                                                Fix Quantity
+                                                            </button>
+                                                        @endif
+                                                    </div>
+                                                @endif
+                                            @else
+                                                <button wire:click="openProductionOrderModal({{ $transaction->id }})"
+                                                        class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                                                        title="Start Production Order">
+                                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                                    </svg>
+                                                    Start Production
+                                                </button>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                @empty
+                                    <tr>
+                                        <td colspan="9" class="px-4 py-8 text-center text-gray-500">No raw materials available for production</td>
+                                    </tr>
+                                @endforelse
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -283,6 +274,18 @@
 
                 @if($selectedTransaction)
                 <div class="space-y-4">
+                    <!-- Success/Error Messages -->
+                    @if (session()->has('success'))
+                        <div class="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded">
+                            {{ session()->pull('success') }}
+                        </div>
+                    @endif
+                    @if (session()->has('error'))
+                        <div class="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+                            {{ session()->pull('error') }}
+                        </div>
+                    @endif
+                    
                     <!-- Transaction Details -->
                     <div class="bg-gray-50 p-4 rounded-lg">
                         <h4 class="font-medium text-gray-900 mb-2">Transaction Details</h4>
@@ -403,15 +406,57 @@
                             Cancel
                         </button>
                         <button wire:click="createProductionOrder" 
-                                class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
-                            <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                            </svg>
-                            Create Production Order
+                                wire:loading.attr="disabled"
+                                wire:target="createProductionOrder"
+                                class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <span wire:loading.remove wire:target="createProductionOrder">
+                                <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                                </svg>
+                                Create Production Order
+                            </span>
+                            <span wire:loading wire:target="createProductionOrder">
+                                Creating...
+                            </span>
                         </button>
                     </div>
                 </div>
                 @endif
+            </div>
+        </div>
+    </div>
+    @endif
+
+    <!-- Archive Confirmation Modal -->
+    @if($showArchiveModal)
+    <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" wire:click.self="closeArchiveModal">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <div class="flex items-center justify-center w-12 h-12 mx-auto bg-yellow-100 rounded-full mb-4">
+                    <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                </div>
+
+                <h3 class="text-lg font-medium text-gray-900 text-center mb-2">
+                    Archive Production Order
+                </h3>
+
+                <div class="text-center text-sm text-gray-600 mb-4">
+                    <p>Are you sure you want to archive this completed production order?</p>
+                    <p class="mt-2 font-medium">It will be hidden from the dashboard.</p>
+                </div>
+
+                <div class="flex space-x-3">
+                    <button wire:click="closeArchiveModal"
+                            class="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 font-medium py-2 px-4 rounded-md transition-colors">
+                        Cancel
+                    </button>
+                    <button wire:click="archiveProductionOrder"
+                            class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-md transition-colors">
+                        Archive
+                    </button>
+                </div>
             </div>
         </div>
     </div>

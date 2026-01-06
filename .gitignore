@@ -26,3 +26,5 @@ public/build.zip
 public/css/
 public/error_log
 composer.lock
+docs/GRN_PROGRESS_CALCULATION_GUIDE.md
+docs/GRN_PROGRESS_CALCULATION_GUIDE.pdf

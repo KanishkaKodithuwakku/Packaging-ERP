@@ -321,11 +321,40 @@
                                 $noOfUps = $item->getNoOfUps();
                                 $expectedFromMaterial = $item->getExpectedFinishedGoodsFromMaterial();
                                 $effectiveMaxQty = $item->getEffectiveMaxQuantity();
+                                $jobOrderOrderQty = $item->getJobOrderOrderQuantity();
+                                // Check if quantity is wrong (matches job order quantity but should be from transaction)
+                                $quantityMismatch = $item->quantity == $jobOrderOrderQty && $item->completed_quantity == 0;
                             @endphp
-                            {{ number_format($effectiveMaxQty) }}
-                            <div class="text-xs text-gray-400 mt-1">
-                                ({{ number_format($materialQty) }} × {{ $noOfUps }} = {{ number_format($expectedFromMaterial) }})
-                            </div>
+                            @if($isEditMode)
+                                <div class="space-y-2">
+                                    <input type="number" 
+                                           wire:model="itemQuantities.{{ $item->id }}"
+                                           min="1" 
+                                           max="{{ $jobOrderOrderQty }}"
+                                           class="w-32 px-2 py-1 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm">
+                                    @if($quantityMismatch)
+                                        <div class="text-xs text-red-600">
+                                            Was: {{ number_format($item->quantity) }} (incorrect - matches job order)
+                                        </div>
+                                    @endif
+                                    <div class="text-xs text-gray-400">
+                                        ({{ number_format($materialQty) }} × {{ $noOfUps }} = {{ number_format($expectedFromMaterial) }})
+                                    </div>
+                                </div>
+                            @else
+                                {{ number_format($item->quantity) }}
+                                @if($quantityMismatch)
+                                    <div class="text-xs text-red-600 mt-1">
+                                        <button wire:click="toggleEditMode" 
+                                                class="underline hover:text-red-800">
+                                            Fix Quantity (currently shows job order qty)
+                                        </button>
+                                    </div>
+                                @endif
+                                <div class="text-xs text-gray-400 mt-1">
+                                    ({{ number_format($materialQty) }} × {{ $noOfUps }} = {{ number_format($expectedFromMaterial) }})
+                                </div>
+                            @endif
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {{ number_format($item->completed_quantity) }}
@@ -362,7 +391,7 @@
                                 <div class="text-xs text-gray-500 mt-1">
                                     <div>Remaining: {{ number_format($maxCanComplete) }} / Max: {{ number_format($effectiveMaxQty) }}</div>
                                     <div class="text-gray-400">
-                                        Material: {{ number_format($materialQty) }} × UPS: {{ $noOfUps }} = {{ number_format($expectedFromMaterial) }} | Job Order: {{ number_format($jobOrderOrderQty) }}
+                                        Material: {{ number_format($materialQty) }} × UPS: {{ $noOfUps }} = {{ number_format($expectedFromMaterial) }} | Production Order: {{ number_format($item->quantity) }} | Job Order: {{ number_format($jobOrderOrderQty) }}
                                     </div>
                                 </div>
                             @else
@@ -410,6 +439,7 @@
                     <tr>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">GRN No</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lot Code</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Received Date</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Qty</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Processed</th>
@@ -436,6 +466,15 @@
                                     Multi
                                 </span>
                             @endif
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            @php
+                                $category = $grn->isFromProductionOrder() ? 'FG' : 'RAW';
+                            @endphp
+                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                {{ $category === 'FG' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800' }}">
+                                {{ $category }}
+                            </span>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                             {{ $grn->received_date ? $grn->received_date->format('M d, Y') : 'N/A' }}

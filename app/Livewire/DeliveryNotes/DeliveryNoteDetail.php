@@ -29,6 +29,20 @@ class DeliveryNoteDetail extends Component
         ])->findOrFail($id);
         
         $this->checkExistingInvoice();
+        $this->initializeDispatchQuantities();
+    }
+    
+    /**
+     * Initialize dispatch quantities with remaining quantities as defaults
+     */
+    public function initializeDispatchQuantities()
+    {
+        $this->dispatchQuantities = [];
+        foreach ($this->deliveryNote->items as $item) {
+            if ($item->remaining_qty > 0) {
+                $this->dispatchQuantities[$item->id] = (int) $item->remaining_qty;
+            }
+        }
     }
     
     public function checkExistingInvoice()
@@ -38,8 +52,8 @@ class DeliveryNoteDetail extends Component
 
     public function dispatchItem($itemId, $quantity)
     {
-        // Get the actual quantity from the form array
-        $actualQty = $this->dispatchQuantities[$itemId] ?? 0;
+        // Get the actual quantity from the form array and cast to integer
+        $actualQty = (int) ($this->dispatchQuantities[$itemId] ?? 0);
         
         if ($actualQty <= 0) {
             session()->flash('error', 'Please enter a quantity greater than 0.');
@@ -47,11 +61,11 @@ class DeliveryNoteDetail extends Component
         }
 
         $this->validate([
-            "dispatchQuantities.{$itemId}" => 'required|numeric|min:0.01',
+            "dispatchQuantities.{$itemId}" => 'required|integer|min:1',
         ], [
             "dispatchQuantities.{$itemId}.required" => 'Quantity is required',
-            "dispatchQuantities.{$itemId}.numeric" => 'Quantity must be a number',
-            "dispatchQuantities.{$itemId}.min" => 'Quantity must be greater than 0',
+            "dispatchQuantities.{$itemId}.integer" => 'Quantity must be a whole number',
+            "dispatchQuantities.{$itemId}.min" => 'Quantity must be at least 1',
         ]);
 
         $item = DeliveryNoteItem::findOrFail($itemId);
@@ -130,7 +144,9 @@ class DeliveryNoteDetail extends Component
             $this->deliveryNote->refresh();
             $this->deliveryNote->load('items');
 
-            $this->dispatchQuantities[$itemId] = 0;
+            // Update dispatch quantity for this item to remaining quantity (or 0 if fully dispatched)
+            $item->refresh();
+            $this->dispatchQuantities[$itemId] = $item->remaining_qty > 0 ? (int) $item->remaining_qty : 0;
             session()->flash('success', "Dispatched {$actualQty} units successfully. Transaction ID: {$transaction->id}");
 
         } catch (\Exception $e) {
@@ -365,6 +381,16 @@ class DeliveryNoteDetail extends Component
     {
         // Refresh invoice check on each render
         $this->checkExistingInvoice();
+        
+        // Ensure dispatch quantities are initialized for items that don't have values set
+        foreach ($this->deliveryNote->items as $item) {
+            if ($item->remaining_qty > 0 && !isset($this->dispatchQuantities[$item->id])) {
+                $this->dispatchQuantities[$item->id] = (int) $item->remaining_qty;
+            } elseif ($item->remaining_qty <= 0 && isset($this->dispatchQuantities[$item->id])) {
+                // Clear quantity if item is fully dispatched
+                $this->dispatchQuantities[$item->id] = 0;
+            }
+        }
         
         return view('livewire.delivery-notes.delivery-note-detail');
     }

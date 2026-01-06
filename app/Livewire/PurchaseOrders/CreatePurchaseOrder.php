@@ -441,10 +441,25 @@ class CreatePurchaseOrder extends Component
                 $query->where('status', '!=', 'cancelled');
             })
             ->sum('quantity');
+        
+        // Get GRN received quantities (including balance/pending)
+        // Balance quantities (pending to receive) should still count as "purchased" 
+        // because they're expected to be received
+        $grnReceivedQty = \App\Models\GRNItem::where('item_type', $item instanceof JobOrderBox ? 'box' : 'divider')
+            ->where('item_id', $item->id)
+            ->whereHas('grn', function($query) {
+                $query->where('status', '!=', 'cancelled');
+            })
+            ->sum('qty_received_partial');
+        
+        // Calculate effective purchased quantity
+        // If GRN received is less than purchased, use purchased (some not yet received)
+        // If GRN received equals or exceeds purchased, use purchased (all received, some may be processed)
+        $effectivePurchasedQty = max($purchasedQty, $grnReceivedQty);
             
         // Use board_qty for boxes instead of order_qty, quantity for dividers
         $originalQty = $item instanceof JobOrderBox ? ($item->board_qty ?? $item->order_qty) : $item->quantity;
-        return max(0, $originalQty - $purchasedQty);
+        return max(0, $originalQty - $effectivePurchasedQty);
     }
 
     private function logUnavailableItems($jobOrders)

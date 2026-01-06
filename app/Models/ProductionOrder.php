@@ -15,10 +15,12 @@ class ProductionOrder extends Model
         'supplier_id',
         'status',
         'notes',
+        'archived_at',
     ];
 
     protected $casts = [
         'date' => 'date',
+        'archived_at' => 'datetime',
     ];
 
     /**

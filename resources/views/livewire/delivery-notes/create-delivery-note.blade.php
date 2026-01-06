@@ -68,7 +68,6 @@
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 <input type="number" wire:model="dispatchQuantities.{{ $index }}"
                                                     step="0.01" min="0.01" max="{{ $fg['available_qty'] }}"
-                                                    value="{{ $fg['available_qty'] }}"
                                                     class="w-32 px-2 py-1 border border-gray-300 rounded-md text-sm">
                                             </td>
                                         </tr>

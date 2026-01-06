@@ -26,6 +26,11 @@ class InventoryDashboard extends Component
         'notes' => ''
     ];
     
+    // Archive Confirmation Modal
+    public $showArchiveModal = false;
+    public $pendingArchiveProductionOrderId = null;
+    public $pendingArchiveTransactionId = null;
+    
     // Cache expensive calculations
     private $cachedBalanceRawMaterials = null;
     private $cachedTotalReceived = null;
@@ -383,7 +388,13 @@ class InventoryDashboard extends Component
 
     public function openProductionOrderModal($transactionId)
     {
-        $this->selectedTransaction = \App\Models\InventoryTransaction::with(['grn.purchaseOrder.jobOrder.supplier', 'grn.purchaseOrder.jobOrder.customer', 'grn.purchaseOrder.jobOrder.boxes', 'grn.purchaseOrder.jobOrder.dividers'])
+        $this->selectedTransaction = \App\Models\InventoryTransaction::with([
+            'grn.purchaseOrder.items.jobOrder.supplier', 
+            'grn.purchaseOrder.items.jobOrder.customer', 
+            'grn.purchaseOrder.items.jobOrder.boxes', 
+            'grn.purchaseOrder.items.jobOrder.dividers',
+            'grn.items'
+        ])
             ->find($transactionId);
         
         if ($this->selectedTransaction) {
@@ -392,18 +403,27 @@ class InventoryDashboard extends Component
             $orderQty = $this->selectedTransaction->qty; // Default to transaction quantity
             
             if ($jobOrder) {
-                // Try to find the job order item that matches this transaction
+                // Try to find the job order item that matches this transaction via GRN item
                 $jobOrderItem = null;
-                if ($this->selectedTransaction->item_code) {
-                    $jobOrderBox = $jobOrder->boxes()->where('id', $this->selectedTransaction->item_code)->first();
-                    if ($jobOrderBox) {
-                        $jobOrderItem = $jobOrderBox;
-                        $orderQty = (int) $jobOrderBox->order_qty;
-                    } else {
-                        $jobOrderDivider = $jobOrder->dividers()->where('id', $this->selectedTransaction->item_code)->first();
-                        if ($jobOrderDivider) {
-                            $jobOrderItem = $jobOrderDivider;
-                            $orderQty = (int) $jobOrderDivider->quantity;
+                $maxOrderQty = $this->selectedTransaction->qty; // Default to transaction quantity
+                
+                if ($this->selectedTransaction->grn && $this->selectedTransaction->item_code) {
+                    // Get GRN item that matches this transaction's material code
+                    $grnItem = $this->selectedTransaction->grn->items->firstWhere('material_code', $this->selectedTransaction->item_code);
+                    if ($grnItem && $grnItem->item_id) {
+                        // Use the item_id and item_type from GRN item
+                        if ($grnItem->item_type === 'box') {
+                            $jobOrderBox = $jobOrder->boxes()->where('id', $grnItem->item_id)->first();
+                            if ($jobOrderBox) {
+                                $jobOrderItem = $jobOrderBox;
+                                $maxOrderQty = (int) $jobOrderBox->order_qty;
+                            }
+                        } elseif ($grnItem->item_type === 'divider') {
+                            $jobOrderDivider = $jobOrder->dividers()->where('id', $grnItem->item_id)->first();
+                            if ($jobOrderDivider) {
+                                $jobOrderItem = $jobOrderDivider;
+                                $maxOrderQty = (int) $jobOrderDivider->quantity;
+                            }
                         }
                     }
                 }
@@ -412,20 +432,25 @@ class InventoryDashboard extends Component
                 if (!$jobOrderItem) {
                     $jobOrderBox = $jobOrder->boxes()->first();
                     if ($jobOrderBox) {
-                        $orderQty = (int) $jobOrderBox->order_qty;
+                        $maxOrderQty = (int) $jobOrderBox->order_qty;
                     } else {
                         $jobOrderDivider = $jobOrder->dividers()->first();
                         if ($jobOrderDivider) {
-                            $orderQty = (int) $jobOrderDivider->quantity;
+                            $maxOrderQty = (int) $jobOrderDivider->quantity;
                         }
                     }
                 }
+                
+                // Default quantity to available raw material quantity, but cap at job order order quantity
+                $defaultQty = min((int) $this->selectedTransaction->qty, $maxOrderQty);
+            } else {
+                $defaultQty = (int) $this->selectedTransaction->qty;
             }
             
             $this->productionOrderForm = [
                 'production_order_number' => \App\Models\ProductionOrder::generateProductionOrderNumber(),
                 'date' => now()->format('Y-m-d'),
-                'quantity' => $orderQty, // Use job order's order quantity (finished goods), not material quantity
+                'quantity' => $defaultQty, // Default to available raw material quantity, capped at job order order quantity
                 'notes' => "Production order created from inventory transaction: {$this->selectedTransaction->lot_code}"
             ];
             $this->showProductionOrderModal = true;
@@ -444,9 +469,94 @@ class InventoryDashboard extends Component
         ];
     }
 
+    public function deleteProductionOrder($productionOrderId, $transactionId)
+    {
+        try {
+            $productionOrder = \App\Models\ProductionOrder::findOrFail($productionOrderId);
+            
+            // Only allow deletion if no items have been completed
+            if ($productionOrder->getCompletedQuantity() > 0) {
+                session()->flash('error', 'Cannot delete production order with completed items.');
+                return;
+            }
+            
+            // Delete the production order (cascade will delete items)
+            $productionOrder->delete();
+            
+            session()->flash('success', 'Production order deleted. You can now create a new one with the correct quantity.');
+            
+            // Refresh the component
+            $this->dispatch('$refresh');
+            
+        } catch (\Exception $e) {
+            \Log::error('Error deleting production order', [
+                'error' => $e->getMessage(),
+                'production_order_id' => $productionOrderId
+            ]);
+            session()->flash('error', 'Error deleting production order: ' . $e->getMessage());
+        }
+    }
+
+    public function openArchiveModal($productionOrderId, $transactionId)
+    {
+        $this->pendingArchiveProductionOrderId = $productionOrderId;
+        $this->pendingArchiveTransactionId = $transactionId;
+        $this->showArchiveModal = true;
+    }
+
+    public function closeArchiveModal()
+    {
+        $this->showArchiveModal = false;
+        $this->pendingArchiveProductionOrderId = null;
+        $this->pendingArchiveTransactionId = null;
+    }
+
+    public function archiveProductionOrder()
+    {
+        try {
+            if (!$this->pendingArchiveProductionOrderId) {
+                session()->flash('error', 'No production order selected for archiving.');
+                return;
+            }
+
+            $productionOrder = \App\Models\ProductionOrder::findOrFail($this->pendingArchiveProductionOrderId);
+            
+            // Only allow archiving if production order is completed
+            if ($productionOrder->status !== 'completed') {
+                session()->flash('error', 'Only completed production orders can be archived.');
+                $this->closeArchiveModal();
+                return;
+            }
+            
+            // Archive the production order
+            $productionOrder->update(['archived_at' => now()]);
+            
+            session()->flash('success', 'Production order archived successfully.');
+            
+            // Close modal
+            $this->closeArchiveModal();
+            
+            // Refresh the component
+            $this->dispatch('$refresh');
+            
+        } catch (\Exception $e) {
+            \Log::error('Error archiving production order', [
+                'error' => $e->getMessage(),
+                'production_order_id' => $this->pendingArchiveProductionOrderId
+            ]);
+            session()->flash('error', 'Error archiving production order: ' . $e->getMessage());
+            $this->closeArchiveModal();
+        }
+    }
+
     public function createProductionOrder()
     {
         try {
+            \Log::info('createProductionOrder called', [
+                'selected_transaction' => $this->selectedTransaction ? $this->selectedTransaction->id : null,
+                'form_data' => $this->productionOrderForm
+            ]);
+            
             if (!$this->selectedTransaction) {
                 session()->flash('error', 'No transaction selected.');
                 return;
@@ -459,10 +569,17 @@ class InventoryDashboard extends Component
             }
 
             // Validate form
-            if (empty($this->productionOrderForm['production_order_number']) || empty($this->productionOrderForm['date'])) {
-                session()->flash('error', 'Please fill in all required fields.');
-                return;
-            }
+            $this->validate([
+                'productionOrderForm.production_order_number' => 'required|string',
+                'productionOrderForm.date' => 'required|date',
+                'productionOrderForm.quantity' => 'required|numeric|min:0.01',
+            ], [
+                'productionOrderForm.production_order_number.required' => 'Production order number is required.',
+                'productionOrderForm.date.required' => 'Start date is required.',
+                'productionOrderForm.quantity.required' => 'Production quantity is required.',
+                'productionOrderForm.quantity.numeric' => 'Production quantity must be a number.',
+                'productionOrderForm.quantity.min' => 'Production quantity must be greater than 0.',
+            ]);
 
             // Get job order's order quantity for validation
             $jobOrderItem = null;
@@ -530,18 +647,16 @@ class InventoryDashboard extends Component
             $jobOrderItem = null;
             $itemType = 'box';
             
-            // Try to find the job order item that matches this inventory transaction
-            if ($this->selectedTransaction->item_code) {
-                // Look for matching job order boxes or dividers
-                $jobOrderBox = $jobOrder->boxes()->where('id', $this->selectedTransaction->item_code)->first();
-                if ($jobOrderBox) {
-                    $jobOrderItem = $jobOrderBox;
-                    $itemType = 'box';
-                } else {
-                    $jobOrderDivider = $jobOrder->dividers()->where('id', $this->selectedTransaction->item_code)->first();
-                    if ($jobOrderDivider) {
-                        $jobOrderItem = $jobOrderDivider;
-                        $itemType = 'divider';
+            // Get GRN item that matches this transaction's material code
+            if ($this->selectedTransaction->grn && $this->selectedTransaction->item_code) {
+                $grnItem = $this->selectedTransaction->grn->items->firstWhere('material_code', $this->selectedTransaction->item_code);
+                if ($grnItem && $grnItem->item_id) {
+                    // Use the item_id and item_type from GRN item
+                    $itemType = $grnItem->item_type;
+                    if ($itemType === 'box') {
+                        $jobOrderItem = $jobOrder->boxes()->where('id', $grnItem->item_id)->first();
+                    } elseif ($itemType === 'divider') {
+                        $jobOrderItem = $jobOrder->dividers()->where('id', $grnItem->item_id)->first();
                     }
                 }
             }
@@ -556,31 +671,66 @@ class InventoryDashboard extends Component
             }
             
             if ($jobOrderItem) {
-                // Get job order's order quantity (finished goods quantity) instead of material quantity
-                $orderQty = 0;
+                // Use the quantity from the form (user's input), not the job order's order quantity
+                // The form quantity represents how many finished goods to produce from the available raw material
+                $orderQty = (int) $this->productionOrderForm['quantity'];
+                
+                // Validate that the quantity doesn't exceed the job order's order quantity
+                $maxOrderQty = 0;
                 if ($itemType === 'box' && $jobOrderItem instanceof \App\Models\JobOrderBox) {
-                    $orderQty = (int) $jobOrderItem->order_qty;
+                    $maxOrderQty = (int) $jobOrderItem->order_qty;
                 } elseif ($itemType === 'divider' && $jobOrderItem instanceof \App\Models\JobOrderDivider) {
-                    $orderQty = (int) $jobOrderItem->quantity;
-                } else {
-                    $orderQty = $this->productionOrderForm['quantity']; // Fallback
+                    $maxOrderQty = (int) $jobOrderItem->quantity;
                 }
                 
-                // Create production order item with job order's order quantity (finished goods)
+                if ($maxOrderQty > 0 && $orderQty > $maxOrderQty) {
+                    session()->flash('error', "Production quantity ({$orderQty}) cannot exceed job order's order quantity ({$maxOrderQty}).");
+                    return;
+                }
+                
+                // Create production order item with the user's specified quantity
                 \App\Models\ProductionOrderItem::create([
                     'production_order_id' => $productionOrder->id,
                     'item_type' => $itemType,
                     'item_id' => $jobOrderItem->id,
-                    'quantity' => $orderQty, // Use job order's order quantity (finished goods), not material quantity
+                    'quantity' => $orderQty, // Use the quantity from the form
                     'completed_quantity' => 0,
                     'status' => 'pending',
                 ]);
+            } else {
+                \Log::warning('No job order item found for production order creation', [
+                    'transaction_id' => $this->selectedTransaction->id,
+                    'item_code' => $this->selectedTransaction->item_code,
+                    'job_order_id' => $jobOrder->id ?? null
+                ]);
+                session()->flash('error', 'No job order item found. Cannot create production order.');
+                return;
             }
 
             session()->flash('success', "Production order {$productionOrder->production_order_number} created successfully!");
+            
+            // Reset form
+            $this->productionOrderForm = [
+                'production_order_number' => '',
+                'date' => '',
+                'quantity' => '',
+                'notes' => ''
+            ];
+            $this->selectedTransaction = null;
+            
+            // Close modal
             $this->closeProductionOrderModal();
+            
+            // Refresh the component to update the available materials list
+            $this->dispatch('$refresh');
 
         } catch (\Exception $e) {
+            \Log::error('Error creating production order', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'transaction_id' => $this->selectedTransaction->id ?? null,
+                'form_data' => $this->productionOrderForm
+            ]);
             session()->flash('error', 'Error creating production order: ' . $e->getMessage());
         }
     }
@@ -615,7 +765,7 @@ class InventoryDashboard extends Component
                     $query->where('material_type', 'raw_material')
                           ->orWhereNull('material_type'); // Backward compatibility
                 })
-                ->with(['grn.purchaseOrder.jobOrder'])
+                ->with(['grn.purchaseOrder.items.jobOrder.customer', 'grn.items'])
                 ->orderBy('txn_date', 'desc')
                 ->orderBy('created_at', 'desc')
                 ->limit(10)
@@ -624,12 +774,42 @@ class InventoryDashboard extends Component
             // Load production orders for each transaction to show progress
             foreach ($availableRawMaterials as $transaction) {
                 $transactionIdMarker = "Transaction ID: {$transaction->id}";
-                $jobOrder = $transaction->getJobOrder();
+                
+                // Get job order from GRN item's purchase order item
+                $jobOrder = null;
+                $itemType = null;
+                if ($transaction->grn && $transaction->grn->purchaseOrder) {
+                    // Find the GRN item that matches this transaction's item_code
+                    $grnItem = $transaction->grn->items->firstWhere('material_code', $transaction->item_code);
+                    if ($grnItem) {
+                        // Store item type from GRN item
+                        $itemType = $grnItem->item_type;
+                        $transaction->itemType = ucfirst($itemType); // Store for view
+                        
+                        // Get purchase order item that matches this GRN item
+                        $poItem = $transaction->grn->purchaseOrder->items->first(function($poItem) use ($grnItem) {
+                            return $poItem->item_type === $grnItem->item_type && 
+                                   $poItem->item_id === $grnItem->item_id;
+                        });
+                        if ($poItem && $poItem->jobOrder) {
+                            $jobOrder = $poItem->jobOrder;
+                        }
+                    }
+                    
+                    // Fallback: try to get job order from purchase order's direct relationship
+                    if (!$jobOrder && $transaction->grn->purchaseOrder->jobOrder) {
+                        $jobOrder = $transaction->grn->purchaseOrder->jobOrder;
+                    }
+                }
                 
                 if ($jobOrder) {
-                    // Load customer information from job order (available even without production order)
-                    $jobOrder->load('customer');
+                    // Customer is already loaded via eager loading, but ensure it's available
+                    if (!$jobOrder->relationLoaded('customer')) {
+                        $jobOrder->load('customer');
+                    }
                     $transaction->customerName = $jobOrder->customer->name ?? 'N/A';
+                    $transaction->jobOrderNumber = $jobOrder->supplier_po_number ?? $jobOrder->job_order_number ?? $jobOrder->job_number ?? 'N/A';
+                    $transaction->jobOrder = $jobOrder; // Store for view access
                     
                     // Try to get dimensions from job order boxes/dividers
                     $jobOrder->load(['boxes', 'dividers']);
@@ -650,6 +830,7 @@ class InventoryDashboard extends Component
                     
                     $productionOrder = \App\Models\ProductionOrder::where('job_order_id', $jobOrder->id)
                         ->where('notes', 'like', '%' . $transactionIdMarker . '%')
+                        ->whereNull('archived_at') // Exclude archived production orders
                         ->with(['items', 'jobOrder.customer'])
                         ->first();
                     
@@ -686,6 +867,14 @@ class InventoryDashboard extends Component
                     $transaction->hasProductionOrder = false;
                     $transaction->customerName = 'N/A';
                     $transaction->dimensions = 'N/A';
+                    
+                    // Try to get item type from GRN item even if no job order
+                    if ($transaction->grn) {
+                        $grnItem = $transaction->grn->items->firstWhere('material_code', $transaction->item_code);
+                        if ($grnItem && $grnItem->item_type) {
+                            $transaction->itemType = ucfirst($grnItem->item_type);
+                        }
+                    }
                 }
             }
             

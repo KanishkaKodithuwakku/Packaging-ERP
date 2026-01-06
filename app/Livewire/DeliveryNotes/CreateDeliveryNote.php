@@ -53,6 +53,7 @@ class CreateDeliveryNote extends Component
         } else {
             $this->selectedJobOrder = null;
             $this->availableFg = [];
+            $this->dispatchQuantities = [];
             $this->form['delivery_address'] = '';
         }
     }
@@ -61,11 +62,18 @@ class CreateDeliveryNote extends Component
     {
         if (!$this->form['job_order_id']) {
             $this->availableFg = [];
+            $this->dispatchQuantities = [];
             return;
         }
 
         $deliveryService = app(DeliveryService::class);
         $this->availableFg = $deliveryService->getAvailableFgForJobOrder($this->form['job_order_id']);
+        
+        // Initialize dispatch quantities with available quantities as defaults
+        $this->dispatchQuantities = [];
+        foreach ($this->availableFg as $index => $fg) {
+            $this->dispatchQuantities[$index] = $fg['available_qty'];
+        }
     }
 
     public function save()

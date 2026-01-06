@@ -42,12 +42,39 @@ class InventoryTransaction extends Model
     }
 
     /**
-     * Get the job order through GRN -> Purchase Order -> Job Order
+     * Get the job order through GRN -> Purchase Order Item -> Job Order
+     * OR through GRN -> Production Order -> Job Order
+     * Since purchase orders can have multiple job orders through items,
+     * we need to find the specific job order via the GRN item's purchase order item
      */
     public function getJobOrder()
     {
         if ($this->related_doc_type === 'GRN' && $this->grn) {
-            return $this->grn->purchaseOrder?->jobOrder;
+            // Check if GRN is from Production Order (for Finished Goods)
+            if ($this->grn->productionOrder && $this->grn->productionOrder->jobOrder) {
+                return $this->grn->productionOrder->jobOrder;
+            }
+            
+            // Check if GRN is from Purchase Order (for Raw Materials)
+            if ($this->grn->purchaseOrder) {
+                // Find the GRN item that matches this transaction's item_code (material_code)
+                $grnItem = $this->grn->items->firstWhere('material_code', $this->item_code);
+                if ($grnItem) {
+                    // Get purchase order item that matches this GRN item
+                    $poItem = $this->grn->purchaseOrder->items->first(function($poItem) use ($grnItem) {
+                        return $poItem->item_type === $grnItem->item_type && 
+                               $poItem->item_id === $grnItem->item_id;
+                    });
+                    if ($poItem && $poItem->jobOrder) {
+                        return $poItem->jobOrder;
+                    }
+                }
+                
+                // Fallback: try to get job order from purchase order's direct relationship (for backward compatibility)
+                if ($this->grn->purchaseOrder->jobOrder) {
+                    return $this->grn->purchaseOrder->jobOrder;
+                }
+            }
         }
         return null;
     }

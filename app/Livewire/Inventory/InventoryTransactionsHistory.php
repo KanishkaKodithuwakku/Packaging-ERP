@@ -80,38 +80,16 @@ class InventoryTransactionsHistory extends Component
             $query->where('txn_date', '<=', $this->filters['date_to']);
         }
 
-        return $query->with('inventory')
+        return $query->with(['inventory', 'grn.purchaseOrder.items.jobOrder', 'grn.productionOrder.jobOrder'])
             ->orderBy('txn_date', 'desc')
             ->orderBy('created_at', 'desc')
             ->paginate(20);
-    }
-
-    public function getTransactionStats()
-    {
-        $query = InventoryTransaction::query();
-
-        if ($this->filters['date_from']) {
-            $query->where('txn_date', '>=', $this->filters['date_from']);
-        }
-
-        if ($this->filters['date_to']) {
-            $query->where('txn_date', '<=', $this->filters['date_to']);
-        }
-
-        $stats = $query->selectRaw('
-            txn_type,
-            COUNT(*) as count,
-            SUM(qty) as total_qty
-        ')->groupBy('txn_type')->get();
-
-        return $stats;
     }
 
     public function render()
     {
         return view('livewire.inventory.inventory-transactions-history', [
             'transactions' => $this->getTransactionSummary(),
-            'stats' => $this->getTransactionStats(),
         ]);
     }
 }

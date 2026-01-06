@@ -82,10 +82,25 @@ class GRN extends Model
 
     /**
      * Get total quantity from items
+     * For production GRNs, convert board quantity to FG quantity
      */
     public function getTotalQuantity(): float
     {
-        return $this->items()->sum('qty_received');
+        $total = 0;
+        foreach ($this->items as $item) {
+            $qty = $item->qty_received_partial ?? $item->qty_received ?? 0;
+            
+            // For production GRNs, convert board quantity to FG quantity
+            if ($this->isFromProductionOrder() && $item->productionOrderItem) {
+                $noOfUps = $item->productionOrderItem->getNoOfUps();
+                if ($noOfUps > 0) {
+                    $qty = $qty * $noOfUps;
+                }
+            }
+            
+            $total += $qty;
+        }
+        return $total;
     }
 
     /**
@@ -98,10 +113,25 @@ class GRN extends Model
 
     /**
      * Get total processed quantity
+     * For production GRNs, convert board quantity to FG quantity
      */
     public function getTotalProcessedQuantity(): float
     {
-        return $this->items()->sum('qty_processed') ?? 0;
+        $total = 0;
+        foreach ($this->items as $item) {
+            $qty = $item->qty_processed ?? 0;
+            
+            // For production GRNs, convert board quantity to FG quantity
+            if ($this->isFromProductionOrder() && $item->productionOrderItem) {
+                $noOfUps = $item->productionOrderItem->getNoOfUps();
+                if ($noOfUps > 0) {
+                    $qty = $qty * $noOfUps;
+                }
+            }
+            
+            $total += $qty;
+        }
+        return $total;
     }
 
     /**

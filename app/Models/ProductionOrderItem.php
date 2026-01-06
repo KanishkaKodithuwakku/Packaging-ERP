@@ -145,15 +145,20 @@ class ProductionOrderItem extends Model
      * Get the effective maximum quantity for production
      * This is the minimum of:
      * 1. Expected finished goods from material (material_qty * no_of_ups)
-     * 2. Job order's order quantity
+     * 2. Production order item quantity (what user specified)
+     * 3. Job order's order quantity (absolute maximum)
      */
     public function getEffectiveMaxQuantity(): int
     {
         $expectedFromMaterial = $this->getExpectedFinishedGoodsFromMaterial();
         $jobOrderOrderQty = $this->getJobOrderOrderQuantity();
         
-        // Return the minimum (cap at job order order quantity)
-        return (int) min($expectedFromMaterial, $jobOrderOrderQty);
+        // Use the production order item quantity as the primary cap
+        // This is what the user specified when creating the production order
+        $productionOrderQty = $this->quantity;
+        
+        // Return the minimum of: material capacity, production order qty, and job order qty
+        return (int) min($expectedFromMaterial, $productionOrderQty, $jobOrderOrderQty);
     }
 
     /**

@@ -35,6 +35,10 @@ class ProductionGRNService
         // Generate description
         $description = $this->generateDescription($productionItem, $item);
 
+        // Production order quantity represents board quantity
+        // GRN stores board quantity, and when processing it will be multiplied by No of Ups to get FG quantity
+        $boardQuantity = $quantity;
+
         // Create GRN
         $grn = GRN::create([
             'production_order_id' => $productionOrder->id,
@@ -44,7 +48,7 @@ class ProductionGRNService
             'notes' => $description,
         ]);
 
-        // Create GRN item
+        // Create GRN item - store board quantity
         \App\Models\GRNItem::create([
             'grn_id' => $grn->id,
             'production_order_item_id' => $productionItem->id,
@@ -52,12 +56,12 @@ class ProductionGRNService
             'item_id' => $productionItem->item_id,
             'description' => $description,
             'material_code' => $this->generateMaterialCode($productionItem, $item),
-            'qty_received' => $quantity,
+            'qty_received' => $boardQuantity, // Store board quantity
             'uom' => 'PCS',
         ]);
 
-        // Update production order item completed quantity
-        $productionItem->increment('completed_quantity', $quantity);
+        // Update production order item completed quantity (use board quantity for tracking)
+        $productionItem->increment('completed_quantity', $boardQuantity);
         
             // Update production order item status
             if ($productionItem->getRemainingQuantity() <= 0) {
