@@ -277,12 +277,12 @@
                         </div>
                     </div>
 
-                    <!-- Boxes -->
+                    <!-- Boards -->
                     <div class="flex items-center gap-3">
-                        <label class="block text-sm font-medium text-gray-700 mb-1 w-1/5">Boxes</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1 w-1/5">Boards</label>
                         <div class="flex-1">
                             <div class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-900">
-                                {{ count($boxes) }} boxes
+                                {{ count($boxes) }} boards
                             </div>
                         </div>
                     </div>
@@ -345,7 +345,7 @@
                         <div class="flex-1">
                             <div class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-900">
                                 <div class="flex items-center justify-between text-sm">
-                                    <span>{{ number_format($dispatchedQuantity, 2) }} units</span>
+                                    <span>{{ number_format($dispatchedQuantity, 0) }} units</span>
                                     <span class="text-xs text-gray-500">{{ $deliveryCount }} DN(s)</span>
                                 </div>
                             </div>
@@ -526,16 +526,16 @@
                             <div class="text-xs text-gray-500">{{ $box['dimension_type'] }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{
-                            number_format($box['board_qty'] ?? $box['order_qty']) }}</td>
+                            number_format($box['order_qty'] ?? 0, 0) }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $box['ply'] }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {{ number_format($box['reel_size'] ?? 0, 3) }}
+                            {{ number_format($box['reel_size'] ?? 0, 2) }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {{ number_format($box['cut_size'] ?? 0, 3) }}
+                            {{ number_format($box['cut_size'] ?? 0, 2) }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {{ number_format($box['board_qty'] ?? 0, 3) }}
+                            {{ number_format($box['board_qty'] ?? 0, 0) }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             <div class="flex items-center space-x-2">
@@ -636,7 +636,7 @@
                     d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
             </svg>
             <h3 class="mt-2 text-sm font-medium text-gray-900">No job order items</h3>
-            <p class="mt-1 text-sm text-gray-500">Get started by adding boxes or dividers to this job order.</p>
+            <p class="mt-1 text-sm text-gray-500">Get started by adding boards or dividers to this job order.</p>
 
             <div class="mt-6">
                 @if($jobOrder->status === 'confirmed')
@@ -770,7 +770,7 @@
                     <nav class="-mb-px flex space-x-8">
                         <button wire:click="setActiveTab('boxes')"
                             class="py-2 px-1 border-b-2 font-medium text-sm {{ $activeTab === 'boxes' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}">
-                            Boxes ({{ count($boxes) }})
+                            Boards ({{ count($boxes) }})
                         </button>
                         <button wire:click="setActiveTab('dividers')"
                             class="py-2 px-1 border-b-2 font-medium text-sm {{ $activeTab === 'dividers' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}">
@@ -909,15 +909,15 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Reel Size</label>
-                            <p class="mt-1 text-sm text-gray-900">{{ $viewingBoxData['reel_size'] ?? '-' }}</p>
+                            <p class="mt-1 text-sm text-gray-900">{{ $viewingBoxData['reel_size'] ? number_format($viewingBoxData['reel_size'], 2) : '-' }}</p>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Cut Size</label>
-                            <p class="mt-1 text-sm text-gray-900">{{ $viewingBoxData['cut_size'] ?? '-' }}</p>
+                            <p class="mt-1 text-sm text-gray-900">{{ $viewingBoxData['cut_size'] ? number_format($viewingBoxData['cut_size'], 2) : '-' }}</p>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Board Qty</label>
-                            <p class="mt-1 text-sm text-gray-900">{{ $viewingBoxData['board_qty'] ?? '-' }}</p>
+                            <p class="mt-1 text-sm text-gray-900">{{ $viewingBoxData['board_qty'] ? number_format($viewingBoxData['board_qty'], 0) : '-' }}</p>
                         </div>
                         @if(!empty($viewingBoxData['notes']) && $viewingBoxData['notes'] !== '-')
                         <div>
@@ -1101,7 +1101,7 @@
                                     <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">{{ $index + 1 }}</td>
                                     <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">
                                         @if($printDisplayFormat === 'reel_cuts')
-                                            Reel Size - {{ $box['reel_size'] }}" Cut Size - {{ $box['cut_size'] }}"
+                                            Reel Size - {{ number_format($box['reel_size'] ?? 0, 2) }}" Cut Size - {{ number_format($box['cut_size'] ?? 0, 2) }}"
                                         @else
                                             {{ $box['length'] }}x{{ $box['width'] }}x{{ $box['height'] }}{{ $box['unit'] }} {{ $box['dimension_type'] }}
                                         @endif

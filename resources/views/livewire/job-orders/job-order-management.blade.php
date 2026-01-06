@@ -135,7 +135,7 @@
                                         <div class="flex items-center space-x-2">
                                             <span
                                                 class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                                {{ number_format($boxQty, 0) }} Boxes
+                                                {{ number_format($boxQty, 0) }} Boards
                                             </span>
                                             <div class="flex-1 bg-gray-200 rounded-full h-2 max-w-20">
                                                 <div class="bg-green-500 h-2 rounded-full"
