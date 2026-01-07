@@ -747,6 +747,98 @@
     </div>
     @endif
 
+    <!-- FG GRN Details Section -->
+    @if(count($fgGrns) > 0)
+    <div class="bg-white rounded-lg shadow-sm border mt-6">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <div class="flex justify-between items-center">
+                <h3 class="text-lg font-medium text-gray-900">Finished Goods GRNs</h3>
+                <span class="text-sm text-gray-500">{{ count($fgGrns) }} GRN{{ count($fgGrns) > 1 ? 's' : '' }}</span>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">GRN No</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lot Code</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Production Order</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Received Date</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Qty</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Processed</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Waste/Conserve</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    @foreach($fgGrns as $grn)
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <a href="{{ route('grn-detail', $grn['id']) }}" class="text-blue-600 hover:text-blue-900">
+                                {{ $grn['grn_no'] }}
+                            </a>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {{ $grn['lot_code'] }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {{ $grn['production_order_number'] }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {{ $grn['received_date_formatted'] }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {{ number_format($grn['total_quantity'], 0) }} PCS
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {{ number_format($grn['total_processed'], 0) }} PCS
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            @php
+                                $wasteQty = $grn['waste_quantity'] ?? 0;
+                            @endphp
+                            @if($wasteQty > 0)
+                                <span class="text-red-600 font-medium">Waste: {{ number_format($wasteQty, 0) }} boards</span>
+                            @elseif($wasteQty < 0)
+                                <span class="text-green-600 font-medium">Conserve: {{ number_format(abs($wasteQty), 0) }} boards</span>
+                            @else
+                                <span class="text-gray-500">-</span>
+                            @endif
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">
+                            @if($grn['status'] === 'processed')
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                    Processed
+                                </span>
+                            @elseif($grn['status'] === 'pending')
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                    Pending
+                                </span>
+                            @elseif($grn['status'] === 'partially_processed')
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                    Partially Processed
+                                </span>
+                            @else
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                    {{ ucfirst($grn['status']) }}
+                                </span>
+                            @endif
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                            <a href="{{ route('grn-detail', $grn['id']) }}" class="text-blue-600 hover:text-blue-900">
+                                View Details
+                            </a>
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+    @endif
+
     <!-- Add Box/Divider Modal -->
     @if($showBoxDividerModal)
     <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
@@ -909,15 +1001,15 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Reel Size</label>
-                            <p class="mt-1 text-sm text-gray-900">{{ $viewingBoxData['reel_size'] ? number_format($viewingBoxData['reel_size'], 2) : '-' }}</p>
+                            <p class="mt-1 text-sm text-gray-900">{{ $viewingBoxData['reel_size'] ? number_format((float)$viewingBoxData['reel_size'], 2) : '-' }}</p>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Cut Size</label>
-                            <p class="mt-1 text-sm text-gray-900">{{ $viewingBoxData['cut_size'] ? number_format($viewingBoxData['cut_size'], 2) : '-' }}</p>
+                            <p class="mt-1 text-sm text-gray-900">{{ $viewingBoxData['cut_size'] ? number_format((float)$viewingBoxData['cut_size'], 2) : '-' }}</p>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Board Qty</label>
-                            <p class="mt-1 text-sm text-gray-900">{{ $viewingBoxData['board_qty'] ? number_format($viewingBoxData['board_qty'], 0) : '-' }}</p>
+                            <p class="mt-1 text-sm text-gray-900">{{ $viewingBoxData['board_qty'] ? number_format((int)$viewingBoxData['board_qty'], 0) : '-' }}</p>
                         </div>
                         @if(!empty($viewingBoxData['notes']) && $viewingBoxData['notes'] !== '-')
                         <div>

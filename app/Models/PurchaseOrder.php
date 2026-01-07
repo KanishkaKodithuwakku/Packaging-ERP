@@ -13,6 +13,7 @@ class PurchaseOrder extends Model
         'po_number',
         'date',
         'supplier_id',
+        'currency',
         'job_order_id',
         'status',
         'notes',
@@ -104,5 +105,30 @@ class PurchaseOrder extends Model
         $nextNumber = $lastPO ? $lastPO->id + 1 : 1;
         
         return 'PO-' . str_pad($nextNumber, 6, '0', STR_PAD_LEFT);
+    }
+
+    /**
+     * Get currency symbol for this purchase order
+     */
+    public function getCurrencySymbol(): string
+    {
+        $currencyCode = $this->currency ?? ($this->supplier ? $this->supplier->currency : null) ?? 'LKR';
+        
+        return match($currencyCode) {
+            'LKR' => 'Rs.',
+            'USD' => '$',
+            'EUR' => '€',
+            'GBP' => '£',
+            'INR' => '₹',
+            default => $currencyCode . ' '
+        };
+    }
+
+    /**
+     * Format total amount with currency symbol
+     */
+    public function getFormattedTotalAmount(): string
+    {
+        return $this->getCurrencySymbol() . ' ' . number_format($this->getTotalAmount(), 2);
     }
 }

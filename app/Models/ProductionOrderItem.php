@@ -14,12 +14,16 @@ class ProductionOrderItem extends Model
         'item_id',
         'quantity',
         'completed_quantity',
+        'finished_goods_quantity',
+        'waste_quantity',
         'status',
     ];
 
     protected $casts = [
         'quantity' => 'integer',
         'completed_quantity' => 'integer',
+        'finished_goods_quantity' => 'integer',
+        'waste_quantity' => 'integer',
     ];
 
     /**

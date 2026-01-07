@@ -167,15 +167,9 @@ class GRNProcessingService
                 }
             }
             
-            // For production GRNs, quantityToProcess is board quantity, need to convert to FG quantity
-            $boardQuantityToProcess = $quantityToProcess;
-            $fgQuantityToProcess = $boardQuantityToProcess;
-            if ($grnItem->grn && $grnItem->grn->isFromProductionOrder() && $grnItem->productionOrderItem) {
-                $noOfUps = $grnItem->productionOrderItem->getNoOfUps();
-                if ($noOfUps > 0) {
-                    $fgQuantityToProcess = $boardQuantityToProcess * $noOfUps;
-                }
-            }
+            // For FG GRNs from production orders, quantityToProcess is already FG quantity (boxes)
+            // We should NOT multiply by No of UPS again since qty_received is already in FG units
+            $fgQuantityToProcess = $quantityToProcess;
             
             // Always create a new transaction for each processing batch
             // This ensures we have a complete audit trail
@@ -192,17 +186,17 @@ class GRNProcessingService
                 'related_doc_type' => 'GRN',
                 'related_doc_id' => $grnItem->grn_id,
                 'txn_date' => now()->toDateString(),
-                'remarks' => "GRN Item: {$grnItem->description} (Batch: {$fgQuantityToProcess}, Total Processed: " . ($qtyProcessed + $boardQuantityToProcess) . ")",
+                'remarks' => "GRN Item: {$grnItem->description} (Batch: {$fgQuantityToProcess}, Total Processed: " . ($qtyProcessed + $fgQuantityToProcess) . ")",
             ], $costingMethod);
 
             // Update GRN item with partial processing details
-            // Track board quantity in qty_processed
+            // For FG GRNs, qty_processed should be in FG quantity (boxes)
             $currentProcessed = $grnItem->qty_processed ?? 0;
-            $newProcessed = $currentProcessed + $boardQuantityToProcess;
+            $newProcessed = $currentProcessed + $fgQuantityToProcess;
             $remaining = $grnItem->qty_received_partial - $newProcessed;
             
             $grnItem->update([
-                'qty_processed' => $newProcessed, // Store board quantity
+                'qty_processed' => $newProcessed, // Store FG quantity (boxes)
                 'qty_remaining' => $remaining,
                 'inventory_lot_code' => $lotCode,
                 'unit_cost' => $unitCost,
@@ -283,17 +277,12 @@ class GRNProcessingService
             }
             
             // Get the quantity to process (use partial received if available, otherwise use received)
-            // For production GRNs, qty_received stores board quantity, need to multiply by No of Ups to get FG quantity
-            $boardQuantity = $grnItem->qty_received_partial ?? $grnItem->qty_received ?? 0;
+            // For FG GRNs from production orders, qty_received already stores FG quantity (boxes), not board quantity
+            // So we should NOT multiply by No of UPS again
+            $fgQuantity = $grnItem->qty_received_partial ?? $grnItem->qty_received ?? 0;
             
-            // For production orders, convert board quantity to FG quantity
-            $fgQuantity = $boardQuantity;
-            if ($grnItem->grn && $grnItem->grn->isFromProductionOrder() && $grnItem->productionOrderItem) {
-                $noOfUps = $grnItem->productionOrderItem->getNoOfUps();
-                if ($noOfUps > 0) {
-                    $fgQuantity = $boardQuantity * $noOfUps;
-                }
-            }
+            // Note: For FG GRNs, qty_received is already in finished goods (boxes) units
+            // We no longer need to multiply by No of UPS since we fixed GRN creation to store FG quantity
             
             // Create inventory transaction - use FG quantity for production GRNs
             $transaction = $this->inventoryService->recordTransaction([
@@ -313,12 +302,12 @@ class GRNProcessingService
             ], $costingMethod);
 
             // Update GRN item with inventory details
-            // Mark the full received quantity as processed (use board quantity for tracking)
+            // For FG GRNs, qty_received is already FG quantity (boxes), so qty_processed should also be FG quantity
             $grnItem->update([
                 'inventory_lot_code' => $lotCode,
                 'unit_cost' => $unitCost,
                 'total_cost' => $fgQuantity * $unitCost, // Use FG quantity for cost calculation
-                'qty_processed' => $boardQuantity, // Store board quantity in qty_processed for tracking
+                'qty_processed' => $fgQuantity, // Store FG quantity (boxes) in qty_processed
                 'qty_remaining' => 0,
                 'processed_at' => now(),
             ]);
@@ -326,7 +315,7 @@ class GRNProcessingService
             return [
                 'grn_item_id' => $grnItem->id,
                 'material_code' => $grnItem->material_code,
-                'qty_received' => $boardQuantity, // Board quantity
+                'qty_received' => $fgQuantity, // FG quantity (boxes)
                 'qty_processed' => $fgQuantity, // FG quantity for display
                 'unit_cost' => $unitCost,
                 'total_cost' => $fgQuantity * $unitCost,

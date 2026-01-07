@@ -159,19 +159,19 @@
         <div class="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
             <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
                 <p class="text-xs font-medium text-blue-600 uppercase mb-1">Total Received</p>
-                <p class="text-2xl font-bold text-blue-900">{{ number_format($totalReceived, 2) }}</p>
+                <p class="text-2xl font-bold text-blue-900">{{ number_format($totalReceived, 0) }} PCS</p>
             </div>
             <div class="bg-green-50 p-4 rounded-lg border border-green-200">
                 <p class="text-xs font-medium text-green-600 uppercase mb-1">Processed to Stock</p>
-                <p class="text-2xl font-bold text-green-900">{{ number_format($totalProcessed, 2) }}</p>
+                <p class="text-2xl font-bold text-green-900">{{ number_format($totalProcessed, 0) }} PCS</p>
             </div>
             <div class="bg-orange-50 p-4 rounded-lg border border-orange-200">
                 <p class="text-xs font-medium text-orange-600 uppercase mb-1">Pending to Receive</p>
-                <p class="text-2xl font-bold text-orange-900">{{ number_format($totalPending, 2) }}</p>
+                <p class="text-2xl font-bold text-orange-900">{{ number_format($totalPending, 0) }} PCS</p>
             </div>
             <div class="bg-purple-50 p-4 rounded-lg border border-purple-200">
                 <p class="text-xs font-medium text-purple-600 uppercase mb-1">Available to Process</p>
-                <p class="text-2xl font-bold text-purple-900">{{ number_format($availableToProcess, 2) }}</p>
+                <p class="text-2xl font-bold text-purple-900">{{ number_format($availableToProcess, 0) }} PCS</p>
             </div>
         </div>
 
@@ -246,21 +246,21 @@
                                     {{ $customer ? $customer->name : 'N/A' }}
                                 </td>
                                 @endif
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ number_format($item->qty_expected ?? $item->qty_received, 2) }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ number_format($item->qty_expected ?? $item->qty_received, 0) }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                     <div class="flex items-center space-x-2">
-                                        <span>{{ number_format($item->qty_received_partial ?? 0, 2) }}</span>
+                                        <span>{{ number_format($item->qty_received_partial ?? 0, 0) }}</span>
                                         @if($hasAvailableToProcess)
-                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800" title="Available to process: {{ number_format($availableToProcess, 2) }}">
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800" title="Available to process: {{ number_format($availableToProcess, 0) }}">
                                                 <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                                 </svg>
-                                                {{ number_format($availableToProcess, 2) }} available
+                                                {{ number_format($availableToProcess, 0) }} available
                                             </span>
                                         @endif
                                     </div>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ number_format($item->qty_pending ?? ($item->qty_expected ?? $item->qty_received), 2) }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ number_format($item->qty_pending ?? ($item->qty_expected ?? $item->qty_received), 0) }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm">
                                     <div class="flex items-center">
                                         <div class="w-16 bg-gray-200 rounded-full h-2 mr-2">
@@ -396,29 +396,41 @@
                             @foreach($grn->items as $item)
                                 @php
                                     $availableForProcessing = $item->qty_received_partial - ($item->qty_processed ?? 0);
+                                    // Get job order for this item
+                                    $jobOrder = null;
+                                    if ($grn->isFromProductionOrder() && $grn->productionOrder) {
+                                        $jobOrder = $grn->productionOrder->jobOrder;
+                                    } elseif ($grn->isFromPurchaseOrder()) {
+                                        $purchaseOrderItem = $item->getPurchaseOrderItem();
+                                        $jobOrder = $purchaseOrderItem ? $purchaseOrderItem->jobOrder : null;
+                                    }
                                 @endphp
                                 @if($item->qty_received_partial > 0 && $availableForProcessing > 0)
                                 <div class="flex items-center justify-between p-4 bg-gray-50 rounded-lg border">
-                                    <div class="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                    <div class="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                                         <div>
                                             <p class="text-sm font-medium text-gray-900">{{ $item->material_code }}</p>
                                             <p class="text-xs text-gray-600 mt-1">{{ $item->description }}</p>
                                         </div>
                                         <div>
+                                            <p class="text-xs text-gray-500">Job Order</p>
+                                            <p class="text-sm font-medium text-gray-900">{{ $jobOrder ? ($jobOrder->supplier_po_number ?? $jobOrder->job_number ?? 'N/A') : 'N/A' }}</p>
+                                        </div>
+                                        <div>
                                             <p class="text-xs text-gray-500">Expected</p>
-                                            <p class="text-sm font-medium">{{ number_format($item->qty_expected, 2) }} {{ $item->uom }}</p>
+                                            <p class="text-sm font-medium">{{ number_format($item->qty_expected, 0) }} {{ $item->uom }}</p>
                                         </div>
                                         <div>
                                             <p class="text-xs text-gray-500">Received</p>
-                                            <p class="text-sm font-medium text-green-600">{{ number_format($item->qty_received_partial, 2) }} {{ $item->uom }}</p>
+                                            <p class="text-sm font-medium text-green-600">{{ number_format($item->qty_received_partial, 0) }} {{ $item->uom }}</p>
                                         </div>
                                         <div>
                                             <p class="text-xs text-gray-500">Pending to Receive</p>
-                                            <p class="text-sm font-medium text-orange-600">{{ number_format($item->qty_pending, 2) }} {{ $item->uom }}</p>
+                                            <p class="text-sm font-medium text-orange-600">{{ number_format($item->qty_pending, 0) }} {{ $item->uom }}</p>
                                         </div>
                                         <div>
                                             <p class="text-xs text-gray-500">Already Processed</p>
-                                            <p class="text-sm font-medium text-blue-600">{{ number_format($item->qty_processed ?? 0, 2) }} {{ $item->uom }}</p>
+                                            <p class="text-sm font-medium text-blue-600">{{ number_format($item->qty_processed ?? 0, 0) }} {{ $item->uom }}</p>
                                         </div>
                                     </div>
                                     <div class="ml-6 flex items-center space-x-2">
@@ -445,27 +457,41 @@
                                     </div>
                                 </div>
                                 @else
+                                @php
+                                    // Get job order for disabled items too
+                                    $jobOrderDisabled = null;
+                                    if ($grn->isFromProductionOrder() && $grn->productionOrder) {
+                                        $jobOrderDisabled = $grn->productionOrder->jobOrder;
+                                    } elseif ($grn->isFromPurchaseOrder()) {
+                                        $purchaseOrderItemDisabled = $item->getPurchaseOrderItem();
+                                        $jobOrderDisabled = $purchaseOrderItemDisabled ? $purchaseOrderItemDisabled->jobOrder : null;
+                                    }
+                                @endphp
                                 <div class="flex items-center justify-between p-4 bg-gray-100 rounded-lg border border-gray-300 opacity-60">
-                                    <div class="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                    <div class="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                                         <div>
                                             <p class="text-sm font-medium text-gray-500">{{ $item->material_code }}</p>
                                             <p class="text-xs text-gray-400 mt-1">{{ $item->description }}</p>
                                         </div>
                                         <div>
+                                            <p class="text-xs text-gray-400">Job Order</p>
+                                            <p class="text-sm font-medium text-gray-500">{{ $jobOrderDisabled ? ($jobOrderDisabled->supplier_po_number ?? $jobOrderDisabled->job_number ?? 'N/A') : 'N/A' }}</p>
+                                        </div>
+                                        <div>
                                             <p class="text-xs text-gray-400">Expected</p>
-                                            <p class="text-sm font-medium text-gray-500">{{ number_format($item->qty_expected, 2) }} {{ $item->uom }}</p>
+                                            <p class="text-sm font-medium text-gray-500">{{ number_format($item->qty_expected, 0) }} {{ $item->uom }}</p>
                                         </div>
                                         <div>
                                             <p class="text-xs text-gray-400">Received</p>
-                                            <p class="text-sm font-medium text-gray-500">{{ number_format($item->qty_received_partial, 2) }} {{ $item->uom }}</p>
+                                            <p class="text-sm font-medium text-gray-500">{{ number_format($item->qty_received_partial, 0) }} {{ $item->uom }}</p>
                                         </div>
                                         <div>
                                             <p class="text-xs text-gray-400">Pending to Receive</p>
-                                            <p class="text-sm font-medium text-gray-500">{{ number_format($item->qty_pending, 2) }} {{ $item->uom }}</p>
+                                            <p class="text-sm font-medium text-gray-500">{{ number_format($item->qty_pending, 0) }} {{ $item->uom }}</p>
                                         </div>
                                         <div>
                                             <p class="text-xs text-gray-400">Already Processed</p>
-                                            <p class="text-sm font-medium text-gray-500">{{ number_format($item->qty_processed ?? 0, 2) }} {{ $item->uom }}</p>
+                                            <p class="text-sm font-medium text-gray-500">{{ number_format($item->qty_processed ?? 0, 0) }} {{ $item->uom }}</p>
                                         </div>
                                     </div>
                                     <div class="ml-6 flex items-center space-x-2">
@@ -664,9 +690,9 @@
                         <label class="block text-sm font-medium text-gray-700 mb-2">Item Details</label>
                         <div class="text-sm text-gray-600">
                             <div><strong>Description:</strong> {{ $selectedGRNItem->description }}</div>
-                            <div><strong>Expected:</strong> {{ number_format($selectedGRNItem->qty_expected, 2) }} {{ $selectedGRNItem->uom }}</div>
-                            <div><strong>Already Received:</strong> {{ number_format($selectedGRNItem->qty_received_partial, 2) }} {{ $selectedGRNItem->uom }}</div>
-                            <div><strong>Pending:</strong> {{ number_format($selectedGRNItem->qty_pending, 2) }} {{ $selectedGRNItem->uom }}</div>
+                            <div><strong>Expected:</strong> {{ number_format($selectedGRNItem->qty_expected, 0) }} {{ $selectedGRNItem->uom }}</div>
+                            <div><strong>Already Received:</strong> {{ number_format($selectedGRNItem->qty_received_partial, 0) }} {{ $selectedGRNItem->uom }}</div>
+                            <div><strong>Pending:</strong> {{ number_format($selectedGRNItem->qty_pending, 0) }} {{ $selectedGRNItem->uom }}</div>
                         </div>
                     </div>
 
@@ -726,7 +752,7 @@
                 <div class="text-center text-sm text-gray-600 mb-6">
                     <p class="mb-2">Are you sure you want to cancel the balance quantities?</p>
                     <p class="font-semibold text-gray-900">
-                        Total Balance: {{ number_format($grn->getTotalPendingQuantity(), 2) }} units
+                        Total Balance: {{ number_format($grn->getTotalPendingQuantity(), 0) }} units
                     </p>
                     <p class="text-xs text-gray-500 mt-2">
                         This will mark all pending quantities as cancelled. This action cannot be undone.

@@ -147,7 +147,7 @@
                             {{ $po->items->count() }} items
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            Rs. {{ number_format($po->getTotalAmount(), 2) }}
+                            {{ $po->getFormattedTotalAmount() }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
                             @php
@@ -482,7 +482,7 @@
                                     N/A
                                 @endif
                             </p>
-                            <p class="text-sm text-gray-700"><strong>Total Amount:</strong> Rs. {{ number_format($selectedPurchaseOrder->getTotalAmount(), 2) }}</p>
+                            <p class="text-sm text-gray-700"><strong>Total Amount:</strong> {{ $selectedPurchaseOrder->getFormattedTotalAmount() }}</p>
                         </div>
                     </div>
 
@@ -565,15 +565,15 @@
                                     <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">{{ $dimensions }}</td>
                                     @endif
                                     <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900 text-right">{{ number_format($item->quantity) }}</td>
-                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900 text-right">Rs. {{ number_format($item->unit_price, 2) }}</td>
-                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900 text-right">Rs. {{ number_format($item->total_price, 2) }}</td>
+                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900 text-right">{{ $selectedPurchaseOrder->getCurrencySymbol() }}{{ number_format($item->unit_price, 2) }}</td>
+                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900 text-right">{{ $selectedPurchaseOrder->getCurrencySymbol() }}{{ number_format($item->total_price, 2) }}</td>
                                 </tr>
                                 @endforeach
                             </tbody>
                             <tfoot>
                                 <tr>
                                     <td colspan="{{ $displayFormat === 'reel_cuts' ? 6 : 5 }}" class="border border-gray-300 px-4 py-2 text-right font-semibold text-gray-900">Total Amount:</td>
-                                    <td class="border border-gray-300 px-4 py-2 text-right font-semibold text-gray-900">Rs. {{ number_format($selectedPurchaseOrder->getTotalAmount(), 2) }}</td>
+                                    <td class="border border-gray-300 px-4 py-2 text-right font-semibold text-gray-900">{{ $selectedPurchaseOrder->getFormattedTotalAmount() }}</td>
                                 </tr>
                             </tfoot>
                         </table>
@@ -654,7 +654,7 @@
                                 <label class="block text-sm font-bold text-gray-700">Date: <span class="text-xs font-normal text-gray-900">{{ \App\Helpers\DateFormatHelper::format($selectedPurchaseOrder->date) }}</span></label>
                             </div>
                             <div>
-                                <label class="block text-sm font-bold text-gray-700">Total Amount: <span class="text-lg font-bold text-gray-900">Rs. {{ number_format($selectedPurchaseOrder->getTotalAmount(), 2) }}</span></label>
+                                <label class="block text-sm font-bold text-gray-700">Total Amount: <span class="text-lg font-bold text-gray-900">{{ $selectedPurchaseOrder->getFormattedTotalAmount() }}</span></label>
                             </div>
                         </div>
                     </div>
@@ -797,7 +797,7 @@
                                                 {{ $item->quantity }}
                                             @endif
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Rs. {{
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $selectedPurchaseOrder->getCurrencySymbol() }}{{
                                             number_format($item->unit_price, 2) }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Rs. {{
                                             number_format(isset($itemQuantities[$item->id]) && $selectedPurchaseOrder->status === 'draft'
@@ -948,7 +948,7 @@
                                 <label class="block text-sm font-bold text-gray-700">Date: <span class="text-xs font-normal text-gray-900">{{ \App\Helpers\DateFormatHelper::format($selectedPurchaseOrder->date) }}</span></label>
                             </div>
                             <div>
-                                <label class="block text-sm font-bold text-gray-700">Total Amount: <span class="text-lg font-bold text-gray-900">Rs. {{ number_format($selectedPurchaseOrder->getTotalAmount(), 2) }}</span></label>
+                                <label class="block text-sm font-bold text-gray-700">Total Amount: <span class="text-lg font-bold text-gray-900">{{ $selectedPurchaseOrder->getFormattedTotalAmount() }}</span></label>
                             </div>
                         </div>
                     </div>
@@ -1007,7 +1007,7 @@
                                         <td class="px-6 py-4 text-sm text-gray-900">{{ $item->description }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $item->quantity
                                             }}</td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">Rs. {{
+                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $selectedPurchaseOrder->getCurrencySymbol() }}{{
                                             number_format($item->unit_price, 2) }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap">
                                             <input type="number" step="0.01"
@@ -1015,7 +1015,7 @@
                                                 class="w-24 px-2 py-1 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500">
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            Rs. {{ number_format(($phoneConfirmForm["item_{$item->id}_unit_price"] ??
+                                            {{ $selectedPurchaseOrder->getCurrencySymbol() }}{{ number_format(($phoneConfirmForm["item_{$item->id}_unit_price"] ??
                                             $item->unit_price) * $item->quantity, 2) }}
                                         </td>
                                     </tr>

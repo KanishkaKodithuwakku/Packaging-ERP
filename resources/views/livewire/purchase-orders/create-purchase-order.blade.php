@@ -100,7 +100,7 @@
                                             </p>
                                             @if($jobOrder->purchase_order_no)
                                                 <p class="text-sm text-gray-600 mt-1">
-                                                    <span class="font-medium">Purchase Order No:</span> 
+                                                    <span class="font-medium">Customer Purchase Order Number:</span> 
                                                     <span class="font-semibold text-gray-900">{{ $jobOrder->purchase_order_no }}</span>
                                                 </p>
                                             @endif

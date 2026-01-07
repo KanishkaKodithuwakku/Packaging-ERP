@@ -310,7 +310,7 @@
                     @foreach($productionOrder->items as $item)
                     <tr>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {{ ucfirst($item->item_type) }}
+                            {{ $item->item_type === 'box' ? 'Boards' : ucfirst($item->item_type) }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {{ $item->description ?? 'N/A' }}
@@ -357,14 +357,28 @@
                             @endif
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {{ number_format($item->completed_quantity) }}
                             @php
-                                // Calculate material completed from finished goods completed
-                                $materialCompleted = $item->getNoOfUps() > 0 ? ($item->completed_quantity / $item->getNoOfUps()) : 0;
+                                // Use finished_goods_quantity if available, otherwise calculate from completed_quantity
+                                $noOfUps = $item->getNoOfUps();
+                                $completedBoards = $item->completed_quantity;
+                                $completedBoxes = $item->finished_goods_quantity ?? ($noOfUps > 0 ? ($completedBoards * $noOfUps) : $completedBoards);
                             @endphp
+                            {{ number_format($completedBoxes, 0) }}
                             <div class="text-xs text-gray-400 mt-1">
-                                ({{ number_format($materialCompleted, 1) }} × {{ $item->getNoOfUps() }})
+                                ({{ number_format($completedBoards, 0) }} boards × {{ $noOfUps }})
                             </div>
+                            @if($item->waste_quantity && $item->waste_quantity != 0)
+                                @php
+                                    $wasteQty = $item->waste_quantity;
+                                @endphp
+                                <div class="text-xs mt-1">
+                                    @if($wasteQty > 0)
+                                        <span class="text-red-600">Waste: {{ number_format($wasteQty, 0) }} boards</span>
+                                    @else
+                                        <span class="text-green-600">Conserve: {{ number_format(abs($wasteQty), 0) }} boards</span>
+                                    @endif
+                                </div>
+                            @endif
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm">
                             @php 
@@ -377,25 +391,210 @@
                                 $hasReachedLimit = $item->completed_quantity >= $effectiveMaxQty;
                             @endphp
                             @if(!$hasReachedLimit && $maxCanComplete > 0)
-                                <div class="flex items-center space-x-2">
-                                    <input type="number" min="1" max="{{ $maxCanComplete }}" step="1"
-                                           wire:model.defer="completeQty.{{ $item->id }}"
-                                           class="w-24 px-2 py-1 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                                           placeholder="Qty"
-                                           title="Max: {{ $maxCanComplete }} (Effective Max: {{ $effectiveMaxQty }})">
+                                <div class="space-y-2">
+                                    <div class="flex items-center space-x-2">
+                                        <label class="text-xs font-medium text-gray-700 w-24">Used Boards:</label>
+                                        <input type="number" 
+                                               id="usedBoards-{{ $item->id }}"
+                                               min="1" 
+                                               max="{{ $maxCanComplete }}" 
+                                               step="1"
+                                               wire:model.live="completeQty.{{ $item->id }}"
+                                               class="w-24 px-2 py-1 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                               placeholder="Boards"
+                                               title="Max: {{ $maxCanComplete }} boards">
+                                        <span class="text-xs text-gray-500">boards</span>
+                                    </div>
+                                    <div class="flex items-center space-x-2">
+                                        <label class="text-xs font-medium text-gray-700 w-24">FG Produced:</label>
+                                        @php
+                                            $maxFgCanProduce = $noOfUps > 0 ? ($maxCanComplete * $noOfUps) : $maxCanComplete;
+                                        @endphp
+                                        <input type="number" 
+                                               id="fgProduced-{{ $item->id }}"
+                                               min="1" 
+                                               max="{{ $maxFgCanProduce }}"
+                                               step="1"
+                                               wire:model.live="completeFgQty.{{ $item->id }}"
+                                               class="w-24 px-2 py-1 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                               placeholder="Boxes"
+                                               title="Max: {{ $maxFgCanProduce }} boxes">
+                                        <span class="text-xs text-gray-500">boxes</span>
+                                    </div>
+                                    <div id="wasteInfo-{{ $item->id }}" class="text-xs mt-1"></div>
                                     <button wire:click="completeItemQuantity({{ $item->id }})"
-                                            class="inline-flex items-center px-3 py-1 border border-transparent rounded-md text-xs font-medium text-white bg-green-600 hover:bg-green-700">
+                                            class="inline-flex items-center px-3 py-1 border border-transparent rounded-md text-xs font-medium text-white bg-green-600 hover:bg-green-700 mt-2">
                                         Complete
                                     </button>
                                 </div>
-                                <div class="text-xs text-gray-500 mt-1">
-                                    <div>Remaining: {{ number_format($maxCanComplete) }} / Max: {{ number_format($effectiveMaxQty) }}</div>
+                                <div class="text-xs text-gray-500 mt-2">
+                                    @php
+                                        $remainingBoxes = $noOfUps > 0 ? ($maxCanComplete * $noOfUps) : $maxCanComplete;
+                                        $maxBoxes = $noOfUps > 0 ? ($effectiveMaxQty * $noOfUps) : $effectiveMaxQty;
+                                    @endphp
+                                    <div>Remaining: {{ number_format($maxCanComplete, 0) }} boards ({{ number_format($remainingBoxes, 0) }} boxes) / Max: {{ number_format($effectiveMaxQty, 0) }} boards ({{ number_format($maxBoxes, 0) }} boxes)</div>
                                     <div class="text-gray-400">
                                         Material: {{ number_format($materialQty) }} × UPS: {{ $noOfUps }} = {{ number_format($expectedFromMaterial) }} | Production Order: {{ number_format($item->quantity) }} | Job Order: {{ number_format($jobOrderOrderQty) }}
                                     </div>
                                 </div>
+                                @script
+                                <script>
+                                    (function() {
+                                        const itemId = {{ $item->id }};
+                                        const noOfUps = {{ $noOfUps }};
+                                        const maxCanComplete = {{ $maxCanComplete }};
+                                        @php
+                                            $maxFgCanProduce = $noOfUps > 0 ? ($maxCanComplete * $noOfUps) : $maxCanComplete;
+                                        @endphp
+                                        const maxFgCanProduce = {{ $maxFgCanProduce }};
+                                        const usedBoardsInput = document.getElementById('usedBoards-' + itemId);
+                                        const fgProducedInput = document.getElementById('fgProduced-' + itemId);
+                                        const wasteInfo = document.getElementById('wasteInfo-' + itemId);
+                                        
+                                        if (!usedBoardsInput || !fgProducedInput || !wasteInfo) return;
+                                        
+                                        let isUpdating = false;
+                                        
+                                        function calculateWaste() {
+                                            const usedBoards = parseFloat(usedBoardsInput.value) || 0;
+                                            const fgProduced = parseFloat(fgProducedInput.value) || 0;
+                                            
+                                            if (usedBoards > 0 && fgProduced > 0 && noOfUps > 0) {
+                                                const expectedBoards = Math.ceil(fgProduced / noOfUps);
+                                                const waste = usedBoards - expectedBoards;
+                                                
+                                                if (waste > 0) {
+                                                    wasteInfo.innerHTML = '<span class="text-red-600 font-medium">Waste: ' + waste + ' boards</span>';
+                                                    wasteInfo.className = 'text-xs mt-1';
+                                                } else if (waste < 0) {
+                                                    wasteInfo.innerHTML = '<span class="text-green-600 font-medium">Conserve: ' + Math.abs(waste) + ' boards</span>';
+                                                    wasteInfo.className = 'text-xs mt-1';
+                                                } else {
+                                                    wasteInfo.innerHTML = '<span class="text-gray-600">No waste/conserve</span>';
+                                                    wasteInfo.className = 'text-xs mt-1';
+                                                }
+                                            } else {
+                                                wasteInfo.innerHTML = '';
+                                            }
+                                        }
+                                        
+                                        function updateFgFromBoards() {
+                                            if (isUpdating) return;
+                                            let usedBoards = parseFloat(usedBoardsInput.value) || 0;
+                                            
+                                            // Cap at maximum allowed
+                                            if (usedBoards > maxCanComplete) {
+                                                usedBoardsInput.value = maxCanComplete;
+                                                usedBoards = maxCanComplete;
+                                                usedBoardsInput.dispatchEvent(new Event('input', { bubbles: true }));
+                                            }
+                                            
+                                            if (usedBoards > 0 && noOfUps > 0) {
+                                                isUpdating = true;
+                                                const calculatedFg = Math.round(usedBoards * noOfUps);
+                                                
+                                                // Cap FG at maximum allowed
+                                                const finalFg = Math.min(calculatedFg, maxFgCanProduce);
+                                                
+                                                const currentFg = parseFloat(fgProducedInput.value) || 0;
+                                                // Only auto-fill if field is empty or value matches expected calculation (within tolerance)
+                                                if (currentFg === 0 || Math.abs(currentFg - calculatedFg) <= 1) {
+                                                    fgProducedInput.value = finalFg;
+                                                    // Trigger Livewire update by dispatching input event
+                                                    fgProducedInput.dispatchEvent(new Event('input', { bubbles: true }));
+                                                }
+                                                setTimeout(() => {
+                                                    isUpdating = false;
+                                                    calculateWaste();
+                                                }, 150);
+                                            } else {
+                                                calculateWaste();
+                                            }
+                                        }
+                                        
+                                        function updateBoardsFromFg() {
+                                            if (isUpdating) return;
+                                            let fgProduced = parseFloat(fgProducedInput.value) || 0;
+                                            
+                                            // Cap at maximum allowed
+                                            if (fgProduced > maxFgCanProduce) {
+                                                fgProducedInput.value = maxFgCanProduce;
+                                                fgProduced = maxFgCanProduce;
+                                                fgProducedInput.dispatchEvent(new Event('input', { bubbles: true }));
+                                            }
+                                            
+                                            if (fgProduced > 0 && noOfUps > 0) {
+                                                isUpdating = true;
+                                                let calculatedBoards = Math.ceil(fgProduced / noOfUps);
+                                                
+                                                // Cap boards at maximum allowed
+                                                if (calculatedBoards > maxCanComplete) {
+                                                    calculatedBoards = maxCanComplete;
+                                                    // Recalculate FG from capped boards
+                                                    const recalculatedFg = Math.round(calculatedBoards * noOfUps);
+                                                    fgProducedInput.value = Math.min(recalculatedFg, maxFgCanProduce);
+                                                    fgProducedInput.dispatchEvent(new Event('input', { bubbles: true }));
+                                                }
+                                                
+                                                const currentBoards = parseFloat(usedBoardsInput.value) || 0;
+                                                // Only auto-fill if field is empty or value matches expected calculation (within tolerance)
+                                                if (currentBoards === 0 || Math.abs(currentBoards - calculatedBoards) <= 1) {
+                                                    usedBoardsInput.value = calculatedBoards;
+                                                    // Trigger Livewire update by dispatching input event
+                                                    usedBoardsInput.dispatchEvent(new Event('input', { bubbles: true }));
+                                                }
+                                                setTimeout(() => {
+                                                    isUpdating = false;
+                                                    calculateWaste();
+                                                }, 150);
+                                            } else {
+                                                calculateWaste();
+                                            }
+                                        }
+                                        
+                                        // Add validation on input to prevent exceeding max
+                                        usedBoardsInput.addEventListener('blur', function() {
+                                            const value = parseFloat(this.value) || 0;
+                                            if (value > maxCanComplete) {
+                                                this.value = maxCanComplete;
+                                                this.dispatchEvent(new Event('input', { bubbles: true }));
+                                            }
+                                        });
+                                        
+                                        fgProducedInput.addEventListener('blur', function() {
+                                            const value = parseFloat(this.value) || 0;
+                                            if (value > maxFgCanProduce) {
+                                                this.value = maxFgCanProduce;
+                                                this.dispatchEvent(new Event('input', { bubbles: true }));
+                                            }
+                                        });
+                                        
+                                        usedBoardsInput.addEventListener('input', function() {
+                                            setTimeout(updateFgFromBoards, 100);
+                                        });
+                                        
+                                        fgProducedInput.addEventListener('input', function() {
+                                            setTimeout(updateBoardsFromFg, 100);
+                                        });
+                                        
+                                        // Initial calculation after Livewire renders
+                                        setTimeout(() => {
+                                            if (usedBoardsInput.value) {
+                                                updateFgFromBoards();
+                                            } else if (fgProducedInput.value) {
+                                                updateBoardsFromFg();
+                                            }
+                                        }, 200);
+                                    })();
+                                </script>
+                                @endscript
                             @else
-                                <span class="text-xs text-green-700">Fully completed ({{ number_format($item->completed_quantity) }} / {{ number_format($effectiveMaxQty) }})</span>
+                                @php
+                                    // Convert to finished goods quantities for display
+                                    $completedBoxesDisplay = $noOfUps > 0 ? ($item->completed_quantity * $noOfUps) : $item->completed_quantity;
+                                    $effectiveMaxBoxes = $noOfUps > 0 ? ($effectiveMaxQty * $noOfUps) : $effectiveMaxQty;
+                                @endphp
+                                <span class="text-xs text-green-700">Fully completed ({{ number_format($completedBoxesDisplay, 0) }} / {{ number_format($effectiveMaxBoxes, 0) }} boxes)</span>
                             @endif
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
@@ -573,10 +772,16 @@
                                 @foreach($productionOrder->items as $index => $item)
                                 <tr>
                                     <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">{{ $index + 1 }}</td>
-                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">{{ ucfirst($item->item_type) }}</td>
+                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">{{ $item->item_type === 'box' ? 'Boards' : ucfirst($item->item_type) }}</td>
                                     <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">{{ $item->description ?? 'N/A' }}</td>
                                     <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">{{ number_format($item->quantity) }}</td>
-                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">{{ number_format($item->completed_quantity) }}</td>
+                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">
+                                        @php
+                                            $noOfUpsPrint = $item->getNoOfUps();
+                                            $completedBoxesPrint = $noOfUpsPrint > 0 ? ($item->completed_quantity * $noOfUpsPrint) : $item->completed_quantity;
+                                        @endphp
+                                        {{ number_format($completedBoxesPrint, 0) }}
+                                    </td>
                                     <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">{{ ucfirst($item->status) }}</td>
                                 </tr>
                                 @endforeach
@@ -652,7 +857,7 @@
                                     <option value="">Select an item to generate GRN for</option>
                                     @foreach($availableQuantities as $available)
                                         <option value="{{ $available['item']->id }}">
-                                            {{ ucfirst($available['item']->item_type) }} - 
+                                            {{ $available['item']->item_type === 'box' ? 'Boards' : ucfirst($available['item']->item_type) }} - 
                                             Remaining: {{ $available['remaining_quantity'] }} 
                                             @if($available['item_details'])
                                                 ({{ $available['item_details']->length ?? 'N/A' }}x{{ $available['item_details']->width ?? 'N/A' }}x{{ $available['item_details']->height ?? 'N/A' }})
@@ -682,7 +887,7 @@
                                                    class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
                                             <div class="flex-1">
                                                 <div class="text-sm font-medium text-gray-900">
-                                                    {{ ucfirst($available['item']->item_type) }}
+                                                    {{ $available['item']->item_type === 'box' ? 'Boards' : ucfirst($available['item']->item_type) }}
                                                     @if($available['item_details'])
                                                         - {{ $available['item_details']->length ?? 'N/A' }}x{{ $available['item_details']->width ?? 'N/A' }}x{{ $available['item_details']->height ?? 'N/A' }}
                                                     @endif

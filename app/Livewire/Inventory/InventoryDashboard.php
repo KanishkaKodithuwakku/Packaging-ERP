@@ -400,18 +400,20 @@ class InventoryDashboard extends Component
         if ($this->selectedTransaction) {
             // Get job order's order quantity (finished goods quantity) instead of material quantity
             $jobOrder = $this->selectedTransaction->getJobOrder();
-            $orderQty = $this->selectedTransaction->qty; // Default to transaction quantity
+            $transactionQty = (int) $this->selectedTransaction->qty;
             
             if ($jobOrder) {
                 // Try to find the job order item that matches this transaction via GRN item
                 $jobOrderItem = null;
-                $maxOrderQty = $this->selectedTransaction->qty; // Default to transaction quantity
+                $maxOrderQty = $transactionQty; // Default to transaction quantity
+                $itemType = null;
                 
                 if ($this->selectedTransaction->grn && $this->selectedTransaction->item_code) {
                     // Get GRN item that matches this transaction's material code
                     $grnItem = $this->selectedTransaction->grn->items->firstWhere('material_code', $this->selectedTransaction->item_code);
                     if ($grnItem && $grnItem->item_id) {
                         // Use the item_id and item_type from GRN item
+                        $itemType = $grnItem->item_type;
                         if ($grnItem->item_type === 'box') {
                             $jobOrderBox = $jobOrder->boxes()->where('id', $grnItem->item_id)->first();
                             if ($jobOrderBox) {
@@ -432,19 +434,40 @@ class InventoryDashboard extends Component
                 if (!$jobOrderItem) {
                     $jobOrderBox = $jobOrder->boxes()->first();
                     if ($jobOrderBox) {
+                        $jobOrderItem = $jobOrderBox;
+                        $itemType = 'box';
                         $maxOrderQty = (int) $jobOrderBox->order_qty;
                     } else {
                         $jobOrderDivider = $jobOrder->dividers()->first();
                         if ($jobOrderDivider) {
+                            $jobOrderItem = $jobOrderDivider;
+                            $itemType = 'divider';
                             $maxOrderQty = (int) $jobOrderDivider->quantity;
                         }
                     }
                 }
                 
-                // Default quantity to available raw material quantity, but cap at job order order quantity
-                $defaultQty = min((int) $this->selectedTransaction->qty, $maxOrderQty);
+                // Calculate already completed production quantity for this job order item
+                $alreadyCompletedQty = 0;
+                if ($jobOrderItem && $itemType) {
+                    $alreadyCompletedQty = (int) \App\Models\ProductionOrderItem::whereHas('productionOrder', function($query) use ($jobOrder) {
+                            $query->where('job_order_id', $jobOrder->id);
+                        })
+                        ->where('item_type', $itemType)
+                        ->where('item_id', $jobOrderItem->id)
+                        ->sum('completed_quantity');
+                }
+                
+                // Calculate remaining available quantity (job order order qty - already completed)
+                $remainingAvailableQty = max(0, $maxOrderQty - $alreadyCompletedQty);
+                
+                // Default quantity should be the minimum of:
+                // 1. Transaction quantity (available raw material)
+                // 2. Job order's order quantity (absolute maximum)
+                // 3. Remaining available quantity (order qty - already completed)
+                $defaultQty = min($transactionQty, $maxOrderQty, $remainingAvailableQty);
             } else {
-                $defaultQty = (int) $this->selectedTransaction->qty;
+                $defaultQty = $transactionQty;
             }
             
             $this->productionOrderForm = [
@@ -584,16 +607,40 @@ class InventoryDashboard extends Component
             // Get job order's order quantity for validation
             $jobOrderItem = null;
             $itemType = 'box';
-            $maxOrderQty = $this->selectedTransaction->qty; // Default to transaction quantity
+            $maxOrderQty = (int) $this->selectedTransaction->qty; // Default to transaction quantity
             
-            if ($this->selectedTransaction->item_code) {
-                $jobOrderBox = $jobOrder->boxes()->where('id', $this->selectedTransaction->item_code)->first();
+            // Try to find the job order item that matches this transaction via GRN item
+            if ($this->selectedTransaction->grn && $this->selectedTransaction->item_code) {
+                // Get GRN item that matches this transaction's material code
+                $grnItem = $this->selectedTransaction->grn->items->firstWhere('material_code', $this->selectedTransaction->item_code);
+                if ($grnItem && $grnItem->item_id) {
+                    // Use the item_id and item_type from GRN item
+                    $itemType = $grnItem->item_type;
+                    if ($grnItem->item_type === 'box') {
+                        $jobOrderBox = $jobOrder->boxes()->where('id', $grnItem->item_id)->first();
+                        if ($jobOrderBox) {
+                            $jobOrderItem = $jobOrderBox;
+                            $maxOrderQty = (int) $jobOrderBox->order_qty;
+                        }
+                    } elseif ($grnItem->item_type === 'divider') {
+                        $jobOrderDivider = $jobOrder->dividers()->where('id', $grnItem->item_id)->first();
+                        if ($jobOrderDivider) {
+                            $jobOrderItem = $jobOrderDivider;
+                            $maxOrderQty = (int) $jobOrderDivider->quantity;
+                        }
+                    }
+                }
+            }
+            
+            // If no specific item found, use the first available item from the job order
+            if (!$jobOrderItem) {
+                $jobOrderBox = $jobOrder->boxes()->first();
                 if ($jobOrderBox) {
                     $jobOrderItem = $jobOrderBox;
                     $itemType = 'box';
                     $maxOrderQty = (int) $jobOrderBox->order_qty;
                 } else {
-                    $jobOrderDivider = $jobOrder->dividers()->where('id', $this->selectedTransaction->item_code)->first();
+                    $jobOrderDivider = $jobOrder->dividers()->first();
                     if ($jobOrderDivider) {
                         $jobOrderItem = $jobOrderDivider;
                         $itemType = 'divider';
@@ -602,21 +649,30 @@ class InventoryDashboard extends Component
                 }
             }
             
-            // If no specific item found, use the first available item
-            if (!$jobOrderItem) {
-                $jobOrderBox = $jobOrder->boxes()->first();
-                if ($jobOrderBox) {
-                    $maxOrderQty = (int) $jobOrderBox->order_qty;
-                } else {
-                    $jobOrderDivider = $jobOrder->dividers()->first();
-                    if ($jobOrderDivider) {
-                        $maxOrderQty = (int) $jobOrderDivider->quantity;
-                    }
-                }
+            // Calculate already completed production quantity for this job order item
+            $alreadyCompletedQty = 0;
+            if ($jobOrderItem && $itemType) {
+                $alreadyCompletedQty = (int) \App\Models\ProductionOrderItem::whereHas('productionOrder', function($query) use ($jobOrder) {
+                        $query->where('job_order_id', $jobOrder->id);
+                    })
+                    ->where('item_type', $itemType)
+                    ->where('item_id', $jobOrderItem->id)
+                    ->sum('completed_quantity');
             }
-
-            if ($this->productionOrderForm['quantity'] > $maxOrderQty) {
-                session()->flash('error', "Production quantity cannot exceed job order's order quantity ({$maxOrderQty}).");
+            
+            // Calculate remaining available quantity (job order order qty - already completed)
+            $remainingAvailableQty = max(0, $maxOrderQty - $alreadyCompletedQty);
+            
+            // Validate that the quantity doesn't exceed the remaining available quantity
+            $requestedQty = (int) $this->productionOrderForm['quantity'];
+            if ($requestedQty > $remainingAvailableQty) {
+                $message = "Production quantity ({$requestedQty}) cannot exceed remaining available quantity ({$remainingAvailableQty}).";
+                if ($alreadyCompletedQty > 0) {
+                    $message .= " Job order order quantity: {$maxOrderQty} PCS, already completed: {$alreadyCompletedQty} PCS.";
+                } else {
+                    $message .= " Job order order quantity: {$maxOrderQty} PCS.";
+                }
+                session()->flash('error', $message);
                 return;
             }
 
@@ -784,7 +840,8 @@ class InventoryDashboard extends Component
                     if ($grnItem) {
                         // Store item type from GRN item
                         $itemType = $grnItem->item_type;
-                        $transaction->itemType = ucfirst($itemType); // Store for view
+                        // For raw materials, show "Boards" instead of "Box" since we're displaying the raw material
+                        $transaction->itemType = $itemType === 'box' ? 'Boards' : ucfirst($itemType); // Store for view
                         
                         // Get purchase order item that matches this GRN item
                         $poItem = $transaction->grn->purchaseOrder->items->first(function($poItem) use ($grnItem) {
@@ -872,7 +929,8 @@ class InventoryDashboard extends Component
                     if ($transaction->grn) {
                         $grnItem = $transaction->grn->items->firstWhere('material_code', $transaction->item_code);
                         if ($grnItem && $grnItem->item_type) {
-                            $transaction->itemType = ucfirst($grnItem->item_type);
+                            // For raw materials, show "Boards" instead of "Box" since we're displaying the raw material
+                            $transaction->itemType = $grnItem->item_type === 'box' ? 'Boards' : ucfirst($grnItem->item_type);
                         }
                     }
                 }

@@ -82,22 +82,16 @@ class GRN extends Model
 
     /**
      * Get total quantity from items
-     * For production GRNs, convert board quantity to FG quantity
+     * For FG GRNs from production orders, qty_received already stores FG quantity (boxes), not board quantity
+     * So we should NOT multiply by No of UPS
      */
     public function getTotalQuantity(): float
     {
         $total = 0;
         foreach ($this->items as $item) {
             $qty = $item->qty_received_partial ?? $item->qty_received ?? 0;
-            
-            // For production GRNs, convert board quantity to FG quantity
-            if ($this->isFromProductionOrder() && $item->productionOrderItem) {
-                $noOfUps = $item->productionOrderItem->getNoOfUps();
-                if ($noOfUps > 0) {
-                    $qty = $qty * $noOfUps;
-                }
-            }
-            
+            // For FG GRNs, qty_received is already in finished goods (boxes) units
+            // No conversion needed
             $total += $qty;
         }
         return $total;
@@ -113,22 +107,16 @@ class GRN extends Model
 
     /**
      * Get total processed quantity
-     * For production GRNs, convert board quantity to FG quantity
+     * For FG GRNs from production orders, qty_processed already stores FG quantity (boxes), not board quantity
+     * So we should NOT multiply by No of UPS
      */
     public function getTotalProcessedQuantity(): float
     {
         $total = 0;
         foreach ($this->items as $item) {
             $qty = $item->qty_processed ?? 0;
-            
-            // For production GRNs, convert board quantity to FG quantity
-            if ($this->isFromProductionOrder() && $item->productionOrderItem) {
-                $noOfUps = $item->productionOrderItem->getNoOfUps();
-                if ($noOfUps > 0) {
-                    $qty = $qty * $noOfUps;
-                }
-            }
-            
+            // For FG GRNs, qty_processed is already in finished goods (boxes) units
+            // No conversion needed
             $total += $qty;
         }
         return $total;

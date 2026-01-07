@@ -152,7 +152,7 @@
                                             <div class="flex items-center space-x-2">
                                                 <span class="text-sm font-medium text-gray-900">{{ $transaction->item_code }}</span>
                                                 @if(isset($transaction->itemType))
-                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {{ $transaction->itemType === 'Box' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800' }}">
+                                                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {{ ($transaction->itemType === 'Box' || $transaction->itemType === 'Boards') ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800' }}">
                                                         {{ $transaction->itemType }}
                                                     </span>
                                                 @endif
@@ -311,6 +311,58 @@
 
                     <!-- Job Order Details -->
                     @if($selectedTransaction->getJobOrder())
+                    @php
+                        $jobOrder = $selectedTransaction->getJobOrder();
+                        $jobOrderItem = null;
+                        $itemType = null;
+                        $noOfUps = null;
+                        $expectedBoxes = null;
+                        $rawMaterialQty = (int) $selectedTransaction->qty;
+                        
+                        // Find the job order item that matches this transaction
+                        if ($selectedTransaction->grn && $selectedTransaction->item_code) {
+                            $grnItem = $selectedTransaction->grn->items->firstWhere('material_code', $selectedTransaction->item_code);
+                            if ($grnItem && $grnItem->item_id) {
+                                $itemType = $grnItem->item_type;
+                                if ($grnItem->item_type === 'box') {
+                                    $jobOrderBox = $jobOrder->boxes()->where('id', $grnItem->item_id)->first();
+                                    if ($jobOrderBox) {
+                                        $jobOrderItem = $jobOrderBox;
+                                        $noOfUps = (int) ($jobOrderBox->no_of_ups ?? 1);
+                                        // Expected boxes = raw material quantity (boards) * no_of_ups
+                                        $expectedBoxes = $rawMaterialQty * $noOfUps;
+                                    }
+                                } elseif ($grnItem->item_type === 'divider') {
+                                    $jobOrderDivider = $jobOrder->dividers()->where('id', $grnItem->item_id)->first();
+                                    if ($jobOrderDivider) {
+                                        $jobOrderItem = $jobOrderDivider;
+                                        // Dividers typically don't have no_of_ups, so expected = raw material qty
+                                        $noOfUps = 1;
+                                        $expectedBoxes = $rawMaterialQty;
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // If no specific item found, use the first available item
+                        if (!$jobOrderItem) {
+                            $jobOrderBox = $jobOrder->boxes()->first();
+                            if ($jobOrderBox) {
+                                $jobOrderItem = $jobOrderBox;
+                                $itemType = 'box';
+                                $noOfUps = (int) ($jobOrderBox->no_of_ups ?? 1);
+                                $expectedBoxes = $rawMaterialQty * $noOfUps;
+                            } else {
+                                $jobOrderDivider = $jobOrder->dividers()->first();
+                                if ($jobOrderDivider) {
+                                    $jobOrderItem = $jobOrderDivider;
+                                    $itemType = 'divider';
+                                    $noOfUps = 1;
+                                    $expectedBoxes = $rawMaterialQty;
+                                }
+                            }
+                        }
+                    @endphp
                     <div class="bg-blue-50 p-4 rounded-lg">
                         <h4 class="font-medium text-blue-900 mb-2">Job Order Details</h4>
                         <div class="grid grid-cols-2 gap-4 text-sm">
@@ -330,6 +382,16 @@
                                 <span class="text-blue-600">Status:</span>
                                 <span class="font-medium text-blue-900">{{ ucfirst($selectedTransaction->getJobOrder()->status) }}</span>
                             </div>
+                            @if($jobOrderItem && $itemType === 'box' && $noOfUps)
+                            <div>
+                                <span class="text-blue-600">No of UPS:</span>
+                                <span class="font-medium text-blue-900">{{ number_format($noOfUps, 0) }}</span>
+                            </div>
+                            <div>
+                                <span class="text-blue-600">Expected Boxes by Processing Boards:</span>
+                                <span class="font-medium text-blue-900">{{ number_format($expectedBoxes, 0) }} PCS</span>
+                            </div>
+                            @endif
                         </div>
                     </div>
                     @endif
@@ -355,41 +417,88 @@
                             <label class="block text-sm font-medium text-gray-700">Production Quantity</label>
                             @php
                                 $jobOrder = $selectedTransaction->getJobOrder();
-                                $maxOrderQty = $selectedTransaction->qty; // Default to transaction quantity
+                                $maxOrderQty = (int) $selectedTransaction->qty; // Default to transaction quantity
+                                $itemType = null;
+                                $jobOrderItem = null;
                                 
                                 if ($jobOrder) {
-                                    // Try to find the job order item that matches this transaction
-                                    $jobOrderItem = null;
-                                    if ($selectedTransaction->item_code) {
-                                        $jobOrderBox = $jobOrder->boxes()->where('id', $selectedTransaction->item_code)->first();
+                                    // Try to find the job order item that matches this transaction via GRN item
+                                    if ($selectedTransaction->grn && $selectedTransaction->item_code) {
+                                        // Get GRN item that matches this transaction's material code
+                                        $grnItem = $selectedTransaction->grn->items->firstWhere('material_code', $selectedTransaction->item_code);
+                                        if ($grnItem && $grnItem->item_id) {
+                                            // Use the item_id and item_type from GRN item
+                                            $itemType = $grnItem->item_type;
+                                            if ($grnItem->item_type === 'box') {
+                                                $jobOrderBox = $jobOrder->boxes()->where('id', $grnItem->item_id)->first();
+                                                if ($jobOrderBox) {
+                                                    $jobOrderItem = $jobOrderBox;
+                                                    $maxOrderQty = (int) $jobOrderBox->order_qty;
+                                                }
+                                            } elseif ($grnItem->item_type === 'divider') {
+                                                $jobOrderDivider = $jobOrder->dividers()->where('id', $grnItem->item_id)->first();
+                                                if ($jobOrderDivider) {
+                                                    $jobOrderItem = $jobOrderDivider;
+                                                    $maxOrderQty = (int) $jobOrderDivider->quantity;
+                                                }
+                                            }
+                                        }
+                                    }
+                                    
+                                    // If no specific item found, use the first available item from the job order
+                                    if (!$jobOrderItem) {
+                                        $jobOrderBox = $jobOrder->boxes()->first();
                                         if ($jobOrderBox) {
+                                            $jobOrderItem = $jobOrderBox;
+                                            $itemType = 'box';
                                             $maxOrderQty = (int) $jobOrderBox->order_qty;
                                         } else {
-                                            $jobOrderDivider = $jobOrder->dividers()->where('id', $selectedTransaction->item_code)->first();
+                                            $jobOrderDivider = $jobOrder->dividers()->first();
                                             if ($jobOrderDivider) {
+                                                $jobOrderItem = $jobOrderDivider;
+                                                $itemType = 'divider';
                                                 $maxOrderQty = (int) $jobOrderDivider->quantity;
                                             }
                                         }
                                     }
                                     
-                                    // If no specific item found, use the first available item
-                                    if ($maxOrderQty == $selectedTransaction->qty) {
-                                        $jobOrderBox = $jobOrder->boxes()->first();
-                                        if ($jobOrderBox) {
-                                            $maxOrderQty = (int) $jobOrderBox->order_qty;
-                                        } else {
-                                            $jobOrderDivider = $jobOrder->dividers()->first();
-                                            if ($jobOrderDivider) {
-                                                $maxOrderQty = (int) $jobOrderDivider->quantity;
-                                            }
-                                        }
+                                    // Calculate already completed production quantity for this job order item
+                                    $alreadyCompletedQty = 0;
+                                    if ($jobOrderItem && $itemType) {
+                                        $alreadyCompletedQty = (int) \App\Models\ProductionOrderItem::whereHas('productionOrder', function($query) use ($jobOrder) {
+                                                $query->where('job_order_id', $jobOrder->id);
+                                            })
+                                            ->where('item_type', $itemType)
+                                            ->where('item_id', $jobOrderItem->id)
+                                            ->sum('completed_quantity');
                                     }
+                                    
+                                    // Calculate remaining available quantity (job order order qty - already completed)
+                                    $remainingAvailableQty = max(0, $maxOrderQty - $alreadyCompletedQty);
+                                    
+                                    // The effective maximum for the input is the minimum of transaction qty, job order order qty, and remaining available qty
+                                    $effectiveMaxQty = min((int) $selectedTransaction->qty, $maxOrderQty, $remainingAvailableQty);
+                                    
+                                    // Show additional info if there's already completed production
+                                    $showCompletedInfo = $alreadyCompletedQty > 0;
+                                } else {
+                                    $showCompletedInfo = false;
+                                    $alreadyCompletedQty = 0;
+                                    $remainingAvailableQty = $maxOrderQty;
+                                    $effectiveMaxQty = $maxOrderQty;
                                 }
                             @endphp
                             <input type="number" wire:model="productionOrderForm.quantity" 
-                                   step="0.01" min="0" max="{{ $maxOrderQty }}"
+                                   step="0.01" min="0" max="{{ $effectiveMaxQty }}"
                                    class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-green-500 focus:border-green-500 sm:text-sm">
-                            <p class="mt-1 text-sm text-gray-500">Maximum: {{ number_format($maxOrderQty, 0) }} PCS (Job Order Order Quantity)</p>
+                            <p class="mt-1 text-sm text-gray-500">
+                                Maximum: {{ number_format($effectiveMaxQty, 0) }} PCS 
+                                @if($showCompletedInfo)
+                                    ({{ number_format($remainingAvailableQty, 0) }} remaining out of {{ number_format($maxOrderQty, 0) }} total - {{ number_format($alreadyCompletedQty, 0) }} already completed)
+                                @else
+                                    (Job Order Order Quantity: {{ number_format($maxOrderQty, 0) }} PCS)
+                                @endif
+                            </p>
                         </div>
 
                         <div>

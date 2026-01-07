@@ -270,10 +270,25 @@
                                         })
                                         ->get()
                                         ->sum(function($item) {
-                                            return $item->qty_received_partial > 0 ? $item->qty_received_partial : ($item->qty_received ?? 0);
+                                            // Explicitly check for null and treat as 0
+                                            $qtyReceivedPartial = $item->qty_received_partial ?? 0;
+                                            $qtyReceived = $item->qty_received ?? 0;
+                                            
+                                            // Only count if there's actual received quantity (greater than 0)
+                                            if ($qtyReceivedPartial > 0) {
+                                                return (float) $qtyReceivedPartial;
+                                            } elseif ($qtyReceived > 0) {
+                                                return (float) $qtyReceived;
+                                            }
+                                            return 0;
                                         });
                                     }
-                                    $overallGRNProgress = $totalOrderedQty > 0 ? min(100, ($totalGRNReceivedQty / $totalOrderedQty) * 100) : 0;
+                                    // Calculate progress: only show progress if there's actual received quantity
+                                    // If nothing received, progress should be 0%
+                                    $overallGRNProgress = 0;
+                                    if ($totalOrderedQty > 0 && $totalGRNReceivedQty > 0) {
+                                        $overallGRNProgress = min(100, ($totalGRNReceivedQty / $totalOrderedQty) * 100);
+                                    }
                                     
                                     // Get GRN statuses for this job order
                                     $grns = \App\Models\GRN::whereHas('purchaseOrder', function($po) use ($jobOrder) {

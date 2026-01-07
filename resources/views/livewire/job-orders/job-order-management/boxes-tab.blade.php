@@ -288,11 +288,6 @@
                     <div class="flex justify-between items-center mb-3">
                         <h5 class="text-md font-medium text-gray-700">Calculated Fields</h5>
                         <div class="flex flex-col items-end gap-2">
-                            <button type="button"
-                                    wire:click="saveCalculatedFields"
-                                    class="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 transition-colors">
-                                Save Changes
-                            </button>
                             @if (session()->has('success'))
                                 <div class="bg-green-100 border border-green-400 text-green-700 px-3 py-1.5 rounded text-xs">
                                     <div class="flex items-center">
@@ -426,7 +421,7 @@
                 @if($boxFormTab === 'calculated')
                     <button wire:click="addBox"
                             class="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700">
-                        Add Box
+                        Save
                     </button>
                 @endif
             </div>

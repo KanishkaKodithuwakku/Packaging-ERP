@@ -235,7 +235,7 @@ class GRNsCrud extends Component
 
     public function render()
     {
-        $query = GRN::with(['supplierOrder.supplier', 'productionOrder.supplier', 'items', 'purchaseOrder.supplier']);
+        $query = GRN::with(['supplierOrder.supplier', 'productionOrder.supplier', 'productionOrder.jobOrder', 'items', 'purchaseOrder.supplier', 'purchaseOrder.jobOrder']);
 
         // Apply search filter
         if ($this->search) {

@@ -47,6 +47,7 @@ class JobOrderDetail extends Component
     public int $deliveryCount = 0;
     public float $dispatchedQuantity = 0;
     public $purchaseOrders = [];
+    public $fgGrns = []; // Finished Goods GRNs
 
     // Box form
     public $boxForm = [
@@ -210,9 +211,41 @@ class JobOrderDetail extends Component
             ->when(count($poIds2) > 0, function($q) use ($poIds2) {
                 $q->orWhereIn('production_order_id', $poIds2);
             })
+            ->with(['items.productionOrderItem', 'productionOrder'])
             ->get();
         $this->grnCount = $grns->count();
         $this->grnProcessedCount = $grns->where('status', 'processed')->count();
+        
+        // Load FG GRNs (GRNs from production orders)
+        $fgGrns = $grns->filter(function($grn) {
+            return $grn->isFromProductionOrder();
+        });
+        
+        $this->fgGrns = $fgGrns->map(function($grn) {
+            // Calculate total waste/conserve from production order items linked to this GRN
+            $totalWaste = 0;
+            foreach ($grn->items as $grnItem) {
+                if ($grnItem->productionOrderItem) {
+                    $wasteQty = $grnItem->productionOrderItem->waste_quantity ?? 0;
+                    $totalWaste += $wasteQty;
+                }
+            }
+            
+            return [
+                'id' => $grn->id,
+                'grn_no' => $grn->grn_no,
+                'lot_code' => $grn->lot_code,
+                'received_date' => $grn->received_date ? $grn->received_date->format('Y-m-d') : null,
+                'received_date_formatted' => $grn->received_date ? $grn->received_date->format('M d, Y') : 'N/A',
+                'status' => $grn->status,
+                'processed_at' => $grn->processed_at ? $grn->processed_at->format('M d, Y H:i') : null,
+                'total_quantity' => $grn->getTotalQuantity(), // Already returns FG quantity (boxes)
+                'total_processed' => $grn->getTotalProcessedQuantity(), // Already returns FG quantity (boxes)
+                'total_expected' => $grn->getTotalExpectedQuantity(),
+                'production_order_number' => $grn->productionOrder ? $grn->productionOrder->production_order_number : 'N/A',
+                'waste_quantity' => $totalWaste, // Positive = waste, Negative = conserve
+            ];
+        })->toArray();
 
         // Delivery Note status summary
         $deliveryNotes = \App\Models\DeliveryNote::where('job_order_id', $this->jobOrderId)->with('items')->get();
@@ -1188,11 +1221,16 @@ class JobOrderDetail extends Component
                 return redirect()->route('purchase-order-management', ['purchase_order' => $existingPO->id]);
             }
 
+            // Get supplier to copy currency
+            $supplier = $this->jobOrder->supplier;
+            $currency = $supplier ? ($supplier->currency ?? null) : null;
+            
             // Create purchase order
             $purchaseOrder = \App\Models\PurchaseOrder::create([
                 'po_number' => \App\Models\PurchaseOrder::generatePONumber(),
                 'date' => now()->format('Y-m-d'),
                 'supplier_id' => $this->jobOrder->supplier_id,
+                'currency' => $currency, // Copy currency from supplier
                 'job_order_id' => $this->jobOrderId,
                 'status' => 'draft',
                 'notes' => "Generated from Job Order: {$this->jobOrder->job_number}",
@@ -1312,14 +1350,16 @@ class JobOrderDetail extends Component
 
             foreach ($productionOrders as $po) {
                 foreach ($po->items as $item) {
-                    // Count completed quantity
-                    $itemCompleted = (int) ($item->completed_quantity ?? 0);
+                    // Count completed quantity - use finished_goods_quantity (boxes), not completed_quantity (boards)
+                    $itemCompleted = (int) ($item->finished_goods_quantity ?? 0);
                     $completed += $itemCompleted;
 
-                    // Calculate work in progress (same logic as Inventory Dashboard)
-                    // WIP = quantity - completed_quantity for items that are in progress
+                    // Calculate work in progress
+                    // For FG, calculate remaining from production order quantity × No of UPS
+                    $noOfUps = $item->getNoOfUps();
+                    $productionOrderFgQty = $noOfUps > 0 ? ($item->quantity * $noOfUps) : $item->quantity;
                     if (in_array($po->status, ['pending', 'in_production', 'ready_for_production'])) {
-                        $remaining = $item->quantity - $itemCompleted;
+                        $remaining = $productionOrderFgQty - $itemCompleted;
                         if ($remaining > 0) {
                             $inProgressQty += $remaining;
                         }

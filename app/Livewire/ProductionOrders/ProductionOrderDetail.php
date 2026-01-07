@@ -33,7 +33,8 @@ class ProductionOrderDetail extends Component
     // Form data
     public $form = [];
     // Per-item partial completion quantities
-    public array $completeQty = [];
+    public array $completeQty = []; // Used boards quantity
+    public array $completeFgQty = []; // Finished goods (boxes) quantity
     public bool $canComplete = false;
     
     // Completion confirmation modal
@@ -220,38 +221,143 @@ class ProductionOrderDetail extends Component
     }
 
     /**
+     * Calculate FG quantity from boards quantity
+     */
+    public function calculateFgFromBoards(int $itemId, int $boardsQty): int
+    {
+        $item = $this->productionOrder->items()->findOrFail($itemId);
+        $noOfUps = $item->getNoOfUps();
+        return $noOfUps > 0 ? ($boardsQty * $noOfUps) : $boardsQty;
+    }
+
+    /**
+     * Calculate boards quantity from FG quantity
+     */
+    public function calculateBoardsFromFg(int $itemId, int $fgQty): int
+    {
+        $item = $this->productionOrder->items()->findOrFail($itemId);
+        $noOfUps = $item->getNoOfUps();
+        return $noOfUps > 0 ? (int) ceil($fgQty / $noOfUps) : $fgQty;
+    }
+
+    // Flag to prevent infinite loops in auto-calculation
+    private bool $isAutoCalculating = false;
+
+    /**
+     * Auto-calculate FG when boards quantity changes
+     */
+    public function updatedCompleteQty($value, $itemId)
+    {
+        if ($this->isAutoCalculating) {
+            return;
+        }
+        
+        if ($value > 0 && isset($this->completeQty[$itemId])) {
+            $item = $this->productionOrder->items()->findOrFail($itemId);
+            $effectiveMaxQty = $item->getEffectiveMaxQuantity();
+            $maxCanComplete = $effectiveMaxQty - $item->completed_quantity;
+            
+            // Cap the value at maximum allowed
+            if ($value > $maxCanComplete) {
+                $this->completeQty[$itemId] = $maxCanComplete;
+                session()->flash('error', "Used boards cannot exceed {$maxCanComplete} boards (remaining quantity).");
+                return;
+            }
+            
+            $currentFg = $this->completeFgQty[$itemId] ?? 0;
+            $calculatedFg = $this->calculateFgFromBoards($itemId, (int)$value);
+            
+            // Only auto-fill if FG field is empty or matches expected calculation (within 1 unit tolerance)
+            if ($currentFg == 0 || abs($currentFg - $calculatedFg) <= 1) {
+                $this->isAutoCalculating = true;
+                $this->completeFgQty[$itemId] = $calculatedFg;
+                $this->isAutoCalculating = false;
+            }
+        }
+    }
+
+    /**
+     * Auto-calculate boards when FG quantity changes
+     */
+    public function updatedCompleteFgQty($value, $itemId)
+    {
+        if ($this->isAutoCalculating) {
+            return;
+        }
+        
+        if ($value > 0 && isset($this->completeFgQty[$itemId])) {
+            $item = $this->productionOrder->items()->findOrFail($itemId);
+            $effectiveMaxQty = $item->getEffectiveMaxQuantity();
+            $maxCanComplete = $effectiveMaxQty - $item->completed_quantity;
+            $noOfUps = $item->getNoOfUps();
+            $maxFgCanProduce = $noOfUps > 0 ? ($maxCanComplete * $noOfUps) : $maxCanComplete;
+            
+            // Cap the FG value at maximum allowed
+            if ($value > $maxFgCanProduce) {
+                $this->completeFgQty[$itemId] = $maxFgCanProduce;
+                session()->flash('error', "FG produced cannot exceed {$maxFgCanProduce} boxes (remaining capacity).");
+                return;
+            }
+            
+            $currentBoards = $this->completeQty[$itemId] ?? 0;
+            $calculatedBoards = $this->calculateBoardsFromFg($itemId, (int)$value);
+            
+            // Cap calculated boards at maximum allowed
+            if ($calculatedBoards > $maxCanComplete) {
+                $calculatedBoards = $maxCanComplete;
+                // Recalculate FG from capped boards
+                $this->isAutoCalculating = true;
+                $this->completeFgQty[$itemId] = $this->calculateFgFromBoards($itemId, $calculatedBoards);
+                $this->isAutoCalculating = false;
+            }
+            
+            // Only auto-fill if boards field is empty or matches expected calculation (within 1 unit tolerance)
+            if ($currentBoards == 0 || abs($currentBoards - $calculatedBoards) <= 1) {
+                $this->isAutoCalculating = true;
+                $this->completeQty[$itemId] = $calculatedBoards;
+                $this->isAutoCalculating = false;
+            }
+        }
+    }
+
+    /**
      * Show confirmation modal before completing item
      */
     public function completeItemQuantity(int $itemId): void
     {
         $item = $this->productionOrder->items()->findOrFail($itemId);
-        $qty = (int)($this->completeQty[$itemId] ?? 0);
+        $usedBoards = (int)($this->completeQty[$itemId] ?? 0);
+        $fgProduced = (int)($this->completeFgQty[$itemId] ?? 0);
 
-        if ($qty <= 0) {
-            session()->flash('error', 'Enter a quantity greater than 0.');
+        // Validate that at least one value is provided
+        if ($usedBoards <= 0 && $fgProduced <= 0) {
+            session()->flash('error', 'Please enter either Used Boards or FG Produced quantity.');
             return;
         }
 
-        // Check if already reached job order's order quantity limit
-        if ($item->hasReachedJobOrderLimit()) {
-            session()->flash('error', 'Cannot complete more items. The completed quantity has reached the job order\'s order quantity limit.');
-            return;
+        // If only one value is provided, calculate the other
+        if ($usedBoards > 0 && $fgProduced <= 0) {
+            $fgProduced = $this->calculateFgFromBoards($itemId, $usedBoards);
+            $this->completeFgQty[$itemId] = $fgProduced;
+        } elseif ($fgProduced > 0 && $usedBoards <= 0) {
+            $usedBoards = $this->calculateBoardsFromFg($itemId, $fgProduced);
+            $this->completeQty[$itemId] = $usedBoards;
         }
 
-        // Get effective maximum quantity (min of expected from material and job order order qty)
+        // Validate against maximum allowed
         $effectiveMaxQty = $item->getEffectiveMaxQuantity();
         $maxCanComplete = $effectiveMaxQty - $item->completed_quantity;
 
-        if ($qty > $maxCanComplete) {
+        if ($usedBoards > $maxCanComplete) {
             $expectedFromMaterial = $item->getExpectedFinishedGoodsFromMaterial();
             $jobOrderOrderQty = $item->getJobOrderOrderQuantity();
-            session()->flash('error', "Quantity exceeds the maximum allowed. Maximum remaining: {$maxCanComplete} (Effective Max: {$effectiveMaxQty}, Expected from Material: {$expectedFromMaterial}, Job Order Qty: {$jobOrderOrderQty}).");
+            session()->flash('error', "Used boards quantity exceeds the maximum allowed. Maximum remaining: {$maxCanComplete} boards (Effective Max: {$effectiveMaxQty}, Expected from Material: {$expectedFromMaterial}, Job Order Qty: {$jobOrderOrderQty}).");
             return;
         }
 
         // Store pending completion details
         $this->pendingCompleteItemId = $itemId;
-        $this->pendingCompleteQty = $qty;
+        $this->pendingCompleteQty = $usedBoards;
         $this->bypassGRN = false;
         $this->showCompleteConfirmModal = true;
     }
@@ -280,7 +386,13 @@ class ProductionOrderDetail extends Component
             }
 
             $item = $this->productionOrder->items()->findOrFail($this->pendingCompleteItemId);
-            $qty = $this->pendingCompleteQty;
+            $usedBoards = $this->pendingCompleteQty;
+            $fgProduced = (int)($this->completeFgQty[$this->pendingCompleteItemId] ?? 0);
+            
+            // If FG not provided, calculate from boards
+            if ($fgProduced <= 0) {
+                $fgProduced = $this->calculateFgFromBoards($this->pendingCompleteItemId, $usedBoards);
+            }
 
             // Check if already reached job order's order quantity limit
             if ($item->hasReachedJobOrderLimit()) {
@@ -293,16 +405,29 @@ class ProductionOrderDetail extends Component
             $effectiveMaxQty = $item->getEffectiveMaxQuantity();
             $maxCanComplete = $effectiveMaxQty - $item->completed_quantity;
 
-            if ($qty > $maxCanComplete) {
+            if ($usedBoards > $maxCanComplete) {
                 $expectedFromMaterial = $item->getExpectedFinishedGoodsFromMaterial();
                 $jobOrderOrderQty = $item->getJobOrderOrderQuantity();
-                session()->flash('error', "Quantity exceeds the maximum allowed. Maximum remaining: {$maxCanComplete} (Effective Max: {$effectiveMaxQty}, Expected from Material: {$expectedFromMaterial}, Job Order Qty: {$jobOrderOrderQty}).");
+                session()->flash('error', "Used boards quantity exceeds the maximum allowed. Maximum remaining: {$maxCanComplete} boards (Effective Max: {$effectiveMaxQty}, Expected from Material: {$expectedFromMaterial}, Job Order Qty: {$jobOrderOrderQty}).");
                 $this->closeCompleteConfirmModal();
                 return;
             }
 
-            // Increment completed quantity
-            $item->increment('completed_quantity', $qty);
+            // Calculate waste/conserve
+            // Expected boards from FG: FG Produced ÷ No of UPS
+            $noOfUps = $item->getNoOfUps();
+            $expectedBoardsFromFg = $noOfUps > 0 ? (int) ceil($fgProduced / $noOfUps) : $fgProduced;
+            $wasteQuantity = $usedBoards - $expectedBoardsFromFg; // Positive = waste, Negative = conserve
+
+            // Increment completed quantity (boards)
+            $item->increment('completed_quantity', $usedBoards);
+            
+            // Update finished goods quantity
+            $currentFgQty = $item->finished_goods_quantity ?? 0;
+            $item->update([
+                'finished_goods_quantity' => $currentFgQty + $fgProduced,
+                'waste_quantity' => ($item->waste_quantity ?? 0) + $wasteQuantity,
+            ]);
 
             // Update item status
             $item->refresh();
@@ -330,18 +455,28 @@ class ProductionOrderDetail extends Component
             // Always create a GRN when completing items
             // If bypassing GRN, create and process GRN automatically
             // If not bypassing, create GRN as pending for manual processing
+            // Note: For FG GRNs, we use finished_goods_quantity (boxes), not board quantity
             if ($this->bypassGRN) {
-                $this->createAndProcessGRNForCompletedQuantity($item, $qty);
+                $this->createAndProcessGRNForCompletedQuantity($item, $fgProduced);
             } else {
-                $this->createPendingGRNForCompletedQuantity($item, $qty);
+                $this->createPendingGRNForCompletedQuantity($item, $fgProduced);
             }
 
             // Reload view data
             $this->loadProductionOrder();
-            // Clear input for item
+            // Clear inputs for item
             $this->completeQty[$this->pendingCompleteItemId] = 0;
+            $this->completeFgQty[$this->pendingCompleteItemId] = 0;
 
-            $message = "Recorded completion of {$qty} units for the selected item.";
+            $wasteMessage = '';
+            if ($wasteQuantity > 0) {
+                $wasteMessage = " Waste: {$wasteQuantity} boards.";
+            } elseif ($wasteQuantity < 0) {
+                $conserveQty = abs($wasteQuantity);
+                $wasteMessage = " Conserve: {$conserveQty} boards.";
+            }
+
+            $message = "Recorded completion: {$usedBoards} boards used, {$fgProduced} boxes produced.{$wasteMessage}";
             if ($this->bypassGRN) {
                 $message .= " GRN created and processed to stock automatically.";
             } else {
@@ -359,6 +494,7 @@ class ProductionOrderDetail extends Component
 
     /**
      * Create pending GRN for completed quantity (requires manual processing)
+     * For FG GRNs, $completedQty should be finished_goods_quantity (boxes), not board quantity
      */
     protected function createPendingGRNForCompletedQuantity($item, $completedQty)
     {
@@ -367,12 +503,14 @@ class ProductionOrderDetail extends Component
                 return;
             }
 
-            // Check how much has already been GRN'd for this item
+            // For FG GRNs, check how much finished goods have already been GRN'd
             $alreadyGRNQty = \App\Models\GRNItem::where('production_order_item_id', $item->id)
                 ->sum('qty_received');
             
-            // Calculate how much is available to GRN (current completed - already GRN'd)
-            $availableToGRN = $item->completed_quantity - $alreadyGRNQty;
+            // Calculate how much is available to GRN (current finished_goods_quantity - already GRN'd)
+            // Use finished_goods_quantity for FG GRNs, not completed_quantity (boards)
+            $currentFgQty = $item->finished_goods_quantity ?? 0;
+            $availableToGRN = $currentFgQty - $alreadyGRNQty;
             
             if ($availableToGRN <= 0) {
                 // Already GRN'd, nothing to do
@@ -393,7 +531,11 @@ class ProductionOrderDetail extends Component
                 'notes' => 'Auto-generated GRN from production completion (requires manual processing)',
             ]);
 
-            // Create GRN item with available quantity
+            // Calculate expected quantity from production order (production order quantity × No of UPS)
+            $noOfUps = $item->getNoOfUps();
+            $expectedFgQty = $noOfUps > 0 ? ($item->quantity * $noOfUps) : $item->quantity;
+            
+            // Create GRN item with available quantity (FG quantity in boxes)
             $grnItem = \App\Models\GRNItem::create([
                 'grn_id' => $grn->id,
                 'production_order_item_id' => $item->id,
@@ -401,8 +543,8 @@ class ProductionOrderDetail extends Component
                 'item_id' => $item->item_id,
                 'description' => ucfirst($item->item_type) . ' finished goods',
                 'material_code' => $item->getItemCode(),
-                'qty_received' => $availableToGRN,
-                'qty_expected' => $availableToGRN,
+                'qty_received' => $availableToGRN, // Actual FG quantity produced (boxes)
+                'qty_expected' => $expectedFgQty, // Expected FG quantity from production order (boxes)
                 'uom' => 'PCS',
             ]);
 
@@ -410,8 +552,8 @@ class ProductionOrderDetail extends Component
             $grnItem->initializePartialReceiving();
             $grnItem->update([
                 'qty_received_partial' => $availableToGRN,
-                'qty_pending' => 0,
-                'is_fully_received' => true,
+                'qty_pending' => max(0, $expectedFgQty - $availableToGRN), // Pending = Expected - Received
+                'is_fully_received' => ($availableToGRN >= $expectedFgQty),
                 'last_received_at' => now(),
             ]);
 
@@ -429,6 +571,7 @@ class ProductionOrderDetail extends Component
 
     /**
      * Create and process GRN automatically for completed quantity
+     * For FG GRNs, $completedQty should be finished_goods_quantity (boxes), not board quantity
      */
     protected function createAndProcessGRNForCompletedQuantity($item, $completedQty)
     {
@@ -437,12 +580,14 @@ class ProductionOrderDetail extends Component
                 return;
             }
 
-            // Check how much has already been GRN'd for this item
+            // For FG GRNs, check how much finished goods have already been GRN'd
             $alreadyGRNQty = \App\Models\GRNItem::where('production_order_item_id', $item->id)
                 ->sum('qty_received');
             
-            // Calculate how much is available to GRN (current completed - already GRN'd)
-            $availableToGRN = $item->completed_quantity - $alreadyGRNQty;
+            // Calculate how much is available to GRN (current finished_goods_quantity - already GRN'd)
+            // Use finished_goods_quantity for FG GRNs, not completed_quantity (boards)
+            $currentFgQty = $item->finished_goods_quantity ?? 0;
+            $availableToGRN = $currentFgQty - $alreadyGRNQty;
             
             if ($availableToGRN <= 0) {
                 // Already GRN'd, check if needs processing
@@ -482,7 +627,11 @@ class ProductionOrderDetail extends Component
                 'notes' => 'Auto-generated GRN from production completion (bypassed manual processing)',
             ]);
 
-            // Create GRN item with available quantity
+            // Calculate expected quantity from production order (production order quantity × No of UPS)
+            $noOfUps = $item->getNoOfUps();
+            $expectedFgQty = $noOfUps > 0 ? ($item->quantity * $noOfUps) : $item->quantity;
+            
+            // Create GRN item with available quantity (FG quantity in boxes)
             $grnItem = \App\Models\GRNItem::create([
                 'grn_id' => $grn->id,
                 'production_order_item_id' => $item->id,
@@ -490,8 +639,8 @@ class ProductionOrderDetail extends Component
                 'item_id' => $item->item_id,
                 'description' => ucfirst($item->item_type) . ' finished goods',
                 'material_code' => $item->getItemCode(),
-                'qty_received' => $availableToGRN,
-                'qty_expected' => $availableToGRN,
+                'qty_received' => $availableToGRN, // Actual FG quantity produced (boxes)
+                'qty_expected' => $expectedFgQty, // Expected FG quantity from production order (boxes)
                 'uom' => 'PCS',
             ]);
 
@@ -499,8 +648,8 @@ class ProductionOrderDetail extends Component
             $grnItem->initializePartialReceiving();
             $grnItem->update([
                 'qty_received_partial' => $availableToGRN,
-                'qty_pending' => 0,
-                'is_fully_received' => true,
+                'qty_pending' => max(0, $expectedFgQty - $availableToGRN), // Pending = Expected - Received
+                'is_fully_received' => ($availableToGRN >= $expectedFgQty),
                 'last_received_at' => now(),
             ]);
 
@@ -567,13 +716,14 @@ class ProductionOrderDetail extends Component
                 return;
             }
 
-            // Build item -> remaining-to-GRN map based on completed qty minus already GRN qty
+            // Build item -> remaining-to-GRN map based on finished_goods_quantity minus already GRN qty
+            // For FG GRNs, we use finished_goods_quantity (boxes), not completed_quantity (boards)
             $itemQuantities = [];
             foreach ($this->productionOrder->items as $item) {
-                $completed = (int) ($item->completed_quantity ?? 0);
-                if ($completed <= 0) continue;
+                $completedFg = (int) ($item->finished_goods_quantity ?? 0);
+                if ($completedFg <= 0) continue;
                 $alreadyGRN = \App\Models\GRNItem::where('production_order_item_id', $item->id)->sum('qty_received');
-                $remaining = max(0, $completed - (int) $alreadyGRN);
+                $remaining = max(0, $completedFg - (int) $alreadyGRN);
                 if ($remaining > 0) {
                     $itemQuantities[$item->id] = $remaining;
                 }
@@ -598,10 +748,15 @@ class ProductionOrderDetail extends Component
             ]);
 
             foreach ($this->productionOrder->items as $item) {
-                $completed = (int) ($item->completed_quantity ?? 0);
+                // For FG GRNs, use finished_goods_quantity (boxes), not completed_quantity (boards)
+                $completedFg = (int) ($item->finished_goods_quantity ?? 0);
                 $alreadyGRN = \App\Models\GRNItem::where('production_order_item_id', $item->id)->sum('qty_received');
-                $qty = max(0, $completed - (int) $alreadyGRN);
+                $qty = max(0, $completedFg - (int) $alreadyGRN);
                 if ($qty <= 0) continue;
+
+                // Calculate expected quantity from production order (production order quantity × No of UPS)
+                $noOfUps = $item->getNoOfUps();
+                $expectedFgQty = $noOfUps > 0 ? ($item->quantity * $noOfUps) : $item->quantity;
 
                 $grnItem = \App\Models\GRNItem::create([
                     'grn_id' => $grn->id,
@@ -610,11 +765,11 @@ class ProductionOrderDetail extends Component
                     'item_id' => $item->item_id,
                     'description' => ucfirst($item->item_type) . ' finished goods',
                     'material_code' => $item->getItemCode(),
-                    'qty_received' => $qty,
-                    'qty_expected' => $qty,
+                    'qty_received' => $qty, // Actual FG quantity produced (boxes)
+                    'qty_expected' => $expectedFgQty, // Expected FG quantity from production order (boxes)
                     'qty_received_partial' => $qty,
-                    'qty_pending' => $qty,
-                    'is_fully_received' => false,
+                    'qty_pending' => $expectedFgQty - $qty, // Pending = Expected - Received
+                    'is_fully_received' => ($qty >= $expectedFgQty),
                     'uom' => 'PCS',
                 ]);
             }
