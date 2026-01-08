@@ -35,11 +35,6 @@
                 </a>
                 <h1 class="text-3xl font-bold text-gray-900 mt-4">Invoice Details</h1>
                 <p class="text-gray-600 mt-1">Invoice Number: {{ $invoice->invoice_number }}</p>
-                @if($showConfirmModal)
-                    <div class="mt-2 text-xs text-red-600 font-bold">DEBUG: Modal is TRUE (should be visible)</div>
-                @else
-                    <div class="mt-2 text-xs text-gray-400">DEBUG: Modal is FALSE</div>
-                @endif
             </div>
             <div class="flex space-x-3">
                 @if(!$invoice->isConfirmed())
@@ -57,8 +52,8 @@
                         <span wire:loading.remove wire:target="saveInvoice">Save Invoice</span>
                         <span wire:loading wire:target="saveInvoice">Saving...</span>
                     </button>
-                    <button type="button"
-                            wire:click="showConfirmModal"
+                    <button onclick="showConfirmModal()"
+                            type="button"
                             class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center">
                         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -73,7 +68,8 @@
                         Confirmed ({{ $invoice->confirmed_at->format('M d, Y') }})
                     </span>
                 @endif
-                <button wire:click="printInvoice"
+                <button type="button"
+                        onclick="window.print()"
                         class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center">
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -261,39 +257,24 @@
     @endif
 
     <!-- Confirm Invoice Modal -->
-    @if($showConfirmModal)
-    <div class="fixed inset-0 z-[9999] overflow-y-auto" 
-         wire:click="closeConfirmModal"
-         style="background-color: rgba(0, 0, 0, 0.5); position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; display: flex !important; align-items: center !important; justify-content: center !important; padding: 1rem !important;">
-        <div class="relative bg-white rounded-lg shadow-xl max-w-md w-full"
-             style="z-index: 10000; position: relative;"
-             wire:click.stop>
-            <div class="p-6">
-                <div class="flex items-center mb-4">
-                    <div class="flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-purple-100">
-                        <svg class="h-6 w-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-                        </svg>
-                    </div>
-                    <h3 class="ml-3 text-lg font-medium text-gray-900">Confirm Invoice</h3>
-                </div>
-                <div class="mt-2">
-                    <p class="text-sm text-gray-500">
-                        Are you sure you want to confirm this invoice? Once confirmed, it cannot be edited.
-                    </p>
-                </div>
-                <div class="flex justify-end space-x-3 mt-6">
+    <div id="confirmModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" style="display: none;">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <h3 class="text-lg font-medium text-gray-900 mb-4">Confirm Invoice</h3>
+                <p class="text-sm text-gray-500 mb-4">
+                    Are you sure you want to confirm this invoice? Once confirmed, it cannot be edited.
+                </p>
+                <div class="flex justify-end space-x-3">
                     <button type="button"
-                            wire:click="closeConfirmModal" 
-                            wire:loading.attr="disabled"
-                            class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">
+                            onclick="closeConfirmModal()"
+                            class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors">
                         Cancel
                     </button>
                     <button type="button"
                             wire:click="confirmInvoice"
                             wire:loading.attr="disabled"
                             wire:target="confirmInvoice"
-                            class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:bg-purple-400 disabled:cursor-not-allowed flex items-center">
+                            class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors flex items-center disabled:bg-purple-400 disabled:cursor-not-allowed">
                         <svg wire:loading.remove wire:target="confirmInvoice" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
@@ -308,11 +289,33 @@
             </div>
         </div>
     </div>
-    @endif
 
     <script>
-        function printInvoice() {
-            window.print();
+        function showConfirmModal() {
+            const modal = document.getElementById('confirmModal');
+            if (modal) {
+                modal.style.display = 'flex';
+                modal.style.alignItems = 'center';
+                modal.style.justifyContent = 'center';
+            }
         }
+
+        function closeConfirmModal() {
+            const modal = document.getElementById('confirmModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        window.addEventListener('showConfirmModal', showConfirmModal);
+        window.addEventListener('closeConfirmModal', closeConfirmModal);
+        
+        // Also listen to Livewire events
+        document.addEventListener('livewire:init', () => {
+            Livewire.on('closeConfirmModal', () => {
+                closeConfirmModal();
+            });
+        });
     </script>
+
 </div>

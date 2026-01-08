@@ -13,7 +13,6 @@ class InvoiceDetail extends Component
 
     public $invoice;
     public $itemPrices = [];
-    public $showConfirmModal = false;
 
     protected $listeners = ['refreshInvoice' => '$refresh'];
 
@@ -97,36 +96,12 @@ class InvoiceDetail extends Component
         }
     }
 
-    public function showConfirmModal()
-    {
-        // Refresh invoice to get latest status
-        $this->invoice->refresh();
-        
-        if ($this->invoice->isConfirmed()) {
-            session()->flash('error', 'Invoice is already confirmed.');
-            return;
-        }
-        
-        // Set modal to visible
-        $this->showConfirmModal = true;
-        
-        // Log for debugging
-        Log::info('Show confirm modal called', [
-            'showConfirmModal' => $this->showConfirmModal,
-            'invoice_id' => $this->invoice->id,
-        ]);
-    }
-
-    public function closeConfirmModal()
-    {
-        $this->showConfirmModal = false;
-    }
 
     public function confirmInvoice()
     {
         if ($this->invoice->isConfirmed()) {
             session()->flash('error', 'Invoice is already confirmed.');
-            $this->showConfirmModal = false;
+            $this->dispatch('closeConfirmModal');
             return;
         }
 
@@ -140,8 +115,8 @@ class InvoiceDetail extends Component
                 'status' => 'sent', // Change status from draft to sent when confirmed
             ]);
 
-            // Close modal first
-            $this->showConfirmModal = false;
+            // Close modal via JavaScript
+            $this->dispatch('closeConfirmModal');
 
             // Refresh invoice data
             $this->invoice = Invoice::with([
@@ -155,14 +130,8 @@ class InvoiceDetail extends Component
         } catch (\Exception $e) {
             Log::error('Error confirming invoice: ' . $e->getMessage());
             session()->flash('error', 'Error confirming invoice: ' . $e->getMessage());
-            $this->showConfirmModal = false;
+            $this->dispatch('closeConfirmModal');
         }
-    }
-
-    public function printInvoice()
-    {
-        // Simply trigger JavaScript print function
-        $this->dispatch('openPrintDialog');
     }
 
     public function render()
