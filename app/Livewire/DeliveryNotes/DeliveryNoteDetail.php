@@ -73,8 +73,8 @@ class DeliveryNoteDetail extends Component
             // Prevent duplicate invoice for same DN
             $this->checkExistingInvoice();
             if ($this->existingInvoice) {
-                $invoicesUrl = route('invoices');
-                session()->flash('info', 'An invoice already exists for this delivery note (Invoice #' . $this->existingInvoice->invoice_number . '). | <a href="' . $invoicesUrl . '" class="underline font-semibold">View Invoices</a>');
+                $invoiceUrl = route('invoice-detail', ['id' => $this->existingInvoice->id]);
+                session()->flash('info', 'An invoice already exists for this delivery note (Invoice #' . $this->existingInvoice->invoice_number . '). | <a href="' . $invoiceUrl . '" class="underline font-semibold">View Invoice</a>');
                 return;
             }
 
@@ -167,8 +167,8 @@ class DeliveryNoteDetail extends Component
             // Update existing invoice reference
             $this->existingInvoice = $invoice;
             
-            $invoicesUrl = route('invoices');
-            session()->flash('success', 'Invoice created successfully for this delivery note. Invoice #: ' . $invoice->invoice_number . ' | <a href="' . $invoicesUrl . '" class="underline font-semibold">View Invoices</a>');
+            $invoiceUrl = route('invoice-detail', ['id' => $invoice->id]);
+            session()->flash('success', 'Invoice created successfully for this delivery note. Invoice #: ' . $invoice->invoice_number . ' | <a href="' . $invoiceUrl . '" class="underline font-semibold">View Invoice</a>');
             
             // Refresh the delivery note to show updated data
             $this->deliveryNote->refresh();

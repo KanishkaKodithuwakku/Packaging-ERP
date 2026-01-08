@@ -168,13 +168,19 @@ class DeliveryService
 
     /**
      * Get available FG quantity for a material code
+     * This uses inventory layers as the source of truth.
+     * Note: Inventory layers already reflect consumed quantities from delivery notes
+     * because consume transactions are created immediately when delivery notes are created.
      */
-    private function getAvailableFgQuantity(string $materialCode): float
+    public function getAvailableFgQuantity(string $materialCode): float
     {
-        return InventoryLayer::where('item_code', $materialCode)
+        // Get available quantity from inventory layers (already accounts for consumed quantities)
+        $availableQty = InventoryLayer::where('item_code', $materialCode)
             ->where('category', 'FG')
             ->where('qty_available', '>', 0)
             ->sum('qty_available');
+        
+        return (float) max(0, $availableQty);
     }
 }
 

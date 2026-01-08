@@ -35,6 +35,11 @@
                 </a>
                 <h1 class="text-3xl font-bold text-gray-900 mt-4">Invoice Details</h1>
                 <p class="text-gray-600 mt-1">Invoice Number: {{ $invoice->invoice_number }}</p>
+                @if($showConfirmModal)
+                    <div class="mt-2 text-xs text-red-600 font-bold">DEBUG: Modal is TRUE (should be visible)</div>
+                @else
+                    <div class="mt-2 text-xs text-gray-400">DEBUG: Modal is FALSE</div>
+                @endif
             </div>
             <div class="flex space-x-3">
                 @if(!$invoice->isConfirmed())
@@ -52,20 +57,13 @@
                         <span wire:loading.remove wire:target="saveInvoice">Save Invoice</span>
                         <span wire:loading wire:target="saveInvoice">Saving...</span>
                     </button>
-                    <button wire:click="confirmInvoice"
-                            wire:loading.attr="disabled"
-                            wire:target="confirmInvoice"
-                            onclick="return confirm('Are you sure you want to confirm this invoice? Once confirmed, it cannot be edited.')"
-                            class="bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 disabled:cursor-not-allowed text-white px-4 py-2 rounded-md text-sm font-medium flex items-center">
-                        <svg wire:loading.remove wire:target="confirmInvoice" class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <button type="button"
+                            wire:click="showConfirmModal"
+                            class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
-                        <svg wire:loading wire:target="confirmInvoice" class="animate-spin w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24">
-                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        <span wire:loading.remove wire:target="confirmInvoice">Confirm Invoice</span>
-                        <span wire:loading wire:target="confirmInvoice">Confirming...</span>
+                        Confirm Invoice
                     </button>
                 @else
                     <span class="px-4 py-2 bg-purple-100 text-purple-800 rounded-md text-sm font-medium flex items-center">
@@ -150,6 +148,19 @@
             <h3 class="text-lg font-medium text-gray-900">Invoice Items</h3>
         </div>
 
+        @php
+            // Get customer currency symbol for display
+            $customerCurrency = ($invoice->customer && $invoice->customer->currency) ? $invoice->customer->currency : 'LKR';
+            $currencySymbol = match($customerCurrency) {
+                'LKR' => 'Rs.',
+                'USD' => '$',
+                'EUR' => '€',
+                'GBP' => '£',
+                'INR' => '₹',
+                default => $customerCurrency . ' '
+            };
+        @endphp
+
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
@@ -158,8 +169,8 @@
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Material Code</th>
                         <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Quantity</th>
-                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Unit Price</th>
-                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Line Total</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Unit Price ({{ $currencySymbol }})</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Line Total ({{ $currencySymbol }})</th>
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
@@ -171,13 +182,16 @@
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-right text-gray-900">{{ number_format($item->quantity, 0) }}</td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-right">
                                 @if(!$invoice->isConfirmed())
-                                    <input type="number" 
-                                           wire:model.live.debounce.500ms="itemPrices.{{ $item->id }}"
-                                           step="0.01" 
-                                           min="0"
-                                           class="w-24 px-2 py-1 border border-gray-300 rounded-md text-sm text-right focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <div class="flex items-center justify-end">
+                                        <span class="text-gray-500 mr-1">{{ $currencySymbol }}</span>
+                                        <input type="number" 
+                                               wire:model.live.debounce.500ms="itemPrices.{{ $item->id }}"
+                                               step="0.01" 
+                                               min="0"
+                                               class="w-24 px-2 py-1 border border-gray-300 rounded-md text-sm text-right focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    </div>
                                 @else
-                                    <span class="text-gray-900">{{ number_format($item->unit_price, 2) }}</span>
+                                    <span class="text-gray-900">{{ $currencySymbol }} {{ number_format($item->unit_price, 2) }}</span>
                                 @endif
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-medium text-gray-900">
@@ -186,9 +200,9 @@
                                         $currentPrice = $itemPrices[$item->id] ?? $item->unit_price;
                                         $currentLineTotal = $currentPrice * (float) $item->quantity;
                                     @endphp
-                                    {{ number_format($currentLineTotal, 2) }}
+                                    {{ $currencySymbol }} {{ number_format($currentLineTotal, 2) }}
                                 @else
-                                    {{ number_format($item->line_total, 2) }}
+                                    {{ $currencySymbol }} {{ number_format($item->line_total, 2) }}
                                 @endif
                             </td>
                         </tr>
@@ -199,31 +213,31 @@
                         <td colspan="5" class="px-6 py-4 text-right text-sm font-medium text-gray-700">Subtotal:</td>
                         <td class="px-6 py-4 text-right text-sm font-medium text-gray-900">
                             @if(!$invoice->isConfirmed())
-                                {{ number_format($this->calculatedSubtotal, 2) }}
+                                {{ $currencySymbol }} {{ number_format($this->calculatedSubtotal, 2) }}
                             @else
-                                {{ number_format($invoice->subtotal, 2) }}
+                                {{ $currencySymbol }} {{ number_format($invoice->subtotal, 2) }}
                             @endif
                         </td>
                     </tr>
                     @if($invoice->discount_amount > 0)
                     <tr>
                         <td colspan="5" class="px-6 py-4 text-right text-sm font-medium text-gray-700">Discount:</td>
-                        <td class="px-6 py-4 text-right text-sm font-medium text-gray-900">-{{ number_format($invoice->discount_amount, 2) }}</td>
+                        <td class="px-6 py-4 text-right text-sm font-medium text-gray-900">-{{ $currencySymbol }} {{ number_format($invoice->discount_amount, 2) }}</td>
                     </tr>
                     @endif
                     @if($invoice->tax_amount > 0)
                     <tr>
                         <td colspan="5" class="px-6 py-4 text-right text-sm font-medium text-gray-700">Tax:</td>
-                        <td class="px-6 py-4 text-right text-sm font-medium text-gray-900">{{ number_format($invoice->tax_amount, 2) }}</td>
+                        <td class="px-6 py-4 text-right text-sm font-medium text-gray-900">{{ $currencySymbol }} {{ number_format($invoice->tax_amount, 2) }}</td>
                     </tr>
                     @endif
                     <tr>
                         <td colspan="5" class="px-6 py-4 text-right text-sm font-bold text-gray-900">Total Amount:</td>
                         <td class="px-6 py-4 text-right text-sm font-bold text-gray-900">
                             @if(!$invoice->isConfirmed())
-                                {{ number_format($this->calculatedTotal, 2) }}
+                                {{ $currencySymbol }} {{ number_format($this->calculatedTotal, 2) }}
                             @else
-                                {{ number_format($invoice->total_amount, 2) }}
+                                {{ $currencySymbol }} {{ number_format($invoice->total_amount, 2) }}
                             @endif
                         </td>
                     </tr>
@@ -243,6 +257,56 @@
     <div class="bg-white rounded-lg shadow-sm border p-6 mt-6">
         <h3 class="text-lg font-medium text-gray-900 mb-2">Terms & Conditions</h3>
         <p class="text-gray-600">{{ $invoice->terms }}</p>
+    </div>
+    @endif
+
+    <!-- Confirm Invoice Modal -->
+    @if($showConfirmModal)
+    <div class="fixed inset-0 z-[9999] overflow-y-auto" 
+         wire:click="closeConfirmModal"
+         style="background-color: rgba(0, 0, 0, 0.5); position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; bottom: 0 !important; display: flex !important; align-items: center !important; justify-content: center !important; padding: 1rem !important;">
+        <div class="relative bg-white rounded-lg shadow-xl max-w-md w-full"
+             style="z-index: 10000; position: relative;"
+             wire:click.stop>
+            <div class="p-6">
+                <div class="flex items-center mb-4">
+                    <div class="flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-purple-100">
+                        <svg class="h-6 w-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="ml-3 text-lg font-medium text-gray-900">Confirm Invoice</h3>
+                </div>
+                <div class="mt-2">
+                    <p class="text-sm text-gray-500">
+                        Are you sure you want to confirm this invoice? Once confirmed, it cannot be edited.
+                    </p>
+                </div>
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button type="button"
+                            wire:click="closeConfirmModal" 
+                            wire:loading.attr="disabled"
+                            class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500">
+                        Cancel
+                    </button>
+                    <button type="button"
+                            wire:click="confirmInvoice"
+                            wire:loading.attr="disabled"
+                            wire:target="confirmInvoice"
+                            class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:bg-purple-400 disabled:cursor-not-allowed flex items-center">
+                        <svg wire:loading.remove wire:target="confirmInvoice" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <svg wire:loading wire:target="confirmInvoice" class="animate-spin w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span wire:loading.remove wire:target="confirmInvoice">Confirm</span>
+                        <span wire:loading wire:target="confirmInvoice">Confirming...</span>
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
     @endif
 

@@ -401,7 +401,6 @@
                                                title="Max: {{ $maxFgCanProduce }} boxes">
                                         <span class="text-xs text-gray-500">boxes</span>
                                     </div>
-                                    <div id="wasteInfo-{{ $item->id }}" class="text-xs mt-1"></div>
                                     <button wire:click="completeItemQuantity({{ $item->id }})"
                                             class="inline-flex items-center px-3 py-1 border border-transparent rounded-md text-xs font-medium text-white bg-green-600 hover:bg-green-700 mt-2">
                                         Complete
@@ -411,7 +410,6 @@
                                 <script>
                                     (function() {
                                         const itemId = {{ $item->id }};
-                                        const noOfUps = {{ $noOfUps }};
                                         const maxCanComplete = {{ $maxCanComplete }};
                                         @php
                                             $maxFgCanProduce = $noOfUps > 0 ? ($maxCanComplete * $noOfUps) : $maxCanComplete;
@@ -419,34 +417,10 @@
                                         const maxFgCanProduce = {{ $maxFgCanProduce }};
                                         const usedBoardsInput = document.getElementById('usedBoards-' + itemId);
                                         const fgProducedInput = document.getElementById('fgProduced-' + itemId);
-                                        const wasteInfo = document.getElementById('wasteInfo-' + itemId);
                                         
-                                        if (!usedBoardsInput || !fgProducedInput || !wasteInfo) return;
+                                        if (!usedBoardsInput || !fgProducedInput) return;
                                         
-                                        function calculateWaste() {
-                                            const usedBoards = parseFloat(usedBoardsInput.value) || 0;
-                                            const fgProduced = parseFloat(fgProducedInput.value) || 0;
-                                            
-                                            if (usedBoards > 0 && fgProduced > 0 && noOfUps > 0) {
-                                                const expectedBoards = Math.ceil(fgProduced / noOfUps);
-                                                const waste = usedBoards - expectedBoards;
-                                                
-                                                if (waste > 0) {
-                                                    wasteInfo.innerHTML = '<span class="text-red-600 font-medium">Waste: ' + waste + ' boards</span>';
-                                                    wasteInfo.className = 'text-xs mt-1';
-                                                } else if (waste < 0) {
-                                                    wasteInfo.innerHTML = '<span class="text-green-600 font-medium">Conserve: ' + Math.abs(waste) + ' boards</span>';
-                                                    wasteInfo.className = 'text-xs mt-1';
-                                                } else {
-                                                    wasteInfo.innerHTML = '<span class="text-gray-600">No waste/conserve</span>';
-                                                    wasteInfo.className = 'text-xs mt-1';
-                                                }
-                                            } else {
-                                                wasteInfo.innerHTML = '';
-                                            }
-                                        }
-                                        
-                                        // Add validation and waste calculation on blur only
+                                        // Add validation on blur only (no waste calculation)
                                         usedBoardsInput.addEventListener('blur', function() {
                                             const value = parseFloat(this.value) || 0;
                                             if (value > maxCanComplete) {
@@ -454,8 +428,6 @@
                                                 // Trigger Livewire update to validate on server side
                                                 this.dispatchEvent(new Event('input', { bubbles: true }));
                                             }
-                                            // Calculate waste on blur
-                                            calculateWaste();
                                         });
                                         
                                         fgProducedInput.addEventListener('blur', function() {
@@ -465,26 +437,12 @@
                                                 // Trigger Livewire update to validate on server side
                                                 this.dispatchEvent(new Event('input', { bubbles: true }));
                                             }
-                                            // Calculate waste on blur
-                                            calculateWaste();
                                         });
-                                        
-                                        // Initial calculation after Livewire renders (only if values exist)
-                                        setTimeout(() => {
-                                            if ((usedBoardsInput.value || 0) > 0 && (fgProducedInput.value || 0) > 0) {
-                                                calculateWaste();
-                                            }
-                                        }, 200);
                                     })();
                                 </script>
                                 @endscript
                             @else
-                                @php
-                                    // Convert to finished goods quantities for display
-                                    $completedBoxesDisplay = $noOfUps > 0 ? ($item->completed_quantity * $noOfUps) : $item->completed_quantity;
-                                    $effectiveMaxBoxes = $noOfUps > 0 ? ($effectiveMaxQty * $noOfUps) : $effectiveMaxQty;
-                                @endphp
-                                <span class="text-xs text-green-700">Fully completed ({{ number_format($completedBoxesDisplay, 0) }} / {{ number_format($effectiveMaxBoxes, 0) }} boxes)</span>
+                                <span class="text-xs text-green-700">Fully completed</span>
                             @endif
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">

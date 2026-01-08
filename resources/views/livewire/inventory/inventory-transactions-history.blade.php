@@ -71,6 +71,7 @@
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Job Order</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Balance</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Warehouse</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remarks</th>
                         </tr>
@@ -106,12 +107,13 @@
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $jobOrderNumber }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ number_format($transaction->qty, 0) }} {{ $transaction->uom }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium">{{ number_format($transaction->balance_qty ?? 0, 0) }} {{ $transaction->uom }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $transaction->warehouse }}</td>
                                 <td class="px-6 py-4 text-sm text-gray-500">{{ $transaction->remarks }}</td>
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="9" class="px-6 py-4 text-center text-sm text-gray-500">No transactions found</td>
+                                <td colspan="10" class="px-6 py-4 text-center text-sm text-gray-500">No transactions found</td>
                             </tr>
                         @endforelse
                     </tbody>

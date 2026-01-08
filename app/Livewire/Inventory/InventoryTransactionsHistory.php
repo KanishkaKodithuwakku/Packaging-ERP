@@ -80,10 +80,72 @@ class InventoryTransactionsHistory extends Component
             $query->where('txn_date', '<=', $this->filters['date_to']);
         }
 
-        return $query->with(['inventory', 'grn.purchaseOrder.items.jobOrder', 'grn.productionOrder.jobOrder'])
-            ->orderBy('txn_date', 'desc')
-            ->orderBy('created_at', 'desc')
-            ->paginate(20);
+        // First, get all transactions to calculate balances
+        $allTransactions = $query->with(['inventory', 'grn.purchaseOrder.items.jobOrder', 'grn.productionOrder.jobOrder'])
+            ->orderBy('txn_date', 'asc')
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        // Calculate running balances per lot code in chronological order
+        $balances = $this->calculateRunningBalances($allTransactions);
+
+        // Now sort for display (descending by date)
+        $transactions = $allTransactions->sortByDesc(function($transaction) {
+            return $transaction->txn_date->format('Y-m-d') . ' ' . $transaction->created_at->format('H:i:s');
+        })->values();
+
+        // Attach balances to transactions
+        foreach ($transactions as $transaction) {
+            $key = $transaction->lot_code . '_' . $transaction->id;
+            $transaction->balance_qty = $balances[$key] ?? 0;
+        }
+
+        // Create paginator manually since we've sorted
+        $currentPage = request()->get('page', 1);
+        $perPage = 20;
+        $items = $transactions->slice(($currentPage - 1) * $perPage, $perPage)->values();
+        
+        return new \Illuminate\Pagination\LengthAwarePaginator(
+            $items,
+            $transactions->count(),
+            $perPage,
+            $currentPage,
+            ['path' => request()->url(), 'query' => request()->query()]
+        );
+    }
+
+    /**
+     * Calculate running balances for transactions per lot code
+     * Returns array with key: lot_code_id and value: balance after that transaction
+     */
+    protected function calculateRunningBalances($transactions)
+    {
+        $balances = [];
+        $lotBalances = []; // Track current balance per lot code
+
+        // Process transactions in chronological order
+        foreach ($transactions as $transaction) {
+            $lotCode = $transaction->lot_code;
+            
+            // Initialize balance for this lot if not exists
+            if (!isset($lotBalances[$lotCode])) {
+                $lotBalances[$lotCode] = 0;
+            }
+
+            // Calculate transaction impact
+            $qty = (float) $transaction->qty;
+            if (in_array($transaction->txn_type, ['receipt', 'produce'])) {
+                $lotBalances[$lotCode] += $qty;
+            } elseif (in_array($transaction->txn_type, ['consume', 'delivery'])) {
+                $lotBalances[$lotCode] -= $qty;
+            }
+
+            // Store balance for this transaction (balance AFTER this transaction)
+            $key = $lotCode . '_' . $transaction->id;
+            $balances[$key] = max(0, $lotBalances[$lotCode]); // Ensure non-negative
+        }
+
+        return $balances;
     }
 
     public function render()

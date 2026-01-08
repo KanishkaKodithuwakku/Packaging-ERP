@@ -66,9 +66,13 @@
                                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $fg['material_code'] }}</td>
                                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ number_format($fg['available_qty'], 2) }}</td>
                                             <td class="px-6 py-4 whitespace-nowrap">
-                                                <input type="number" wire:model="dispatchQuantities.{{ $index }}"
-                                                    step="0.01" min="0.01" max="{{ $fg['available_qty'] }}"
-                                                    class="w-32 px-2 py-1 border border-gray-300 rounded-md text-sm">
+                                                <input type="number" wire:model.blur="dispatchQuantities.{{ $index }}"
+                                                    step="0.01" min="0" max="{{ $fg['available_qty'] }}"
+                                                    class="w-32 px-2 py-1 border border-gray-300 rounded-md text-sm"
+                                                    placeholder="0">
+                                                @error('dispatchQuantities.' . $index)
+                                                    <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span>
+                                                @enderror
                                             </td>
                                         </tr>
                                     @endforeach

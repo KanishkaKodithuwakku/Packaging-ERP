@@ -7,9 +7,12 @@ use App\Models\Supplier;
 use App\Models\Customer;
 use App\Models\JobOrder;
 use App\Models\GRN;
+use App\Models\InventoryTransaction;
 use App\Services\ProductionGRNService;
+use App\Services\InventoryService;
 use Livewire\Component;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
 class ProductionOrderDetail extends Component
 {
@@ -415,6 +418,9 @@ class ProductionOrderDetail extends Component
                 $this->productionOrder->update(['status' => 'completed']);
             }
 
+            // Record inventory transaction for raw materials consumed
+            $this->recordRawMaterialConsumption($usedBoards);
+
             // Always create a GRN when completing items
             // If bypassing GRN, create and process GRN automatically
             // If not bypassing, create GRN as pending for manual processing
@@ -453,6 +459,102 @@ class ProductionOrderDetail extends Component
             session()->flash('error', 'Error completing production item: ' . $e->getMessage());
             $this->closeCompleteConfirmModal();
         }
+    }
+
+    /**
+     * Record raw material consumption as inventory transaction
+     */
+    protected function recordRawMaterialConsumption($usedBoards)
+    {
+        try {
+            // Extract transaction ID from production order notes
+            // Format: "Production order created from inventory transaction: {lot_code} | Transaction ID: {id}"
+            $originalTransactionId = $this->extractTransactionIdFromNotes();
+            
+            if (!$originalTransactionId) {
+                Log::warning('Could not extract transaction ID from production order notes', [
+                    'production_order_id' => $this->productionOrder->id,
+                    'notes' => $this->productionOrder->notes
+                ]);
+                return;
+            }
+
+            // Get the original inventory transaction
+            $originalTransaction = InventoryTransaction::find($originalTransactionId);
+            
+            if (!$originalTransaction) {
+                Log::warning('Original inventory transaction not found', [
+                    'transaction_id' => $originalTransactionId,
+                    'production_order_id' => $this->productionOrder->id
+                ]);
+                return;
+            }
+
+            // Get inventory service
+            $inventoryService = app(InventoryService::class);
+
+            // Create consume transaction for raw materials
+            $inventoryService->recordTransaction([
+                'lot_code' => $originalTransaction->lot_code,
+                'item_code' => $originalTransaction->item_code ?? 'RAW',
+                'category' => 'RAW',
+                'material_type' => $originalTransaction->material_type ?? 'raw_material',
+                'txn_type' => 'consume',
+                'qty' => $usedBoards,
+                'uom' => $originalTransaction->uom ?? 'PCS',
+                'warehouse' => $originalTransaction->warehouse ?? 'MAIN',
+                'related_doc_type' => 'ProductionOrder',
+                'related_doc_id' => $this->productionOrder->id,
+                'txn_date' => now()->toDateString(),
+                'remarks' => "Raw materials consumed for production order {$this->productionOrder->production_order_number}",
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Error recording raw material consumption: ' . $e->getMessage(), [
+                'production_order_id' => $this->productionOrder->id,
+                'used_boards' => $usedBoards,
+                'error' => $e->getMessage()
+            ]);
+            // Don't throw - allow production to complete even if inventory transaction fails
+        }
+    }
+
+    /**
+     * Extract transaction ID from production order notes
+     * Format: "Production order created from inventory transaction: {lot_code} | Transaction ID: {id}"
+     */
+    protected function extractTransactionIdFromNotes()
+    {
+        if (!$this->productionOrder || !$this->productionOrder->notes) {
+            return null;
+        }
+
+        $notes = $this->productionOrder->notes;
+        
+        // Try to extract transaction ID using regex
+        // Pattern: "Transaction ID: {id}"
+        if (preg_match('/Transaction ID:\s*(\d+)/i', $notes, $matches)) {
+            return (int) $matches[1];
+        }
+
+        // Fallback: Try to extract lot_code from notes and find transaction by lot_code
+        // Format: "Production order created from inventory transaction: {lot_code}"
+        if (preg_match('/Production order created from inventory transaction:\s*([^\s|]+)/i', $notes, $matches)) {
+            $lotCode = trim($matches[1]);
+            // Find the most recent receipt transaction with this lot_code
+            $transaction = InventoryTransaction::where('lot_code', $lotCode)
+                ->where('category', 'RAW')
+                ->where('txn_type', 'receipt')
+                ->orderBy('txn_date', 'desc')
+                ->orderBy('id', 'desc')
+                ->first();
+            
+            if ($transaction) {
+                return $transaction->id;
+            }
+        }
+
+        return null;
     }
 
     /**
