@@ -132,6 +132,17 @@ class JobOrderDetail extends Component
         $this->loadJobOrder();
     }
 
+    public function hydrate()
+    {
+        // Refresh data when component is hydrated (e.g., when navigating back to page)
+        if ($this->jobOrderId) {
+            $this->refreshPurchaseOrderCount();
+            if ($this->jobOrder) {
+                $this->calculateProductionProgress();
+            }
+        }
+    }
+
     public function loadJobOrder()
     {
         $this->jobOrder = JobOrder::with(['boxes', 'dividers', 'supplier', 'customer'])->findOrFail($this->jobOrderId);
@@ -150,54 +161,26 @@ class JobOrderDetail extends Component
         })->toArray();
 
         // Check if a purchase order already exists for this job order
-        $this->hasPurchaseOrder = \App\Models\PurchaseOrder::where('job_order_id', $this->jobOrderId)->exists();
+        // Purchase orders are linked to job orders through purchase_order_items table
+        $this->hasPurchaseOrder = \App\Models\PurchaseOrder::where('status', '!=', 'cancelled')
+            ->whereHas('items', function($query) {
+                $query->where('job_order_id', $this->jobOrderId);
+            })
+            ->exists();
 
         // Calculate production progress
         $this->calculateProductionProgress();
 
-        // Purchase Orders status summary
-        $purchaseOrders = \App\Models\PurchaseOrder::where('job_order_id', $this->jobOrderId)
-            ->where('status', '!=', 'cancelled')
-            ->with(['items', 'supplier'])
-            ->get();
-        $this->poCount = $purchaseOrders->count();
-        // Count confirmed purchase orders
-        $this->poProcessedCount = $purchaseOrders->where('status', 'confirmed')->count();
-        if ($this->poCount === 0) {
-            $this->poStatusText = 'No purchase orders';
-        } else {
-            $this->poStatusText = $this->poProcessedCount . ' / ' . $this->poCount . ' confirmed';
-        }
+        // Purchase Orders status summary - refresh count and store for display
+        $this->refreshPurchaseOrderCount();
         
-        // Store purchase orders for display
-        $this->purchaseOrders = $purchaseOrders->map(function($po) {
-            return [
-                'id' => $po->id,
-                'po_number' => $po->po_number,
-                'date' => $po->date ? $po->date->format('Y-m-d') : null,
-                'date_formatted' => $po->date ? $po->date->format('M d, Y') : 'N/A',
-                'status' => $po->status,
-                'notes' => $po->notes,
-                'supplier' => $po->supplier ? [
-                    'name' => $po->supplier->name,
-                    'code' => $po->supplier->code,
-                    'address' => $po->supplier->address,
-                ] : null,
-                'items' => $po->items->map(function($item) {
-                    return [
-                        'id' => $item->id,
-                        'item_type' => $item->item_type,
-                        'description' => $item->description,
-                        'reel_size' => $item->reel_size,
-                        'cut_size' => $item->cut_size,
-                        'quantity' => $item->quantity,
-                        'unit_price' => $item->unit_price,
-                        'total_price' => $item->total_price,
-                    ];
-                })->toArray(),
-                'total_amount' => $po->getTotalAmount(),
-            ];
-        })->toArray();
+        // Get purchase orders for GRN calculation (need the IDs)
+        // Purchase orders are linked to job orders through purchase_order_items table
+        $purchaseOrders = \App\Models\PurchaseOrder::where('status', '!=', 'cancelled')
+            ->whereHas('items', function($query) {
+                $query->where('job_order_id', $this->jobOrderId);
+            })
+            ->get();
 
         // Get production orders for GRN status summary
         $productionOrders = \App\Models\ProductionOrder::where('job_order_id', $this->jobOrderId)->get();
@@ -205,20 +188,35 @@ class JobOrderDetail extends Component
         // GRN status summary (from POs and Production Orders linked to this Job Order)
         $poIds = $purchaseOrders->pluck('id')->all();
         $poIds2 = $productionOrders->pluck('id')->all();
-        $grns = \App\Models\GRN::when(count($poIds) > 0, function($q) use ($poIds) {
-                $q->whereIn('purchase_order_id', $poIds);
-            })
-            ->when(count($poIds2) > 0, function($q) use ($poIds2) {
-                $q->orWhereIn('production_order_id', $poIds2);
+        
+        // Build query for GRNs - must be from this job order's purchase orders OR production orders
+        $grns = \App\Models\GRN::where(function($query) use ($poIds, $poIds2) {
+                if (count($poIds) > 0) {
+                    $query->whereIn('purchase_order_id', $poIds);
+                }
+                if (count($poIds2) > 0) {
+                    if (count($poIds) > 0) {
+                        $query->orWhereIn('production_order_id', $poIds2);
+                    } else {
+                        $query->whereIn('production_order_id', $poIds2);
+                    }
+                }
             })
             ->with(['items.productionOrderItem', 'productionOrder'])
             ->get();
         $this->grnCount = $grns->count();
         $this->grnProcessedCount = $grns->where('status', 'processed')->count();
         
-        // Load FG GRNs (GRNs from production orders)
-        $fgGrns = $grns->filter(function($grn) {
-            return $grn->isFromProductionOrder();
+        // Load FG GRNs (GRNs from production orders) - filter to ensure they belong to this job order
+        $fgGrns = $grns->filter(function($grn) use ($poIds2) {
+            if (!$grn->isFromProductionOrder()) {
+                return false;
+            }
+            // Double-check: ensure the production order belongs to this job order
+            if ($grn->productionOrder && in_array($grn->productionOrder->id, $poIds2)) {
+                return true;
+            }
+            return false;
         });
         
         $this->fgGrns = $fgGrns->map(function($grn) {
@@ -1215,7 +1213,10 @@ class JobOrderDetail extends Component
 
         try {
             // Check if purchase order already exists for this job order
-            $existingPO = \App\Models\PurchaseOrder::where('job_order_id', $this->jobOrderId)->first();
+            // Purchase orders are linked to job orders through purchase_order_items table
+            $existingPO = \App\Models\PurchaseOrder::whereHas('items', function($query) {
+                $query->where('job_order_id', $this->jobOrderId);
+            })->first();
             if ($existingPO) {
                 session()->flash('error', 'Purchase order already exists for this job order.');
                 return redirect()->route('purchase-order-management', ['purchase_order' => $existingPO->id]);
@@ -1406,15 +1407,109 @@ class JobOrderDetail extends Component
 
     public function render()
     {
-        // Ensure production progress is calculated on each render
-        // This ensures data is fresh when page is viewed
-        if ($this->jobOrderId && $this->jobOrder) {
-            $this->calculateProductionProgress();
+        // Always refresh purchase order count on each render to ensure button state is correct
+        // This ensures the print button enables/disables based on current purchase order status
+        if ($this->jobOrderId) {
+            // Reload job order if it doesn't exist (e.g., when navigating back to page)
+            if (!$this->jobOrder) {
+                $this->loadJobOrder();
+            }
+            
+            // Always refresh purchase order count - this will update $poCount and $hasPurchaseOrder which controls the button
+            // This is critical to ensure button state is accurate when navigating back to page
+            $this->refreshPurchaseOrderCount();
+            
+            // Ensure production progress is calculated on each render
+            if ($this->jobOrder) {
+                $this->calculateProductionProgress();
+            }
         }
 
         return view('livewire.job-orders.job-order-detail', [
             'suppliers' => Supplier::all(),
             'customers' => Customer::all(),
         ]);
+    }
+    
+    public function updated($propertyName)
+    {
+        // Refresh purchase order count when component properties are updated
+        if ($this->jobOrderId && in_array($propertyName, ['jobOrderId'])) {
+            $this->loadJobOrder();
+        }
+    }
+    
+    public function refreshPurchaseOrderCount()
+    {
+        // Refresh purchase order count - can be called from anywhere
+        // Always reset to 0 first to ensure clean state
+        $this->poCount = 0;
+        $this->poProcessedCount = 0;
+        $this->poStatusText = 'No purchase orders';
+        $this->purchaseOrders = [];
+        
+        if ($this->jobOrderId) {
+            // Purchase orders are linked to job orders through purchase_order_items table
+            $purchaseOrders = \App\Models\PurchaseOrder::where('status', '!=', 'cancelled')
+                ->whereHas('items', function($query) {
+                    $query->where('job_order_id', $this->jobOrderId);
+                })
+                ->with(['items' => function($query) {
+                    $query->where('job_order_id', $this->jobOrderId);
+                }, 'supplier'])
+                ->get();
+            
+            $this->poCount = $purchaseOrders->count();
+            // Count confirmed purchase orders - check for any non-cancelled purchase orders
+            // A purchase order can be printed once it's created and confirmed
+            $this->poProcessedCount = $purchaseOrders->filter(function($po) {
+                return strtolower($po->status) === 'confirmed' || $po->status === 'confirmed';
+            })->count();
+            
+            // Also update hasPurchaseOrder flag to reflect current state
+            $this->hasPurchaseOrder = $this->poCount > 0;
+            
+            if ($this->poCount === 0) {
+                $this->poStatusText = 'No purchase orders';
+            } else {
+                $this->poStatusText = $this->poProcessedCount . ' / ' . $this->poCount . ' confirmed';
+            }
+            
+            // Store purchase orders for display
+            $this->purchaseOrders = $purchaseOrders->map(function($po) {
+                return [
+                    'id' => $po->id,
+                    'po_number' => $po->po_number,
+                    'date' => $po->date ? $po->date->format('Y-m-d') : null,
+                    'date_formatted' => $po->date ? $po->date->format('M d, Y') : 'N/A',
+                    'status' => $po->status,
+                    'notes' => $po->notes,
+                    'supplier' => $po->supplier ? [
+                        'name' => $po->supplier->name,
+                        'code' => $po->supplier->code,
+                        'address' => $po->supplier->address,
+                    ] : null,
+                    'items' => $po->items->map(function($item) {
+                        return [
+                            'id' => $item->id,
+                            'item_type' => $item->item_type,
+                            'description' => $item->description,
+                            'reel_size' => $item->reel_size,
+                            'cut_size' => $item->cut_size,
+                            'quantity' => $item->quantity,
+                            'unit_price' => $item->unit_price,
+                            'total_price' => $item->total_price,
+                        ];
+                    })->toArray(),
+                    'total_amount' => $po->getTotalAmount(),
+                ];
+            })->toArray();
+        }
+    }
+    
+    public function refreshData()
+    {
+        // Public method to manually refresh all data
+        $this->loadJobOrder();
     }
 }

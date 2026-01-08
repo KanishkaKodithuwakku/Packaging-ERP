@@ -35,6 +35,7 @@ class JobOrderManagement extends Component
     public $filterStatus = '';
     public $filterDateFrom = '';
     public $filterDateTo = '';
+    public $filterHasFG = '';
 
     // Main form data
     public $form = [
@@ -178,6 +179,7 @@ class JobOrderManagement extends Component
         $this->filterStatus = '';
         $this->filterDateFrom = '';
         $this->filterDateTo = '';
+        $this->filterHasFG = '';
         $this->search = '';
     }
 
@@ -1293,6 +1295,17 @@ class JobOrderManagement extends Component
 
         if ($this->filterDateTo) {
             $query->where('date', '<=', $this->filterDateTo);
+        }
+
+        // Filter by Finished Goods (FG) - job orders with production orders that have GRNs
+        if ($this->filterHasFG === 'yes') {
+            $query->whereHas('productionOrders', function($q) {
+                $q->whereHas('grns');
+            });
+        } elseif ($this->filterHasFG === 'no') {
+            $query->whereDoesntHave('productionOrders', function($q) {
+                $q->whereHas('grns');
+            });
         }
 
         $jobOrders = $query->orderBy('date', 'desc')

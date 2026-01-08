@@ -3,12 +3,10 @@
 namespace App\Livewire\DeliveryNotes;
 
 use App\Models\DeliveryNote;
-use App\Models\DeliveryNoteItem;
 use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Models\JobOrderBox;
 use App\Models\JobOrderDivider;
-use App\Services\DeliveryService;
 use Livewire\Component;
 use Illuminate\Support\Facades\Log;
 
@@ -17,32 +15,17 @@ class DeliveryNoteDetail extends Component
     protected $layout = 'components.layouts.app';
 
     public $deliveryNote;
-    public $dispatchQuantities = [];
     public $existingInvoice = null;
 
     public function mount($id)
     {
         $this->deliveryNote = DeliveryNote::with([
             'jobOrder.customer', 
-            'items.inventoryTransactions',
+            'items',
             'invoice'
         ])->findOrFail($id);
         
         $this->checkExistingInvoice();
-        $this->initializeDispatchQuantities();
-    }
-    
-    /**
-     * Initialize dispatch quantities with remaining quantities as defaults
-     */
-    public function initializeDispatchQuantities()
-    {
-        $this->dispatchQuantities = [];
-        foreach ($this->deliveryNote->items as $item) {
-            if ($item->remaining_qty > 0) {
-                $this->dispatchQuantities[$item->id] = (int) $item->remaining_qty;
-            }
-        }
     }
     
     public function checkExistingInvoice()
@@ -50,152 +33,6 @@ class DeliveryNoteDetail extends Component
         $this->existingInvoice = Invoice::where('delivery_note_id', $this->deliveryNote->id)->first();
     }
 
-    public function dispatchItem($itemId, $quantity)
-    {
-        // Get the actual quantity from the form array and cast to integer
-        $actualQty = (int) ($this->dispatchQuantities[$itemId] ?? 0);
-        
-        if ($actualQty <= 0) {
-            session()->flash('error', 'Please enter a quantity greater than 0.');
-            return;
-        }
-
-        $this->validate([
-            "dispatchQuantities.{$itemId}" => 'required|integer|min:1',
-        ], [
-            "dispatchQuantities.{$itemId}.required" => 'Quantity is required',
-            "dispatchQuantities.{$itemId}.integer" => 'Quantity must be a whole number',
-            "dispatchQuantities.{$itemId}.min" => 'Quantity must be at least 1',
-        ]);
-
-        $item = DeliveryNoteItem::findOrFail($itemId);
-        
-        if ($actualQty > $item->remaining_qty) {
-            session()->flash('error', 'Cannot dispatch more than remaining quantity.');
-            return;
-        }
-
-        try {
-            Log::info('Dispatching FG', [
-                'delivery_note_id' => $this->deliveryNote->id,
-                'delivery_note_item_id' => $item->id,
-                'quantity' => $actualQty,
-                'item_material_code' => $item->material_code,
-                'current_dispatched_qty' => $item->dispatched_qty,
-                'current_remaining_qty' => $item->remaining_qty,
-            ]);
-
-            $deliveryService = app(DeliveryService::class);
-            $result = $deliveryService->dispatchFg($this->deliveryNote, $item, $actualQty);
-
-            // Verify transaction was created
-            if (!isset($result['transaction']) || !$result['transaction']) {
-                Log::error('No transaction created during dispatch', [
-                    'delivery_note_id' => $this->deliveryNote->id,
-                    'delivery_note_item_id' => $item->id,
-                    'quantity' => $actualQty,
-                ]);
-                throw new \Exception('Failed to create inventory transaction');
-            }
-
-            // Verify transaction has the delivery_note_item_id
-            $transaction = $result['transaction'];
-            if ($transaction instanceof \App\Models\InventoryTransaction) {
-                if (!$transaction->delivery_note_item_id) {
-                    $transaction->delivery_note_item_id = $item->id;
-                    $transaction->save();
-                    Log::info('Updated transaction with delivery_note_item_id', [
-                        'transaction_id' => $transaction->id,
-                        'delivery_note_item_id' => $item->id,
-                    ]);
-                }
-            }
-
-            // Update item - refresh to get latest data
-            $item->refresh();
-            $item->dispatched_qty += $actualQty;
-            $item->remaining_qty -= $actualQty;
-            
-            // Ensure remaining_qty doesn't go negative (safety check)
-            if ($item->remaining_qty < 0) {
-                $item->remaining_qty = 0;
-            }
-            
-            // Update item status
-            if ($item->remaining_qty <= 0) {
-                $item->status = 'dispatched';
-            } elseif ($item->dispatched_qty > 0 && $item->remaining_qty > 0) {
-                $item->status = 'partial';
-            }
-            
-            $item->save();
-
-            Log::info('Delivery note item updated', [
-                'delivery_note_item_id' => $item->id,
-                'new_dispatched_qty' => $item->dispatched_qty,
-                'new_remaining_qty' => $item->remaining_qty,
-                'new_status' => $item->status,
-            ]);
-
-            // Update delivery note status immediately
-            $this->updateDeliveryNoteStatus();
-
-            // Reload the delivery note to show updated data
-            $this->deliveryNote->refresh();
-            $this->deliveryNote->load('items');
-
-            // Update dispatch quantity for this item to remaining quantity (or 0 if fully dispatched)
-            $item->refresh();
-            $this->dispatchQuantities[$itemId] = $item->remaining_qty > 0 ? (int) $item->remaining_qty : 0;
-            session()->flash('success', "Dispatched {$actualQty} units successfully. Transaction ID: {$transaction->id}");
-
-        } catch (\Exception $e) {
-            Log::error('Error dispatching FG', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'delivery_note_id' => $this->deliveryNote->id,
-                'delivery_note_item_id' => $itemId,
-                'quantity' => $actualQty,
-            ]);
-            session()->flash('error', 'Error dispatching: ' . $e->getMessage());
-        }
-    }
-
-    public function updateDeliveryNoteStatus()
-    {
-        $this->deliveryNote->refresh();
-        $this->deliveryNote->load('items');
-        
-        // Check if all items are fully dispatched
-        $allDispatched = $this->deliveryNote->items->every(function($item) {
-            return $item->status === 'dispatched' || $item->remaining_qty <= 0;
-        });
-        
-        // Check if any item has been partially dispatched (has dispatched_qty > 0 but remaining_qty > 0)
-        $anyPartial = $this->deliveryNote->items->contains(function($item) {
-            return ($item->dispatched_qty > 0 && $item->remaining_qty > 0) || $item->status === 'partial';
-        });
-        
-        // Check if any item has been dispatched at all
-        $anyDispatched = $this->deliveryNote->items->contains(function($item) {
-            return $item->dispatched_qty > 0;
-        });
-
-        if ($allDispatched && $anyDispatched) {
-            $this->deliveryNote->update(['status' => 'dispatched']);
-        } elseif ($anyPartial) {
-            $this->deliveryNote->update(['status' => 'partial']);
-        } elseif ($anyDispatched) {
-            // If some items are dispatched but none are partial, check if all are dispatched
-            // This handles edge cases
-            if ($allDispatched) {
-                $this->deliveryNote->update(['status' => 'dispatched']);
-            } else {
-                $this->deliveryNote->update(['status' => 'partial']);
-            }
-        }
-        // If nothing is dispatched, keep status as 'draft'
-    }
 
     /**
      * Create sales invoice (accounting entry) for this delivery note.
@@ -224,14 +61,7 @@ class DeliveryNoteDetail extends Component
                 return;
             }
 
-            // Only allow invoice when something has been dispatched
-            if ($this->deliveryNote->status !== 'dispatched' && $this->deliveryNote->status !== 'partial') {
-                Log::warning('Invoice creation blocked: Status is not dispatched or partial', [
-                    'status' => $this->deliveryNote->status,
-                ]);
-                session()->flash('error', 'Invoice can only be created after dispatch.');
-                return;
-            }
+            // Allow invoice creation for any status (dispatch process removed)
 
             $customer = $this->deliveryNote->jobOrder->customer;
             
@@ -254,7 +84,8 @@ class DeliveryNoteDetail extends Component
             $sortOrder = 0;
 
             foreach ($this->deliveryNote->items as $item) {
-                if ($item->dispatched_qty <= 0) {
+                // Use quantity instead of dispatched_qty since dispatch process is removed
+                if ($item->quantity <= 0) {
                     continue;
                 }
 
@@ -272,7 +103,7 @@ class DeliveryNoteDetail extends Component
                 }
 
                 if ($unitPrice > 0) {
-                    $lineTotal = $unitPrice * (float) $item->dispatched_qty;
+                    $lineTotal = $unitPrice * (float) $item->quantity;
                     $subtotal += $lineTotal;
                     
                     $invoiceItems[] = [
@@ -281,7 +112,7 @@ class DeliveryNoteDetail extends Component
                         'item_id' => $item->item_id,
                         'description' => $item->description,
                         'material_code' => $item->material_code,
-                        'quantity' => $item->dispatched_qty,
+                        'quantity' => $item->quantity,
                         'unit_price' => $unitPrice,
                         'line_total' => $lineTotal,
                         'sort_order' => $sortOrder++,
@@ -291,7 +122,7 @@ class DeliveryNoteDetail extends Component
 
             if ($subtotal <= 0 || empty($invoiceItems)) {
                 Log::warning('Invoice total is zero or negative or no items');
-                session()->flash('error', 'Cannot create invoice: No dispatched quantities with valid prices were found.');
+                session()->flash('error', 'Cannot create invoice: No items with valid prices were found.');
                 return;
             }
 
@@ -322,7 +153,7 @@ class DeliveryNoteDetail extends Component
 
             // Update all delivery note items status to invoiced
             foreach ($this->deliveryNote->items as $item) {
-                if ($item->dispatched_qty > 0) {
+                if ($item->quantity > 0) {
                     $item->update(['status' => 'invoiced']);
                 }
             }
@@ -359,38 +190,11 @@ class DeliveryNoteDetail extends Component
         $this->dispatch('openPrintDialog');
     }
 
-    public function printDispatch($transactionId)
-    {
-        // Trigger JavaScript to print specific dispatch
-        $this->dispatch('openDispatchPrintDialog', transactionId: $transactionId);
-    }
-
-    public function getDispatchHistory()
-    {
-        // Get all dispatch transactions for this delivery note
-        $transactions = \App\Models\InventoryTransaction::where('related_doc_type', 'DeliveryNote')
-            ->where('related_doc_id', $this->deliveryNote->id)
-            ->where('txn_type', 'delivery')
-            ->orderBy('created_at', 'desc')
-            ->get();
-
-        return $transactions;
-    }
 
     public function render()
     {
         // Refresh invoice check on each render
         $this->checkExistingInvoice();
-        
-        // Ensure dispatch quantities are initialized for items that don't have values set
-        foreach ($this->deliveryNote->items as $item) {
-            if ($item->remaining_qty > 0 && !isset($this->dispatchQuantities[$item->id])) {
-                $this->dispatchQuantities[$item->id] = (int) $item->remaining_qty;
-            } elseif ($item->remaining_qty <= 0 && isset($this->dispatchQuantities[$item->id])) {
-                // Clear quantity if item is fully dispatched
-                $this->dispatchQuantities[$item->id] = 0;
-            }
-        }
         
         return view('livewire.delivery-notes.delivery-note-detail');
     }

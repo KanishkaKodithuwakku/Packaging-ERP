@@ -542,6 +542,12 @@ class GRNDetail extends Component
     // Partial receiving methods
     public function openPartialReceivingModal($itemId)
     {
+        // Prevent adding receipts for GRNs from production orders
+        if ($this->grn->production_order_id) {
+            session()->flash('error', 'Cannot add receipts for GRNs from production orders.');
+            return;
+        }
+        
         $this->selectedGRNItem = \App\Models\GRNItem::find($itemId);
         if ($this->selectedGRNItem) {
             $this->partialReceivingForm = [
@@ -564,6 +570,12 @@ class GRNDetail extends Component
 
     public function addPartialReceiving()
     {
+        // Prevent adding receipts for GRNs from production orders
+        if ($this->grn->production_order_id) {
+            session()->flash('error', 'Cannot add receipts for GRNs from production orders.');
+            return;
+        }
+        
         $this->validate([
             'partialReceivingForm.quantity' => 'required|numeric|min:0.01|max:' . ($this->selectedGRNItem->qty_pending ?? 0),
             'partialReceivingForm.notes' => 'nullable|string|max:500'

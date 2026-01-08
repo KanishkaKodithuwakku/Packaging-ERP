@@ -293,6 +293,11 @@
                                                         class="text-green-600 hover:text-green-900 text-xs font-medium">
                                                     Complete
                                                 </button>
+                                            @elseif($grn->production_order_id)
+                                                {{-- Disable Add Receipt for production order GRNs --}}
+                                                <span class="text-gray-400 text-xs cursor-not-allowed" title="Cannot add receipts for GRNs from production orders">
+                                                    Add Receipt
+                                                </span>
                                             @else
                                                 <button wire:click="openPartialReceivingModal({{ $item->id }})" 
                                                         class="text-blue-600 hover:text-blue-900 text-xs font-medium">

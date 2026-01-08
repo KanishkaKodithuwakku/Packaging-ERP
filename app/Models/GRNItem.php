@@ -142,6 +142,23 @@ class GRNItem extends Model
      */
     public function syncReceivingStatus()
     {
+        // For production GRN items, they should always be fully received since goods are already produced
+        // Check if this item belongs to a production GRN
+        $grn = $this->grn ?? $this->grn()->first();
+        if ($grn && $grn->production_order_id) {
+            $qtyReceived = $this->qty_received ?? 0;
+            if ($qtyReceived > 0) {
+                $this->qty_expected = $qtyReceived;
+                $this->qty_received_partial = $qtyReceived;
+                $this->qty_pending = 0;
+                $this->is_fully_received = true;
+                if (!$this->last_received_at) {
+                    $this->last_received_at = now();
+                }
+                return;
+            }
+        }
+        
         // Ensure we have valid values, default to 0 if null
         $qtyReceived = $this->qty_received_partial ?? 0;
         $qtyExpected = $this->qty_expected ?? ($this->qty_received ?? 0);

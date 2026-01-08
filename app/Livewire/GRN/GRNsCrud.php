@@ -263,6 +263,8 @@ class GRNsCrud extends Component
             });
         }
 
+        
+
         // Apply receiving progress filter
         if ($this->filterReceivingProgress === 'all' || empty($this->filterReceivingProgress)) {
             // Show all GRNs (no filter applied)
@@ -322,8 +324,24 @@ class GRNsCrud extends Component
             $query->where('received_date', '<=', $this->filterDateTo);
         }
 
-        $grns = $query->orderBy('created_at', 'desc')
+        $grns = $query->with('items')->orderBy('created_at', 'desc')
             ->paginate(10);
+
+        // Sync receiving status for all GRN items to ensure UI shows correct status
+        // Sync all items, especially important for production GRNs which should be fully received
+        foreach ($grns as $grn) {
+            foreach ($grn->items as $item) {
+                // Always sync receiving status - this will handle production GRNs correctly
+                // For production GRNs, syncReceivingStatus will automatically mark them as fully received
+                $item->syncReceivingStatus();
+                // Only save if status changed to avoid unnecessary database writes
+                if ($item->isDirty(['is_fully_received', 'qty_pending', 'qty_expected', 'qty_received_partial', 'last_received_at'])) {
+                    $item->save();
+                }
+            }
+            // Refresh the GRN's items relationship to ensure fresh data
+            $grn->load('items');
+        }
 
         $supplierOrders = SupplierOrder::where('status', 'ordered')
             ->orderBy('created_at', 'desc')

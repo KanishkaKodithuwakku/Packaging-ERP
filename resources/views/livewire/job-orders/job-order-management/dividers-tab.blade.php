@@ -4,75 +4,67 @@
         <h4 class="text-lg font-medium text-gray-900 mb-4">Add New Divider</h4>
 
           <!-- Divider Specifications -->
-          <div class="space-y-3">
-            <!-- Row 1: FSC CLAIM, Quantity, Unit, PLY -->
-            <div class="flex gap-4">
-                <div class="flex items-center gap-3 flex-1">
-                    <label class="block text-sm font-medium text-gray-700 mb-1 w-1/4">FSC Claim <span class="text-red-500">*</span></label>
-                    <div class="flex-1">
-                        <select wire:model="dividerForm.fsc_claim"
-                                class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                            <option value="100%">100%</option>
-                            <option value="MIX">MIX</option>
-                            <option value="No Claim">No Claim</option>
-                        </select>
-                        @error('dividerForm.fsc_claim') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                    </div>
-                </div>
+          <div class="space-y-4">
+            <!-- FSC Claim -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">FSC Claim <span class="text-red-500">*</span></label>
+                <select wire:model="dividerForm.fsc_claim"
+                        class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    <option value="100%">100%</option>
+                    <option value="MIX">MIX</option>
+                    <option value="No Claim">No Claim</option>
+                </select>
+                @error('dividerForm.fsc_claim') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+            </div>
 
-                <div class="flex items-center gap-3 flex-1">
-                    <label class="block text-sm font-medium text-gray-700 mb-1 w-1/4">Quantity <span class="text-red-500">*</span></label>
-                    <div class="flex-1">
-                        <input type="number"
-                               wire:model="dividerForm.quantity"
-                               class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                               placeholder="1000">
-                        @error('dividerForm.quantity') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                    </div>
-                </div>
+            <!-- Quantity -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Quantity <span class="text-red-500">*</span></label>
+                <input type="number"
+                       wire:model="dividerForm.quantity"
+                       class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                       placeholder="1000">
+                @error('dividerForm.quantity') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+            </div>
 
-                <div class="flex items-center gap-3 flex-1">
-                    <label class="block text-sm font-medium text-gray-700 mb-1 w-1/4">Unit <span class="text-red-500">*</span></label>
-                    <div class="flex-1">
-                        <select wire:model="dividerForm.unit"
-                                class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                            <option value="CM">CM</option>
-                            <option value="MM">MM</option>
-                            <option value="INCHES">INCHES</option>
-                        </select>
-                        @error('dividerForm.unit') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                    </div>
-                </div>
+            <!-- Unit -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Unit <span class="text-red-500">*</span></label>
+                <select wire:model="dividerForm.unit"
+                        class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    <option value="CM">CM</option>
+                    <option value="MM">MM</option>
+                    <option value="INCHES">INCHES</option>
+                </select>
+                @error('dividerForm.unit') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+            </div>
 
-                <div class="flex items-center gap-3 flex-1">
-                    <label class="block text-sm font-medium text-gray-700 mb-1 w-1/4">Ply <span class="text-red-500">*</span></label>
-                    <div class="flex-1">
-                        <select wire:model.live="dividerForm.ply"
-                                class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
-                            <option value="3">3</option>
-                            <option value="5">5</option>
-                            <option value="7">7</option>
-                        </select>
-                        @error('dividerForm.ply') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                    </div>
-                </div>
+            <!-- Ply -->
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Ply <span class="text-red-500">*</span></label>
+                <select wire:model.live="dividerForm.ply"
+                        class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                    <option value="3">3</option>
+                    <option value="5">5</option>
+                    <option value="7">7</option>
+                </select>
+                @error('dividerForm.ply') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
             </div>
         </div>
 
         <!-- Combination Parameters -->
-        <div class="mb-6">
-            <h5 class="text-md font-medium text-gray-700 mb-2">Combination <span class="text-red-500">*</span></h5>
-            <!-- Responsive Grid - up to 7 inputs -->
-            <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-7 gap-0.5">
+        <div class="mt-6">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Combination <span class="text-red-500">*</span></label>
+            <div class="space-y-2">
                 @for($i = 1; $i <= 7; $i++)
                     <div @if(($dividerForm['ply'] == '3' && $i > 3) || ($dividerForm['ply'] == '5' && $i > 5) || ($dividerForm['ply'] == '7' && $i > 7) || (!$dividerForm['ply'] && $i > 3)) style="display: none;" @endif>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Combination {{ $i }}</label>
                         <input type="text"
                                wire:model="dividerForm.combination_{{ $i }}"
                                maxlength="6"
-                               class="w-full px-1 py-2 text-xs border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                               placeholder="e.g., 140KL"
-                               style="max-width: 150px;">
-                        @error('dividerForm.combination_'.$i) <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                               class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                               placeholder="e.g., 140KL">
+                        @error('dividerForm.combination_'.$i) <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                     </div>
                 @endfor
             </div>
@@ -83,28 +75,20 @@
 
         <!-- Supplier Price -->
         <div class="mt-6">
-            <div class="space-y-3">
-                <div class="flex gap-4">
-                    <div class="flex items-center gap-3" style="width: calc(25% - 0.75rem);">
-                        <label class="block text-sm font-medium text-gray-700 mb-1 w-1/4">Supplier Price <span class="text-red-500">*</span></label>
-                        <div class="flex-1">
-                            <input type="number"
-                                   step="0.01"
-                                   wire:model="dividerForm.supplier_price"
-                                   class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                                   placeholder="0.00">
-                            @error('dividerForm.supplier_price') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Supplier Price <span class="text-red-500">*</span></label>
+            <input type="number"
+                   step="0.01"
+                   wire:model="dividerForm.supplier_price"
+                   class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                   placeholder="0.00">
+            @error('dividerForm.supplier_price') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
         </div>
 
         <!-- Add Divider Button -->
         <div class="mt-6 flex justify-end">
             <button wire:click="addDivider"
                     class="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700">
-                Add Divider
+                Save
             </button>
         </div>
     </div>

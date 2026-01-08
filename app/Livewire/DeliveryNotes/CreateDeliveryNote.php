@@ -127,7 +127,7 @@ class CreateDeliveryNote extends Component
             }
 
             session()->flash('success', 'Delivery note created successfully!');
-            return $this->redirect(route('delivery-note-detail', $dn->id), navigate: true);
+            return $this->redirect(route('delivery-notes-management'), navigate: true);
 
         } catch (\Exception $e) {
             Log::error('Error creating delivery note: ' . $e->getMessage());
@@ -140,6 +140,11 @@ class CreateDeliveryNote extends Component
         return view('livewire.delivery-notes.create-delivery-note', [
             'jobOrders' => JobOrder::with('customer')
                 ->where('status', 'confirmed')
+                ->whereHas('productionOrders', function($q) {
+                    $q->whereHas('grns', function($grnQuery) {
+                        $grnQuery->where('status', 'processed');
+                    });
+                })
                 ->orderBy('created_at', 'desc')
                 ->get(),
         ]);

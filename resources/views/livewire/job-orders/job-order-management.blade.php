@@ -28,7 +28,7 @@
             <div class="flex items-center space-x-4">
                 <input type="text" wire:model.live="search" placeholder="Search job orders..."
                     class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[200px]">
-                @if($filterSupplier || $filterCustomer || $filterStatus || $filterDateFrom || $filterDateTo)
+                @if($filterSupplier || $filterCustomer || $filterStatus || $filterDateFrom || $filterDateTo || $filterHasFG)
                 <button wire:click="resetFilters"
                     class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center">
                     <svg class="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
@@ -633,9 +633,9 @@
                                 </div>
                             </div>
 
-                            <!-- Row 3: Status -->
+                            <!-- Row 3: Status, Has FG -->
                             <div class="flex gap-3">
-                                <div class="flex items-center gap-3" style="width: calc(51% - 0.75rem);">
+                                <div class="flex items-center gap-3 flex-1">
                                     <label class="block text-sm font-medium text-gray-700 mb-1 w-1/5">Status</label>
                                     <div class="flex-1">
                                         <select wire:model.live="filterStatus"
@@ -646,6 +646,17 @@
                                             <option value="in_production">In Production</option>
                                             <option value="completed">Completed</option>
                                             <option value="cancelled">Cancelled</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-3 flex-1">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1 w-1/5">Has FG</label>
+                                    <div class="flex-1">
+                                        <select wire:model.live="filterHasFG"
+                                            class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                            <option value="">All</option>
+                                            <option value="yes">Yes</option>
+                                            <option value="no">No</option>
                                         </select>
                                     </div>
                                 </div>

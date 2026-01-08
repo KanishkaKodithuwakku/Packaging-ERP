@@ -244,47 +244,29 @@ class ProductionOrderDetail extends Component
     private bool $isAutoCalculating = false;
 
     /**
-     * Auto-calculate FG when boards quantity changes
+     * Validate boards quantity (removed auto-fill, kept validation)
      */
     public function updatedCompleteQty($value, $itemId)
     {
-        if ($this->isAutoCalculating) {
-            return;
-        }
-        
         if ($value > 0 && isset($this->completeQty[$itemId])) {
             $item = $this->productionOrder->items()->findOrFail($itemId);
             $effectiveMaxQty = $item->getEffectiveMaxQuantity();
             $maxCanComplete = $effectiveMaxQty - $item->completed_quantity;
             
-            // Cap the value at maximum allowed
+            // Validate and cap the value at maximum allowed
             if ($value > $maxCanComplete) {
                 $this->completeQty[$itemId] = $maxCanComplete;
                 session()->flash('error', "Used boards cannot exceed {$maxCanComplete} boards (remaining quantity).");
                 return;
             }
-            
-            $currentFg = $this->completeFgQty[$itemId] ?? 0;
-            $calculatedFg = $this->calculateFgFromBoards($itemId, (int)$value);
-            
-            // Only auto-fill if FG field is empty or matches expected calculation (within 1 unit tolerance)
-            if ($currentFg == 0 || abs($currentFg - $calculatedFg) <= 1) {
-                $this->isAutoCalculating = true;
-                $this->completeFgQty[$itemId] = $calculatedFg;
-                $this->isAutoCalculating = false;
-            }
         }
     }
 
     /**
-     * Auto-calculate boards when FG quantity changes
+     * Validate FG quantity (removed auto-fill, kept validation)
      */
     public function updatedCompleteFgQty($value, $itemId)
     {
-        if ($this->isAutoCalculating) {
-            return;
-        }
-        
         if ($value > 0 && isset($this->completeFgQty[$itemId])) {
             $item = $this->productionOrder->items()->findOrFail($itemId);
             $effectiveMaxQty = $item->getEffectiveMaxQuantity();
@@ -292,30 +274,11 @@ class ProductionOrderDetail extends Component
             $noOfUps = $item->getNoOfUps();
             $maxFgCanProduce = $noOfUps > 0 ? ($maxCanComplete * $noOfUps) : $maxCanComplete;
             
-            // Cap the FG value at maximum allowed
+            // Validate and cap the FG value at maximum allowed
             if ($value > $maxFgCanProduce) {
                 $this->completeFgQty[$itemId] = $maxFgCanProduce;
                 session()->flash('error', "FG produced cannot exceed {$maxFgCanProduce} boxes (remaining capacity).");
                 return;
-            }
-            
-            $currentBoards = $this->completeQty[$itemId] ?? 0;
-            $calculatedBoards = $this->calculateBoardsFromFg($itemId, (int)$value);
-            
-            // Cap calculated boards at maximum allowed
-            if ($calculatedBoards > $maxCanComplete) {
-                $calculatedBoards = $maxCanComplete;
-                // Recalculate FG from capped boards
-                $this->isAutoCalculating = true;
-                $this->completeFgQty[$itemId] = $this->calculateFgFromBoards($itemId, $calculatedBoards);
-                $this->isAutoCalculating = false;
-            }
-            
-            // Only auto-fill if boards field is empty or matches expected calculation (within 1 unit tolerance)
-            if ($currentBoards == 0 || abs($currentBoards - $calculatedBoards) <= 1) {
-                $this->isAutoCalculating = true;
-                $this->completeQty[$itemId] = $calculatedBoards;
-                $this->isAutoCalculating = false;
             }
         }
     }
@@ -552,10 +515,13 @@ class ProductionOrderDetail extends Component
             $grnItem->initializePartialReceiving();
             $grnItem->update([
                 'qty_received_partial' => $availableToGRN,
+                'qty_expected' => $expectedFgQty,
                 'qty_pending' => max(0, $expectedFgQty - $availableToGRN), // Pending = Expected - Received
-                'is_fully_received' => ($availableToGRN >= $expectedFgQty),
                 'last_received_at' => now(),
             ]);
+            // Sync receiving status to ensure is_fully_received is correctly calculated
+            $grnItem->syncReceivingStatus();
+            $grnItem->save();
 
             Log::info('GRN created as pending for manual processing', [
                 'grn_id' => $grn->id,
@@ -648,10 +614,13 @@ class ProductionOrderDetail extends Component
             $grnItem->initializePartialReceiving();
             $grnItem->update([
                 'qty_received_partial' => $availableToGRN,
+                'qty_expected' => $expectedFgQty,
                 'qty_pending' => max(0, $expectedFgQty - $availableToGRN), // Pending = Expected - Received
-                'is_fully_received' => ($availableToGRN >= $expectedFgQty),
                 'last_received_at' => now(),
             ]);
+            // Sync receiving status to ensure is_fully_received is correctly calculated
+            $grnItem->syncReceivingStatus();
+            $grnItem->save();
 
             // Process GRN to stock automatically
             $grnProcessingService = app(\App\Services\GRNProcessingService::class);

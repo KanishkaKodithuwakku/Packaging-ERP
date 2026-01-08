@@ -49,7 +49,8 @@ class ProductionGRNService
         ]);
 
         // Create GRN item - store board quantity
-        \App\Models\GRNItem::create([
+        // For production GRNs, items are already produced, so mark as fully received
+        $grnItem = \App\Models\GRNItem::create([
             'grn_id' => $grn->id,
             'production_order_item_id' => $productionItem->id,
             'item_type' => $productionItem->item_type,
@@ -57,6 +58,11 @@ class ProductionGRNService
             'description' => $description,
             'material_code' => $this->generateMaterialCode($productionItem, $item),
             'qty_received' => $boardQuantity, // Store board quantity
+            'qty_expected' => $boardQuantity, // Expected equals received for production GRNs
+            'qty_received_partial' => $boardQuantity, // All is received since it's already produced
+            'qty_pending' => 0, // No pending quantity
+            'is_fully_received' => true, // Production GRNs are always fully received
+            'last_received_at' => now(),
             'uom' => 'PCS',
         ]);
 
@@ -185,6 +191,7 @@ class ProductionGRNService
                 }
 
                 // Create GRN item record
+                // For production GRNs, items are already produced, so mark as fully received
                 $grnItemData = [
                     'grn_id' => $grn->id,
                     'production_order_item_id' => $productionItem->id,
@@ -193,6 +200,11 @@ class ProductionGRNService
                     'description' => $this->generateDescription($productionItem, $itemDetails),
                     'material_code' => $this->generateMaterialCode($productionItem, $itemDetails),
                     'qty_received' => $quantity,
+                    'qty_expected' => $quantity, // Expected equals received for production GRNs
+                    'qty_received_partial' => $quantity, // All is received since it's already produced
+                    'qty_pending' => 0, // No pending quantity
+                    'is_fully_received' => true, // Production GRNs are always fully received
+                    'last_received_at' => now(),
                     'uom' => 'PCS',
                 ];
                 

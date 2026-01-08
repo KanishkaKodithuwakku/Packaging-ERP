@@ -96,7 +96,31 @@
                 </button>
                 @endif
 
-                @if($poProcessedCount > 0)
+                @php
+                    // Always check purchase orders directly from database for accurate state
+                    // This ensures button state is correct regardless of component state
+                    $hasAnyPO = false;
+                    $currentJobOrderId = null;
+                    
+                    // Try multiple ways to get the job order ID
+                    if (isset($jobOrderId) && $jobOrderId) {
+                        $currentJobOrderId = $jobOrderId;
+                    } elseif (isset($jobOrder) && $jobOrder && isset($jobOrder->id)) {
+                        $currentJobOrderId = $jobOrder->id;
+                    } elseif (request()->route('id')) {
+                        $currentJobOrderId = request()->route('id');
+                    }
+                    
+                    if ($currentJobOrderId) {
+                        // Purchase orders are linked to job orders through purchase_order_items table
+                        $hasAnyPO = \App\Models\PurchaseOrder::where('status', '!=', 'cancelled')
+                            ->whereHas('items', function($query) use ($currentJobOrderId) {
+                                $query->where('job_order_id', $currentJobOrderId);
+                            })
+                            ->exists();
+                    }
+                @endphp
+                @if($hasAnyPO || $hasPurchaseOrder || $poCount > 0)
                 <button wire:click="showPrintPreview"
                     class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -109,7 +133,7 @@
                 @else
                 <button disabled
                     class="inline-flex items-center px-4 py-2 border border-gray-200 rounded-md shadow-sm text-sm font-medium text-gray-400 bg-gray-100 cursor-not-allowed"
-                    title="Print is available after confirming the purchase order">
+                    title="Print is available after creating a purchase order">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z">
@@ -265,7 +289,14 @@
                     </div>
 
                     <!-- Status -->
-
+                    <div class="flex items-center gap-3 " style="margin-top: 15px !important;">
+                        <label class="block text-sm font-medium text-gray-700 mb-1 w-1/5">Status</label>
+                        <div class="flex-1">
+                            <div class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-900">
+                                {{ ucfirst(str_replace('_', ' ', $jobOrder->status)) }}
+                            </div>
+                        </div>
+                    </div>
 
                     <!-- Items Count -->
                     <div class="flex items-center gap-3" style="margin-top: 18px !important;">
@@ -665,14 +696,64 @@
     </div>
 
     <!-- Purchase Order Details Section -->
-    @if(count($purchaseOrders) > 0)
+    @php
+        // Direct database query to ensure purchase orders are always displayed
+        // This ensures data is accurate even if component properties aren't refreshed
+        // Note: Purchase orders are linked to job orders through purchase_order_items table
+        $directJobOrderId = isset($jobOrderId) && $jobOrderId ? $jobOrderId : (isset($jobOrder) && $jobOrder ? $jobOrder->id : request()->route('id'));
+        $directPurchaseOrders = $directJobOrderId ? \App\Models\PurchaseOrder::where('status', '!=', 'cancelled')
+            ->whereHas('items', function($query) use ($directJobOrderId) {
+                $query->where('job_order_id', $directJobOrderId);
+            })
+            ->with(['items' => function($query) use ($directJobOrderId) {
+                $query->where('job_order_id', $directJobOrderId);
+            }, 'supplier'])
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function($po) {
+                return [
+                    'id' => $po->id,
+                    'po_number' => $po->po_number,
+                    'date' => $po->date ? $po->date->format('Y-m-d') : null,
+                    'date_formatted' => $po->date ? $po->date->format('M d, Y') : 'N/A',
+                    'status' => $po->status,
+                    'notes' => $po->notes,
+                    'supplier' => $po->supplier ? [
+                        'name' => $po->supplier->name,
+                        'code' => $po->supplier->code,
+                        'address' => $po->supplier->address,
+                    ] : null,
+                    'items' => $po->items->map(function($item) {
+                        return [
+                            'id' => $item->id,
+                            'item_type' => $item->item_type,
+                            'description' => $item->description,
+                            'reel_size' => $item->reel_size,
+                            'cut_size' => $item->cut_size,
+                            'quantity' => $item->quantity,
+                            'unit_price' => $item->unit_price,
+                            'total_price' => $item->total_price,
+                        ];
+                    })->toArray(),
+                    'total_amount' => $po->getTotalAmount(),
+                ];
+            })->toArray() : [];
+        // Use direct query result if component property is empty, otherwise use component property
+        $displayPurchaseOrders = !empty($purchaseOrders) ? $purchaseOrders : $directPurchaseOrders;
+    @endphp
     <div class="bg-white rounded-lg shadow-sm border mt-6">
         <div class="px-6 py-4 border-b border-gray-200">
-            <h3 class="text-lg font-medium text-gray-900">Purchase Order Details</h3>
+            <div class="flex justify-between items-center">
+                <h3 class="text-lg font-medium text-gray-900">Purchase Order Details</h3>
+                @if(count($displayPurchaseOrders) > 0)
+                <span class="text-sm text-gray-500">{{ count($displayPurchaseOrders) }} Purchase Order{{ count($displayPurchaseOrders) > 1 ? 's' : '' }}</span>
+                @endif
+            </div>
         </div>
 
         <div class="p-6">
-            @foreach($purchaseOrders as $po)
+            @if(count($displayPurchaseOrders) > 0)
+            @foreach($displayPurchaseOrders as $po)
             <div class="mb-8 last:mb-0 {{ !$loop->last ? 'border-b border-gray-200 pb-8' : '' }}">
                 <!-- Purchase Order Header -->
                 <div class="mb-4">
@@ -743,9 +824,13 @@
                 @endif
             </div>
             @endforeach
+            @else
+            <div class="text-center py-8">
+                <p class="text-gray-500 text-sm">No purchase orders found for this job order.</p>
+            </div>
+            @endif
         </div>
     </div>
-    @endif
 
     <!-- FG GRN Details Section -->
     @if(count($fgGrns) > 0)
@@ -841,8 +926,8 @@
 
     <!-- Add Box/Divider Modal -->
     @if($showBoxDividerModal)
-    <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-        <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-[95vw] shadow-lg rounded-md bg-white">
+    <div class="fixed inset-0 overflow-y-auto h-full w-full z-50">
+        <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-2xl shadow-lg rounded-md bg-white">
             <div class="mt-3">
                 <!-- Modal Header -->
                 <div class="flex justify-between items-center pb-4 border-b">
@@ -886,7 +971,7 @@
 
     <!-- View Box Modal -->
     @if($showViewBoxModal)
-    <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="fixed inset-0 overflow-y-auto h-full w-full z-50">
         <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-md bg-white">
             <div class="mt-3">
                 <!-- Modal Header -->
@@ -1033,7 +1118,7 @@
 
     <!-- View Divider Modal -->
     @if($showViewDividerModal)
-    <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="fixed inset-0 overflow-y-auto h-full w-full z-50">
         <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-md bg-white">
             <div class="mt-3">
                 <!-- Modal Header -->
@@ -1110,7 +1195,7 @@
 
     <!-- Print Preview Modal -->
     @if($showPrintPreviewModal)
-    <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+    <div class="fixed inset-0 overflow-y-auto h-full w-full z-50">
         <div class="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-2/3 shadow-lg rounded-md bg-white">
             <div class="mt-3">
                 <!-- Modal Header -->
@@ -1279,7 +1364,6 @@
         @include('livewire.job-orders.job-order-management.edit-divider-modal')
     @endif
 
-    @script
     <script>
         // Print functionality
         window.printJobOrder = function() {
@@ -1309,5 +1393,4 @@
             }, 500);
         };
     </script>
-    @endscript
 </div>
