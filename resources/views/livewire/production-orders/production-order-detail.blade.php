@@ -81,16 +81,6 @@
                 </button>
                 @endif
                 
-                <button wire:click="toggleEditMode"
-                    class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
-                        </path>
-                    </svg>
-                    Edit Production Order
-                </button>
-                
                 <button wire:click="showPrintPreview"
                     class="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -99,16 +89,6 @@
                         </path>
                     </svg>
                     Print Production Order
-                </button>
-
-                <button wire:click="generateFGGRNFromCompleted"
-                        @if($hasAnyGRN) disabled @endif
-                        class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium @if($hasAnyGRN) text-gray-400 bg-gray-300 cursor-not-allowed @else text-white bg-purple-600 hover:bg-purple-700 @endif"
-                        @if($hasAnyGRN) title="GRN already created for this production order" @endif>
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                    </svg>
-                    + Generate FG GRN
                 </button>
                 @endif
             </div>
@@ -353,7 +333,9 @@
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             @php
-                                $expectedQty = $item->getExpectedFinishedGoodsFromMaterial();
+                                // Expected quantity = production quantity (boards) * no_of_ups
+                                $noOfUps = $item->getNoOfUps();
+                                $expectedQty = $item->quantity * $noOfUps;
                             @endphp
                             {{ number_format($expectedQty, 0) }}
                         </td>

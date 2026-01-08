@@ -1484,6 +1484,7 @@ class JobOrderDetail extends Component
                     'date_formatted' => $po->date ? $po->date->format('M d, Y') : 'N/A',
                     'status' => $po->status,
                     'notes' => $po->notes,
+                    'currency_symbol' => $po->getCurrencySymbol(),
                     'supplier' => $po->supplier ? [
                         'name' => $po->supplier->name,
                         'code' => $po->supplier->code,

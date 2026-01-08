@@ -159,14 +159,24 @@ class GRNItem extends Model
             }
         }
         
-        // Ensure we have valid values, default to 0 if null
+        // For non-production GRNs, we need to check qty_received_partial (actual receipts added)
+        // qty_received is the initial quantity from the order, but doesn't mean items have been received
+        // qty_received_partial is the actual quantity received through receipts
         $qtyReceived = $this->qty_received_partial ?? 0;
-        $qtyExpected = $this->qty_expected ?? ($this->qty_received ?? 0);
+        $qtyExpected = $this->qty_expected ?? 0;
         
-        // If qty_expected is 0 or null but qty_received exists, use that
-        if (($qtyExpected <= 0) && ($this->qty_received > 0)) {
+        // If qty_expected is not set but qty_received exists, use qty_received as expected
+        // This sets the expected quantity, but doesn't mean items have been received
+        if ($qtyExpected <= 0 && $this->qty_received > 0) {
             $qtyExpected = $this->qty_received;
             $this->qty_expected = $qtyExpected;
+        }
+        
+        // If qty_expected is still 0, we can't determine status
+        if ($qtyExpected <= 0) {
+            $this->is_fully_received = false;
+            $this->qty_pending = 0;
+            return;
         }
         
         // Use a small tolerance for floating point comparison
@@ -174,7 +184,9 @@ class GRNItem extends Model
         $difference = abs($qtyReceived - $qtyExpected);
         
         // Check if fully received (accounting for floating point precision)
-        if ($qtyExpected > 0 && ($qtyReceived >= $qtyExpected || $difference <= $tolerance)) {
+        // IMPORTANT: Only mark as fully received if qty_received_partial (actual receipts) equals or exceeds expected
+        // qty_received_partial must be > 0 for the item to be considered received
+        if ($qtyReceived > 0 && $qtyReceived >= ($qtyExpected - $tolerance)) {
             $this->is_fully_received = true;
             $this->qty_pending = 0;
             // Ensure received doesn't exceed expected
@@ -182,6 +194,7 @@ class GRNItem extends Model
                 $this->qty_received_partial = $qtyExpected;
             }
         } else {
+            // Not fully received - either no receipt added (qty_received_partial = 0) or partial receipt
             $this->is_fully_received = false;
             $this->qty_pending = max(0, $qtyExpected - $qtyReceived);
         }

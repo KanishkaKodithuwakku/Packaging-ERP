@@ -136,7 +136,16 @@
                                         ->where('item_id', $box->id)
                                         ->get()
                                         ->sum(function($item) {
-                                            return $item->qty_received_partial > 0 ? $item->qty_received_partial : ($item->qty_received ?? 0);
+                                            // For production GRNs, use qty_received since items are already produced
+                                            // For purchase order GRNs, only use qty_received_partial (actual receipts added)
+                                            $grn = $item->grn ?? $item->grn()->first();
+                                            if ($grn && $grn->production_order_id) {
+                                                // Production GRN: use qty_received
+                                                return (float)($item->qty_received ?? 0);
+                                            } else {
+                                                // Purchase order GRN: only count actual receipts (qty_received_partial)
+                                                return (float)($item->qty_received_partial ?? 0);
+                                            }
                                         });
                                     }
 
@@ -205,7 +214,16 @@
                                         ->where('item_id', $divider->id)
                                         ->get()
                                         ->sum(function($item) {
-                                            return $item->qty_received_partial > 0 ? $item->qty_received_partial : ($item->qty_received ?? 0);
+                                            // For production GRNs, use qty_received since items are already produced
+                                            // For purchase order GRNs, only use qty_received_partial (actual receipts added)
+                                            $grn = $item->grn ?? $item->grn()->first();
+                                            if ($grn && $grn->production_order_id) {
+                                                // Production GRN: use qty_received
+                                                return (float)($item->qty_received ?? 0);
+                                            } else {
+                                                // Purchase order GRN: only count actual receipts (qty_received_partial)
+                                                return (float)($item->qty_received_partial ?? 0);
+                                            }
                                         });
                                     }
 
@@ -270,17 +288,16 @@
                                         })
                                         ->get()
                                         ->sum(function($item) {
-                                            // Explicitly check for null and treat as 0
-                                            $qtyReceivedPartial = $item->qty_received_partial ?? 0;
-                                            $qtyReceived = $item->qty_received ?? 0;
-                                            
-                                            // Only count if there's actual received quantity (greater than 0)
-                                            if ($qtyReceivedPartial > 0) {
-                                                return (float) $qtyReceivedPartial;
-                                            } elseif ($qtyReceived > 0) {
-                                                return (float) $qtyReceived;
+                                            // For production GRNs, use qty_received since items are already produced
+                                            // For purchase order GRNs, only use qty_received_partial (actual receipts added)
+                                            $grn = $item->grn ?? $item->grn()->first();
+                                            if ($grn && $grn->production_order_id) {
+                                                // Production GRN: use qty_received
+                                                return (float)($item->qty_received ?? 0);
+                                            } else {
+                                                // Purchase order GRN: only count actual receipts (qty_received_partial)
+                                                return (float)($item->qty_received_partial ?? 0);
                                             }
-                                            return 0;
                                         });
                                     }
                                     // Calculate progress: only show progress if there's actual received quantity

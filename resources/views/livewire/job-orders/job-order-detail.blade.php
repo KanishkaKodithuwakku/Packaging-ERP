@@ -308,12 +308,12 @@
                         </div>
                     </div>
 
-                    <!-- Boards -->
+                    <!-- Boxes -->
                     <div class="flex items-center gap-3">
-                        <label class="block text-sm font-medium text-gray-700 mb-1 w-1/5">Boards</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1 w-1/5">Boxes</label>
                         <div class="flex-1">
                             <div class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-900">
-                                {{ count($boxes) }} boards
+                                {{ count($boxes) }} boxes
                             </div>
                         </div>
                     </div>
@@ -557,7 +557,7 @@
                             <div class="text-xs text-gray-500">{{ $box['dimension_type'] }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{
-                            number_format($box['order_qty'] ?? 0, 0) }}</td>
+                            number_format((float)($box['order_qty'] ?? 0), 0) }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $box['ply'] }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {{ number_format($box['reel_size'] ?? 0, 2) }}
@@ -566,7 +566,7 @@
                             {{ number_format($box['cut_size'] ?? 0, 2) }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {{ number_format($box['board_qty'] ?? 0, 0) }}
+                            {{ number_format((float)($box['board_qty'] ?? 0), 0) }}
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             <div class="flex items-center space-x-2">
@@ -618,7 +618,7 @@
                             <div class="text-xs text-gray-500">Divider</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{
-                            number_format($divider['quantity']) }}</td>
+                            number_format((float)($divider['quantity'] ?? 0)) }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $divider['ply'] }}</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">-</td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">-</td>
@@ -667,7 +667,7 @@
                     d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
             </svg>
             <h3 class="mt-2 text-sm font-medium text-gray-900">No job order items</h3>
-            <p class="mt-1 text-sm text-gray-500">Get started by adding boards or dividers to this job order.</p>
+            <p class="mt-1 text-sm text-gray-500">Get started by adding boxes or dividers to this job order.</p>
 
             <div class="mt-6">
                 @if($jobOrder->status === 'confirmed')
@@ -718,6 +718,7 @@
                     'date_formatted' => $po->date ? $po->date->format('M d, Y') : 'N/A',
                     'status' => $po->status,
                     'notes' => $po->notes,
+                    'currency_symbol' => $po->getCurrencySymbol(),
                     'supplier' => $po->supplier ? [
                         'name' => $po->supplier->name,
                         'code' => $po->supplier->code,
@@ -806,15 +807,15 @@
                                     </span>
                                 </td>
                                 <td class="px-4 py-3 text-sm text-gray-900">{{ $item['description'] }}</td>
-                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-right">{{ number_format($item['quantity']) }}</td>
-                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-right">Rs. {{ number_format($item['unit_price'], 2) }}</td>
-                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 text-right">Rs. {{ number_format($item['total_price'], 2) }}</td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-right">{{ number_format((float)($item['quantity'] ?? 0)) }}</td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900 text-right">{{ $po['currency_symbol'] ?? 'Rs.' }} {{ number_format((float)($item['unit_price'] ?? 0), 2) }}</td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 text-right">{{ $po['currency_symbol'] ?? 'Rs.' }} {{ number_format((float)($item['total_price'] ?? 0), 2) }}</td>
                             </tr>
                             @endforeach
                             <!-- Total Row -->
                             <tr class="bg-gray-50">
                                 <td colspan="4" class="px-4 py-3 text-sm font-semibold text-gray-900 text-right">Total Amount:</td>
-                                <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold text-gray-900 text-right">Rs. {{ number_format($po['total_amount'], 2) }}</td>
+                                <td class="px-4 py-3 whitespace-nowrap text-sm font-semibold text-gray-900 text-right">{{ $po['currency_symbol'] ?? 'Rs.' }} {{ number_format($po['total_amount'], 2) }}</td>
                             </tr>
                         </tbody>
                     </table>
@@ -885,9 +886,9 @@
                                 $wasteQty = $grn['waste_quantity'] ?? 0;
                             @endphp
                             @if($wasteQty > 0)
-                                <span class="text-red-600 font-medium">Waste: {{ number_format($wasteQty, 0) }} boards</span>
+                                <span class="text-red-600 font-medium">Waste: {{ number_format($wasteQty, 0) }} boxes</span>
                             @elseif($wasteQty < 0)
-                                <span class="text-green-600 font-medium">Conserve: {{ number_format(abs($wasteQty), 0) }} boards</span>
+                                <span class="text-green-600 font-medium">Conserve: {{ number_format(abs($wasteQty), 0) }} boxes</span>
                             @else
                                 <span class="text-gray-500">-</span>
                             @endif
@@ -947,7 +948,7 @@
                     <nav class="-mb-px flex space-x-8">
                         <button wire:click="setActiveTab('boxes')"
                             class="py-2 px-1 border-b-2 font-medium text-sm {{ $activeTab === 'boxes' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}">
-                            Boards ({{ count($boxes) }})
+                            Boxes ({{ count($boxes) }})
                         </button>
                         <button wire:click="setActiveTab('dividers')"
                             class="py-2 px-1 border-b-2 font-medium text-sm {{ $activeTab === 'dividers' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300' }}">
@@ -1137,7 +1138,7 @@
                     <div class="space-y-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Quantity</label>
-                            <p class="mt-1 text-sm text-gray-900 font-medium">{{ number_format($viewingDividerData['quantity'] ?? 0) }}</p>
+                            <p class="mt-1 text-sm text-gray-900 font-medium">{{ number_format((float)($viewingDividerData['quantity'] ?? 0)) }}</p>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Unit</label>
@@ -1159,7 +1160,7 @@
                             <label class="block text-sm font-medium text-gray-700">Supplier Price</label>
                             <p class="mt-1 text-sm text-gray-900">
                                 @if(isset($viewingDividerData['supplier_price']) && $viewingDividerData['supplier_price'] !== null && $viewingDividerData['supplier_price'] !== '')
-                                    {{ number_format($viewingDividerData['supplier_price'], 2) }}
+                                    {{ number_format((float)$viewingDividerData['supplier_price'], 2) }}
                                 @else
                                     -
                                 @endif
@@ -1259,6 +1260,18 @@
                     </div>
 
                     <!-- Items Table -->
+                    @php
+                        // Get supplier currency symbol for print preview
+                        $supplierCurrency = ($jobOrder->supplier && $jobOrder->supplier->currency) ? $jobOrder->supplier->currency : 'LKR';
+                        $supplierCurrencySymbol = match($supplierCurrency) {
+                            'LKR' => 'Rs.',
+                            'USD' => '$',
+                            'EUR' => '€',
+                            'GBP' => '£',
+                            'INR' => '₹',
+                            default => $supplierCurrency . ' '
+                        };
+                    @endphp
                     <div class="overflow-x-auto">
                         <table class="min-w-full border border-gray-300">
                             <thead class="bg-gray-100">
@@ -1267,7 +1280,7 @@
                                     <th class="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">Description</th>
                                     <th class="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">Delivery</th>
                                     <th class="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">QTY</th>
-                                    <th class="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">Unit Price Rs.</th>
+                                    <th class="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">Unit Price {{ $supplierCurrencySymbol }}</th>
                                     <th class="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">Total</th>
                                     <th class="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">Previous Po No</th>
                                 </tr>
@@ -1285,9 +1298,9 @@
                                         <!-- Debug: Format is {{ $printDisplayFormat }} -->
                                     </td>
                                     <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900"></td>
-                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">{{ number_format($box['board_qty'] ?? $box['order_qty']) }}</td>
-                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">{{ number_format($box['supplier_price'] ?? 0, 2) }}</td>
-                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">{{ number_format(($box['supplier_price'] ?? 0) * ($box['board_qty'] ?? $box['order_qty']), 2) }}</td>
+                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">{{ number_format((float)($box['board_qty'] ?? $box['order_qty'])) }}</td>
+                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">{{ $supplierCurrencySymbol }} {{ number_format((float)($box['supplier_price'] ?? 0), 2) }}</td>
+                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">{{ $supplierCurrencySymbol }} {{ number_format((float)($box['supplier_price'] ?? 0) * (float)($box['board_qty'] ?? $box['order_qty']), 2) }}</td>
                                     <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900"></td>
                                 </tr>
                                 @endforeach
@@ -1302,9 +1315,9 @@
                                         @endif
                                     </td>
                                     <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900"></td>
-                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">{{ number_format($divider['quantity']) }}</td>
-                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">{{ number_format($divider['supplier_price'] ?? 0, 2) }}</td>
-                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">{{ number_format(($divider['supplier_price'] ?? 0) * $divider['quantity'], 2) }}</td>
+                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">{{ number_format((float)($divider['quantity'])) }}</td>
+                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">{{ $supplierCurrencySymbol }} {{ number_format((float)($divider['supplier_price'] ?? 0), 2) }}</td>
+                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">{{ $supplierCurrencySymbol }} {{ number_format((float)($divider['supplier_price'] ?? 0) * (float)$divider['quantity'], 2) }}</td>
                                     <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900"></td>
                                 </tr>
                                 @endforeach
