@@ -129,7 +129,27 @@
             <!-- Available Raw Materials for Production -->
             <div class="grid grid-cols-1 gap-6">
                 <div id="available-materials" class="bg-white border rounded-lg p-6">
-                    <h3 class="text-lg font-semibold mb-4">Available Raw Materials for Production</h3>
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-semibold">Available Raw Materials for Production</h3>
+                        <div class="flex items-center space-x-2">
+                            @if($filterDateFrom || $filterDateTo || $filterStatus || $filterJobOrder || $filterCustomer)
+                            <button wire:click="resetFilters"
+                                    class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                                Reset Filter
+                            </button>
+                            @endif
+                            <button wire:click="openFilterModal"
+                                    class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md text-white bg-gray-600 hover:bg-gray-700">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path>
+                                </svg>
+                                Filter
+                            </button>
+                        </div>
+                    </div>
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
@@ -564,6 +584,88 @@
                     <button wire:click="archiveProductionOrder"
                             class="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-md transition-colors">
                         Archive
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    @endif
+
+    <!-- Filter Modal -->
+    @if($showFilterModal)
+    <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" wire:click.self="closeFilterModal">
+        <div class="relative top-20 mx-auto p-5 border w-11/12 max-w-2xl shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <div class="flex justify-between items-center pb-4 border-b mb-4">
+                    <h3 class="text-lg font-medium text-gray-900">Filter Raw Materials</h3>
+                    <button wire:click="closeFilterModal" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="space-y-4">
+                    <!-- Date Range -->
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Date From</label>
+                            <input type="date" wire:model="filterDateFrom" 
+                                   class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Date To</label>
+                            <input type="date" wire:model="filterDateTo" 
+                                   class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+
+                    <!-- Status Filter -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                        <select wire:model="filterStatus" 
+                                class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">All Status</option>
+                            <option value="ready">Ready</option>
+                            <option value="in_production">In Production</option>
+                            <option value="completed">Completed</option>
+                        </select>
+                    </div>
+
+                    <!-- Job Order Filter -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Job Order</label>
+                        <select wire:model="filterJobOrder" 
+                                class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">All Job Orders</option>
+                            @foreach($jobOrders as $jobOrder)
+                                <option value="{{ $jobOrder->id }}">{{ $jobOrder->job_number }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <!-- Customer Filter -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Customer</label>
+                        <select wire:model="filterCustomer" 
+                                class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">All Customers</option>
+                            @foreach($customers as $customer)
+                                <option value="{{ $customer->id }}">{{ $customer->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex justify-end space-x-3 mt-6 pt-4 border-t">
+                    <button wire:click="resetFilters"
+                            class="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                        Reset
+                    </button>
+                    <button wire:click="closeFilterModal"
+                            class="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
+                        Apply Filter
                     </button>
                 </div>
             </div>

@@ -18,7 +18,6 @@
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Dispatch Date</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Items</th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Progress</th>
                         <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                     </tr>
                 </thead>
@@ -40,25 +39,6 @@
                                 </span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $dn->items->count() }} items</td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                @php
-                                    $totalQty = $dn->items->sum('quantity');
-                                    $dispatchedQty = $dn->items->sum('dispatched_qty');
-                                    $progress = $totalQty > 0 ? ($dispatchedQty / $totalQty) * 100 : 0;
-                                @endphp
-                                @if($totalQty > 0)
-                                    <div class="flex items-center space-x-2">
-                                        <div class="flex-1 bg-gray-200 rounded-full h-2 max-w-24">
-                                            <div class="bg-blue-500 h-2 rounded-full" style="width: {{ min(100, $progress) }}%"></div>
-                                        </div>
-                                        <span class="text-xs text-gray-600 whitespace-nowrap">
-                                            {{ number_format($dispatchedQty, 0) }}/{{ number_format($totalQty, 0) }}
-                                        </span>
-                                    </div>
-                                @else
-                                    <span class="text-gray-400">-</span>
-                                @endif
-                            </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm">
                                 <a href="{{ route('delivery-note-detail', $dn->id) }}" wire:navigate
                                     class="text-blue-600 hover:text-blue-900">View</a>
@@ -66,7 +46,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="px-6 py-12 text-center text-gray-500">No delivery notes found</td>
+                            <td colspan="7" class="px-6 py-12 text-center text-gray-500">No delivery notes found</td>
                         </tr>
                     @endforelse
                 </tbody>

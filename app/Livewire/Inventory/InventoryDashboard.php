@@ -16,6 +16,14 @@ class InventoryDashboard extends Component
     public $selectedCategory = '';
     public $selectedWarehouse = '';
     
+    // Filter properties
+    public $showFilterModal = false;
+    public $filterDateFrom = '';
+    public $filterDateTo = '';
+    public $filterStatus = '';
+    public $filterJobOrder = '';
+    public $filterCustomer = '';
+    
     // Production Order Modal
     public $showProductionOrderModal = false;
     public $selectedTransaction = null;
@@ -66,6 +74,26 @@ class InventoryDashboard extends Component
     {
         $this->clearCache();
         $this->dispatch('$refresh');
+    }
+
+    public function openFilterModal()
+    {
+        $this->showFilterModal = true;
+    }
+
+    public function closeFilterModal()
+    {
+        $this->showFilterModal = false;
+    }
+
+    public function resetFilters()
+    {
+        $this->filterDateFrom = '';
+        $this->filterDateTo = '';
+        $this->filterStatus = '';
+        $this->filterJobOrder = '';
+        $this->filterCustomer = '';
+        $this->clearCache();
     }
 
     public function loadInventorySummary()
@@ -815,16 +843,40 @@ class InventoryDashboard extends Component
             
             // Get available raw materials for production (recent receipt transactions)
             // Exclude consumables - only show raw_material type items or null (backward compatibility)
-            $availableRawMaterials = \App\Models\InventoryTransaction::where('category', 'RAW')
+            $availableRawMaterialsQuery = \App\Models\InventoryTransaction::where('category', 'RAW')
                 ->where('txn_type', 'receipt')
                 ->where(function($query) {
                     $query->where('material_type', 'raw_material')
                           ->orWhereNull('material_type'); // Backward compatibility
-                })
+                });
+
+            // Apply date range filter
+            if ($this->filterDateFrom) {
+                $availableRawMaterialsQuery->where('txn_date', '>=', $this->filterDateFrom);
+            }
+            if ($this->filterDateTo) {
+                $availableRawMaterialsQuery->where('txn_date', '<=', $this->filterDateTo);
+            }
+
+            // Apply job order filter
+            if ($this->filterJobOrder) {
+                $availableRawMaterialsQuery->whereHas('grn.purchaseOrder.items', function($query) {
+                    $query->where('job_order_id', $this->filterJobOrder);
+                });
+            }
+
+            // Apply customer filter
+            if ($this->filterCustomer) {
+                $availableRawMaterialsQuery->whereHas('grn.purchaseOrder.items.jobOrder', function($query) {
+                    $query->where('customer_id', $this->filterCustomer);
+                });
+            }
+
+            $availableRawMaterials = $availableRawMaterialsQuery
                 ->with(['grn.purchaseOrder.items.jobOrder.customer', 'grn.items'])
                 ->orderBy('txn_date', 'desc')
                 ->orderBy('created_at', 'desc')
-                ->limit(10)
+                ->limit(100) // Increased limit to show all filtered results
                 ->get();
             
             // Load production orders for each transaction to show progress
@@ -935,6 +987,26 @@ class InventoryDashboard extends Component
                     }
                 }
             }
+
+            // Filter by status after all transactions are processed
+            if ($this->filterStatus) {
+                $availableRawMaterials = $availableRawMaterials->filter(function($transaction) {
+                    if ($this->filterStatus === 'ready') {
+                        return !isset($transaction->hasProductionOrder) || !$transaction->hasProductionOrder;
+                    } elseif ($this->filterStatus === 'in_production') {
+                        return isset($transaction->hasProductionOrder) && 
+                               $transaction->hasProductionOrder && 
+                               isset($transaction->productionStatus) &&
+                               $transaction->productionStatus === 'in_production';
+                    } elseif ($this->filterStatus === 'completed') {
+                        return isset($transaction->hasProductionOrder) && 
+                               $transaction->hasProductionOrder && 
+                               isset($transaction->productionStatus) &&
+                               $transaction->productionStatus === 'completed';
+                    }
+                    return true;
+                })->values();
+            }
             
             // Use DB facade for inventory queries - calculate once
             $inventoryByCategoryRaw = \DB::table('inventory')
@@ -981,6 +1053,10 @@ class InventoryDashboard extends Component
                 ->whereRaw('quantity > COALESCE(completed_quantity, 0)')
                 ->get();
 
+            // Get job orders and customers for filter dropdowns
+            $jobOrders = \App\Models\JobOrder::orderBy('job_number')->get(['id', 'job_number']);
+            $customers = \App\Models\Customer::orderBy('name')->get(['id', 'name']);
+
             $viewData = [
                 'inventoryByCategory' => $inventoryByCategory,
                 'inventoryByWarehouse' => $inventoryByWarehouse,
@@ -996,6 +1072,8 @@ class InventoryDashboard extends Component
                 'rawInventoryDetails' => $rawInventoryDetails,
                 'fgInventoryDetails' => $fgInventoryDetails,
                 'wipDetails' => $wipDetails,
+                'jobOrders' => $jobOrders,
+                'customers' => $customers,
             ];
             
             return view('livewire.inventory.inventory-dashboard', $viewData);
