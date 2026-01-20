@@ -65,7 +65,7 @@ class PurchaseOrderManagement extends Component
 
     public function loadPurchaseOrders()
     {
-        $query = PurchaseOrder::with(['supplier', 'jobOrder.customer', 'items', 'grn']);
+        $query = PurchaseOrder::with(['supplier', 'jobOrder.customer', 'items', 'grn.items']);
         
         // Apply search filter
         if ($this->search) {
@@ -1031,6 +1031,13 @@ class PurchaseOrderManagement extends Component
                 $this->form['supplier_id'] = $jobOrder->supplier_id;
             }
         }
+    }
+
+    public function getPosWithoutGrnCountProperty()
+    {
+        return PurchaseOrder::whereDoesntHave('grn')
+            ->where('status', '!=', 'cancelled')
+            ->count();
     }
 
     public function render()

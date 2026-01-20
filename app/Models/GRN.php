@@ -31,6 +31,64 @@ class GRN extends Model
         'total_value' => 'decimal:2',
     ];
 
+    /**
+     * Get the formatted GRN number
+     * Ensures GRN number is always displayed in correct format
+     */
+    public function getFormattedGrnNoAttribute(): string
+    {
+        $grnNo = $this->grn_no;
+        
+        // If GRN number contains "GRN-LOT-" prefix incorrectly, extract just the GRN part
+        if (strpos($grnNo, 'GRN-LOT-') === 0) {
+            // Remove "GRN-LOT-" prefix
+            $remaining = substr($grnNo, 8); // Length of "GRN-LOT-"
+            
+            // Try to extract the GRN number part (usually 6 digits)
+            // Pattern: GRN-LOT-00000220260108-000001 -> extract 000002
+            if (preg_match('/^([0-9]{6})/', $remaining, $matches)) {
+                return 'GRN-' . $matches[1];
+            }
+            
+            // Fallback: try to find any 6-digit number
+            if (preg_match('/([0-9]{6})/', $remaining, $matches)) {
+                return 'GRN-' . $matches[1];
+            }
+        }
+        
+        // If it already starts with GRN-, return as is (but ensure proper format)
+        if (strpos($grnNo, 'GRN-') === 0) {
+            // Check if it's in correct format GRN-XXXXXX
+            if (preg_match('/^GRN-([0-9]+)$/', $grnNo)) {
+                return $grnNo;
+            }
+            // If malformed, try to fix it
+            $parts = explode('-', $grnNo);
+            if (count($parts) >= 2 && isset($parts[1])) {
+                // Extract first numeric part
+                if (preg_match('/([0-9]+)/', $parts[1], $matches)) {
+                    return 'GRN-' . str_pad($matches[1], 6, '0', STR_PAD_LEFT);
+                }
+            }
+        }
+        
+        // If it starts with GRN but no dash, add dash
+        if (strpos($grnNo, 'GRN') === 0 && strpos($grnNo, '-') === false) {
+            $number = preg_replace('/[^0-9]/', '', substr($grnNo, 3));
+            if ($number) {
+                return 'GRN-' . str_pad($number, 6, '0', STR_PAD_LEFT);
+            }
+        }
+        
+        // Try to extract GRN number from any format
+        if (preg_match('/([0-9]{4,6})/', $grnNo, $matches)) {
+            return 'GRN-' . str_pad($matches[1], 6, '0', STR_PAD_LEFT);
+        }
+        
+        // Default: return as is
+        return $grnNo;
+    }
+
     public function supplierOrder(): BelongsTo
     {
         return $this->belongsTo(SupplierOrder::class, 'supplier_po_id');
@@ -78,6 +136,14 @@ class GRN extends Model
     public function items(): HasMany
     {
         return $this->hasMany(GRNItem::class, 'grn_id');
+    }
+
+    /**
+     * Get processing batches for this GRN
+     */
+    public function processingBatches(): HasMany
+    {
+        return $this->hasMany(GRNProcessingBatch::class, 'grn_id');
     }
 
     /**
@@ -236,5 +302,33 @@ class GRN extends Model
     {
         $lotCode = $this->lot_code;
         return !preg_match('/-[BD]$/', $lotCode);
+    }
+
+    /**
+     * Get currency symbol for this GRN
+     * Gets currency from purchase order, supplier, or defaults to LKR
+     */
+    public function getCurrencySymbol(): string
+    {
+        // If GRN is from purchase order, use purchase order currency
+        if ($this->purchaseOrder) {
+            return $this->purchaseOrder->getCurrencySymbol();
+        }
+        
+        // If GRN has a supplier, try to get currency from supplier
+        if ($this->supplier && $this->supplier->currency) {
+            $currencyCode = $this->supplier->currency;
+            return match($currencyCode) {
+                'LKR' => 'Rs.',
+                'USD' => '$',
+                'EUR' => '€',
+                'GBP' => '£',
+                'INR' => '₹',
+                default => $currencyCode . ' '
+            };
+        }
+        
+        // Default to LKR (base currency)
+        return 'Rs.';
     }
 }

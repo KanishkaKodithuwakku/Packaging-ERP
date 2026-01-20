@@ -69,7 +69,7 @@
                     </span>
                 @endif
                 <button type="button"
-                        onclick="window.print()"
+                        onclick="printInvoice({{ $invoice->id }})"
                         class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center">
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -316,6 +316,46 @@
                 closeConfirmModal();
             });
         });
+        
+        function printInvoice(invoiceId) {
+            // Construct the print URL
+            const baseUrl = '{{ url("/") }}';
+            const printUrl = baseUrl + '/invoices/' + invoiceId + '/print';
+            
+            // Create a hidden iframe to load the print page
+            const iframe = document.createElement('iframe');
+            iframe.style.position = 'fixed';
+            iframe.style.right = '0';
+            iframe.style.bottom = '0';
+            iframe.style.width = '0';
+            iframe.style.height = '0';
+            iframe.style.border = '0';
+            iframe.src = printUrl;
+            
+            // Append to body
+            document.body.appendChild(iframe);
+            
+            // Wait for iframe to load, then trigger print
+            iframe.onload = function() {
+                setTimeout(function() {
+                    try {
+                        iframe.contentWindow.focus();
+                        iframe.contentWindow.print();
+                    } catch (e) {
+                        // If cross-origin or other issue, fallback to new window
+                        window.open(printUrl, '_blank', 'width=800,height=600');
+                    }
+                }, 500);
+            };
+            
+            // Clean up iframe after print (with delay to allow print dialog to open)
+            setTimeout(function() {
+                if (iframe && iframe.parentNode) {
+                    iframe.parentNode.removeChild(iframe);
+                }
+            }, 2000);
+        }
     </script>
+
 
 </div>

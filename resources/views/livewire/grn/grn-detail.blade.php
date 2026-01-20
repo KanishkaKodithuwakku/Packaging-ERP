@@ -3,30 +3,72 @@
         ← Back to GRNs
     </a>
 
+    <!-- Success Message with Print Button -->
+    @if (session()->has('success'))
+        <div class="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded-lg">
+            <div class="flex items-center justify-between">
+                <div class="flex-1">{{ session('success') }}</div>
+                @if($lastProcessingBatchId)
+                    <button type="button"
+                            onclick="printProcessingReceipt({{ $grn->id }}, {{ $lastProcessingBatchId }})"
+                            class="ml-4 inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+                        </svg>
+                        Print Processing Receipt
+                    </button>
+                @endif
+            </div>
+        </div>
+    @endif
+
+    <!-- Error Message -->
+    @if (session()->has('error'))
+        <div class="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg">
+            <div class="flex items-center">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <div class="flex-1">{{ session('error') }}</div>
+            </div>
+        </div>
+    @endif
+
     <div class="flex justify-between items-center">
         <h1 class="mt-2 text-2xl font-bold">GRN Details</h1>
         
-        @if($grn && $grn->hasUnprocessedItems() && $grn->hasPartialReceiving())
-            <div class="flex space-x-2">
-                <button wire:click="openModal" 
-                        wire:loading.attr="disabled"
-                        class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700">
+        <div class="flex space-x-2">
+            @if($grn)
+                <button type="button"
+                        onclick="printGRN({{ $grn->id }})"
+                        class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
                     <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
                     </svg>
-                    {{ $grn->isFullyReceived() ? 'Process to Stock' : 'Process Partial to Stock' }}
+                    Print GRN
                 </button>
-            </div>
-        @elseif($grn && !$grn->hasPartialReceiving() && $grn->status !== 'processed')
-            <div class="inline-flex items-center px-4 py-3 bg-yellow-50 border-2 border-yellow-400 rounded-lg shadow-md">
-                <svg class="w-6 h-6 text-yellow-600 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-                </svg>
-                <span class="text-base font-bold text-yellow-800">
-                    No items received yet. Please receive items before processing to stock.
-                </span>
-            </div>
-        @endif
+                
+                @if($grn->hasUnprocessedItems() && $grn->hasPartialReceiving())
+                    <button wire:click="openModal" 
+                            wire:loading.attr="disabled"
+                            class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        {{ $grn->isFullyReceived() ? 'Process to Stock' : 'Process Partial to Stock' }}
+                    </button>
+                @elseif(!$grn->hasPartialReceiving() && $grn->status !== 'processed')
+                    <div class="inline-flex items-center px-4 py-3 bg-yellow-50 border-2 border-yellow-400 rounded-lg shadow-md">
+                        <svg class="w-6 h-6 text-yellow-600 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                        </svg>
+                        <span class="text-base font-bold text-yellow-800">
+                            No items received yet. Please receive items before processing to stock.
+                        </span>
+                    </div>
+                @endif
+            @endif
+        </div>
     </div>
 
     @if($grn)
@@ -41,7 +83,29 @@
         <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
                 <label class="text-xs text-gray-500">GRN No</label>
-                <div class="font-medium">{{ $grn->grn_no }}</div>
+                <div class="font-medium">
+                    @php
+                        $grnNo = $grn->grn_no ?? '';
+                        // Fix incorrectly formatted GRN numbers that have GRN-LOT- prefix
+                        if (strpos($grnNo, 'GRN-LOT-') === 0) {
+                            $remaining = substr($grnNo, 8); // Remove "GRN-LOT-"
+                            // Extract first 6-digit number (GRN number)
+                            if (preg_match('/^([0-9]{6})/', $remaining, $matches)) {
+                                $grnNo = 'GRN-' . $matches[1];
+                            } elseif (preg_match('/([0-9]{6})/', $remaining, $matches)) {
+                                $grnNo = 'GRN-' . $matches[1];
+                            }
+                        }
+                        // Ensure it starts with GRN- and has proper format
+                        if (!empty($grnNo) && strpos($grnNo, 'GRN-') !== 0) {
+                            // Try to extract number and reformat
+                            if (preg_match('/([0-9]+)/', $grnNo, $matches)) {
+                                $grnNo = 'GRN-' . str_pad($matches[1], 6, '0', STR_PAD_LEFT);
+                            }
+                        }
+                    @endphp
+                    {{ $grnNo }}
+                </div>
             </div>
             <div>
                 <label class="text-xs text-gray-500">Lot Code</label>
@@ -210,13 +274,12 @@
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item Type</th>
+                            @if($grn->isFromPurchaseOrder())
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Job Order</th>
+                            @endif
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Material Code</th>
-                            @if($grn->isFromPurchaseOrder())
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Job Order</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-                            @endif
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expected</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Received</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pending</th>
@@ -235,17 +298,16 @@
                                 $hasAvailableToProcess = $availableToProcess > 0;
                             @endphp
                             <tr class="{{ $hasAvailableToProcess ? 'bg-green-50 hover:bg-green-100' : '' }}">
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ ucfirst($item->item_type) }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $item->description }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $item->material_code }}</td>
                                 @if($grn->isFromPurchaseOrder())
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    {{ $jobOrder ? ($jobOrder->supplier_po_number ?? $jobOrder->job_number ?? 'N/A') : 'N/A' }}
-                                </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                     {{ $customer ? $customer->name : 'N/A' }}
                                 </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    {{ $jobOrder ? ($jobOrder->supplier_po_number ?? $jobOrder->job_number ?? 'N/A') : 'N/A' }}
+                                </td>
                                 @endif
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $item->description }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $item->material_code }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ number_format($item->qty_expected ?? $item->qty_received, 0) }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                     <div class="flex items-center space-x-2">
@@ -319,7 +381,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="{{ $grn->isFromPurchaseOrder() ? '11' : '9' }}" class="px-6 py-8 text-center text-gray-500">No items</td>
+                                <td colspan="{{ $grn->isFromPurchaseOrder() ? '10' : '8' }}" class="px-6 py-8 text-center text-gray-500">No items</td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -327,11 +389,75 @@
             </div>
         </div>
 
+        <!-- Processing Batches Section -->
+        @if($grn->processingBatches && $grn->processingBatches->count() > 0)
+        <div class="mt-8">
+            <div class="flex justify-between items-center mb-3">
+                <h2 class="text-lg font-semibold">Processing Batches</h2>
+                <span class="text-sm text-gray-600">
+                    {{ $grn->processingBatches->count() }} batch(es) processed
+                </span>
+            </div>
+            <div class="bg-white shadow rounded-lg overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Batch ID</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Processed Date</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Processed By</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items Processed</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Quantity</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Value</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        @foreach($grn->processingBatches->sortByDesc('processed_at') as $batch)
+                            @php
+                                $itemsCount = $batch->itemBatches->count();
+                                $totalQty = $batch->itemBatches->sum('quantity_processed');
+                            @endphp
+                            <tr>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                    #{{ $batch->id }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    {{ $batch->processed_at->format('Y-m-d H:i') }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    {{ $batch->processedBy->name ?? 'N/A' }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    {{ $itemsCount }} item(s)
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                    {{ number_format($totalQty, 2) }} PCS
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                    {{ $grn->getCurrencySymbol() }}{{ number_format($batch->total_value, 2) }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                    <button type="button"
+                                            onclick="printProcessingReceipt({{ $grn->id }}, {{ $batch->id }})"
+                                            class="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+                                        </svg>
+                                        Print Receipt
+                                    </button>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        @endif
 
             <!-- Processing Modal -->
             @if($showProcessingModal)
-            <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-                <div class="relative top-20 mx-auto p-5 border w-full max-w-4xl shadow-lg rounded-md bg-white">
+            <div class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50" wire:click="closeProcessingModal">
+                <div class="relative top-20 mx-auto p-5 border w-full max-w-4xl shadow-lg rounded-md bg-white" wire:click.stop>
                 <div class="mt-3">
                     <h3 class="text-lg font-medium text-gray-900 mb-4">Process GRN to Stock</h3>
                     
@@ -539,16 +665,25 @@
                             @endif
                         </div>
                         <div class="flex space-x-3">
-                            <button wire:click="closeProcessingModal" 
+                            <button type="button" 
+                                    wire:click="closeProcessingModal" 
                                     class="px-6 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors">
                                 Cancel
                             </button>
-                            <button wire:click="processToStock" 
-                                    class="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center">
-                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <button type="button" 
+                                    wire:click="processToStock" 
+                                    wire:loading.attr="disabled"
+                                    wire:target="processToStock"
+                                    class="px-6 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center disabled:opacity-50 disabled:cursor-not-allowed">
+                                <svg wire:loading.remove wire:target="processToStock" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                 </svg>
-                                Process to Stock
+                                <svg wire:loading wire:target="processToStock" class="animate-spin w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span wire:loading.remove wire:target="processToStock">Process to Stock</span>
+                                <span wire:loading wire:target="processToStock">Processing...</span>
                             </button>
                         </div>
                     </div>
@@ -574,7 +709,19 @@
                 
                 @if (session()->has('success'))
                     <div class="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded">
-                        {{ session('success') }}
+                        <div class="flex items-center justify-between">
+                            <div>{{ session('success') }}</div>
+                            @if($lastProcessingBatchId)
+                                <button type="button"
+                                        onclick="printProcessingReceipt({{ $grn->id }}, {{ $lastProcessingBatchId }})"
+                                        class="ml-4 inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors">
+                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path>
+                                    </svg>
+                                    Print Processing Receipt
+                                </button>
+                            @endif
+                        </div>
                     </div>
                 @endif
                 
@@ -779,6 +926,86 @@
     </div>
     @endif
 </div>
+
+<script>
+    function printGRN(grnId) {
+        // Construct the print URL
+        const baseUrl = '{{ url("/") }}';
+        const printUrl = baseUrl + '/grns/' + grnId + '/print';
+        
+        // Create a hidden iframe to load the print page
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'fixed';
+        iframe.style.right = '0';
+        iframe.style.bottom = '0';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = '0';
+        iframe.src = printUrl;
+        
+        // Append to body
+        document.body.appendChild(iframe);
+        
+        // Wait for iframe to load, then trigger print
+        iframe.onload = function() {
+            setTimeout(function() {
+                try {
+                    iframe.contentWindow.focus();
+                    iframe.contentWindow.print();
+                } catch (e) {
+                    // If cross-origin or other issue, fallback to new window
+                    window.open(printUrl, '_blank', 'width=800,height=600');
+                }
+            }, 500);
+        };
+        
+        // Clean up iframe after print (with delay to allow print dialog to open)
+        setTimeout(function() {
+            if (iframe && iframe.parentNode) {
+                iframe.parentNode.removeChild(iframe);
+            }
+        }, 2000);
+    }
+
+    function printProcessingReceipt(grnId, batchId) {
+        // Construct the print URL
+        const baseUrl = '{{ url("/") }}';
+        const printUrl = baseUrl + '/grns/' + grnId + '/print-processing/' + batchId;
+        
+        // Create a hidden iframe to load the print page
+        const iframe = document.createElement('iframe');
+        iframe.style.position = 'fixed';
+        iframe.style.right = '0';
+        iframe.style.bottom = '0';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = '0';
+        iframe.src = printUrl;
+        
+        // Append to body
+        document.body.appendChild(iframe);
+        
+        // Wait for iframe to load, then trigger print
+        iframe.onload = function() {
+            setTimeout(function() {
+                try {
+                    iframe.contentWindow.focus();
+                    iframe.contentWindow.print();
+                } catch (e) {
+                    // If cross-origin or other issue, fallback to new window
+                    window.open(printUrl, '_blank', 'width=800,height=600');
+                }
+            }, 500);
+        };
+        
+        // Clean up iframe after print (with delay to allow print dialog to open)
+        setTimeout(function() {
+            if (iframe && iframe.parentNode) {
+                iframe.parentNode.removeChild(iframe);
+            }
+        }, 2000);
+    }
+</script>
 
 
 

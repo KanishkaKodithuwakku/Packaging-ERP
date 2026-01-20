@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\GRN;
 use App\Models\GRNItem;
+use App\Models\GRNProcessingBatch;
+use App\Models\GRNItemProcessingBatch;
 use App\Models\Inventory;
 use App\Models\InventoryLayer;
 use App\Models\InventoryTransaction;
@@ -12,6 +14,7 @@ use App\Models\ProductionOrderItem;
 use App\Models\ConsumableItem;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 
 class GRNProcessingService
@@ -38,8 +41,18 @@ class GRNProcessingService
                 'costing_method' => $costingMethod
             ]);
 
+            // Create processing batch record
+            $batch = GRNProcessingBatch::create([
+                'grn_id' => $grn->id,
+                'processed_by' => Auth::id(),
+                'processed_at' => now(),
+                'total_value' => 0, // Will be updated after processing
+                'notes' => "Batch processing for GRN {$grn->grn_no}",
+            ]);
+
             $processedItems = [];
             $totalValue = 0;
+            $itemBatches = [];
 
             foreach ($grn->items as $grnItem) {
                 $quantityToProcess = $partialQuantities[$grnItem->id] ?? 0;
@@ -49,9 +62,27 @@ class GRNProcessingService
                 }
 
                 $result = $this->processGRNItemToStockPartial($grnItem, $quantityToProcess, $costingMethod);
-                $processedItems[] = $result;
-                $totalValue += $result['total_cost'];
+                
+                if ($result['success']) {
+                    $processedItems[] = $result;
+                    $totalValue += $result['total_cost'];
+                    
+                    // Create item batch record
+                    $itemBatch = GRNItemProcessingBatch::create([
+                        'batch_id' => $batch->id,
+                        'grn_item_id' => $grnItem->id,
+                        'quantity_processed' => $result['qty_processed'],
+                        'unit_cost' => $result['unit_cost'],
+                        'total_cost' => $result['total_cost'],
+                        'lot_code' => $result['lot_code'] ?? null,
+                    ]);
+                    
+                    $itemBatches[] = $itemBatch;
+                }
             }
+
+            // Update batch with total value
+            $batch->update(['total_value' => $totalValue]);
 
             // Update GRN status based on processing result
             $allItemsFullyProcessed = $this->areAllItemsFullyProcessed($grn);
@@ -74,6 +105,7 @@ class GRNProcessingService
 
             Log::info('GRN partial processing completed', [
                 'grn_id' => $grn->id,
+                'batch_id' => $batch->id,
                 'items_processed' => count($processedItems),
                 'total_value' => $totalValue,
                 'all_fully_processed' => $allItemsFullyProcessed
@@ -81,7 +113,10 @@ class GRNProcessingService
 
             return [
                 'grn' => $grn,
+                'batch' => $batch,
+                'batch_id' => $batch->id,
                 'processed_items' => $processedItems,
+                'item_batches' => $itemBatches,
                 'total_value' => $totalValue,
                 'success' => true,
                 'all_fully_processed' => $allItemsFullyProcessed
@@ -101,14 +136,42 @@ class GRNProcessingService
                 'costing_method' => $costingMethod
             ]);
 
+            // Create processing batch record
+            $batch = GRNProcessingBatch::create([
+                'grn_id' => $grn->id,
+                'processed_by' => Auth::id(),
+                'processed_at' => now(),
+                'total_value' => 0, // Will be updated after processing
+                'notes' => "Full processing for GRN {$grn->grn_no}",
+            ]);
+
             $processedItems = [];
             $totalValue = 0;
+            $itemBatches = [];
 
             foreach ($grn->items as $grnItem) {
                 $result = $this->processGRNItemToStock($grnItem, $costingMethod);
-                $processedItems[] = $result;
-                $totalValue += $result['total_cost'];
+                
+                if ($result['success']) {
+                    $processedItems[] = $result;
+                    $totalValue += $result['total_cost'];
+                    
+                    // Create item batch record
+                    $itemBatch = GRNItemProcessingBatch::create([
+                        'batch_id' => $batch->id,
+                        'grn_item_id' => $grnItem->id,
+                        'quantity_processed' => $result['qty_processed'],
+                        'unit_cost' => $result['unit_cost'],
+                        'total_cost' => $result['total_cost'],
+                        'lot_code' => $result['lot_code'] ?? null,
+                    ]);
+                    
+                    $itemBatches[] = $itemBatch;
+                }
             }
+
+            // Update batch with total value
+            $batch->update(['total_value' => $totalValue]);
 
             // Update GRN status
             $grn->update([
@@ -119,13 +182,17 @@ class GRNProcessingService
 
             Log::info('GRN processed successfully', [
                 'grn_id' => $grn->id,
+                'batch_id' => $batch->id,
                 'items_processed' => count($processedItems),
                 'total_value' => $totalValue
             ]);
 
             return [
                 'grn' => $grn,
+                'batch' => $batch,
+                'batch_id' => $batch->id,
                 'processed_items' => $processedItems,
+                'item_batches' => $itemBatches,
                 'total_value' => $totalValue,
                 'success' => true
             ];

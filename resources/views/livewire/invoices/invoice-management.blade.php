@@ -8,11 +8,57 @@
     <!-- Search and Filters -->
     <div class="mb-6">
         <div class="flex justify-between items-center">
-            <div class="flex-1 max-w-md">
-                <input type="text" 
-                       wire:model.live.debounce.300ms="search"
-                       placeholder="Search by invoice number, customer, or delivery note..."
-                       class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <div class="flex-1 max-w-md relative" x-data="{ showDropdown: @entangle('showSuggestions') }" x-on:click.outside="showDropdown = false">
+                <div class="relative">
+                    <input type="text" 
+                           wire:model.live.debounce.300ms="search"
+                           wire:focus="showDropdown"
+                           placeholder="Search by invoice number, customer, delivery note, item description, or material code..."
+                           class="w-full px-4 py-2 pr-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    
+                    @if($search)
+                        <button type="button" 
+                                wire:click="$set('search', '')"
+                                class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-red-600 focus:outline-none">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    @else
+                        <svg class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                    @endif
+                </div>
+                
+                @if($showSuggestions && count($suggestions) > 0)
+                    <div class="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto"
+                         onmousedown="event.preventDefault()"
+                         wire:ignore.self>
+                        @foreach($suggestions as $index => $suggestion)
+                            <div wire:click="selectSuggestion('{{ e($suggestion['value']) }}')" 
+                                 wire:key="suggestion-{{ $index }}-{{ md5($suggestion['value']) }}"
+                                 class="px-4 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0 transition-colors">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex-1">
+                                        <div class="font-medium text-gray-900">{{ e($suggestion['label']) }}</div>
+                                        <div class="flex items-center gap-2 mt-0.5">
+                                            <span class="text-xs text-gray-500">{{ e($suggestion['type']) }}</span>
+                                            @if(isset($suggestion['unit_price']) && $suggestion['unit_price'] > 0)
+                                                <span class="text-xs font-medium text-gray-700">
+                                                    • {{ e($suggestion['currency_symbol'] ?? 'Rs.') }} {{ number_format($suggestion['unit_price'], 2) }}
+                                                </span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                    </svg>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
             </div>
         </div>
     </div>

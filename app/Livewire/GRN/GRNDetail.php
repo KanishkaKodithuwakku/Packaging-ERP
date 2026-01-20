@@ -16,6 +16,7 @@ class GRNDetail extends Component
     public array $processingStatus = [];
     public bool $showProcessingModal = false;
     public array $partialQuantities = [];
+    public ?int $lastProcessingBatchId = null;
     
     // Partial receiving properties
     public bool $showPartialReceivingModal = false;
@@ -40,7 +41,16 @@ class GRNDetail extends Component
     public function mount(int $id)
     {
         $this->grnId = $id;
-        $this->grn = GRN::with(['supplierOrder.supplier', 'productionOrder.supplier', 'purchaseOrder.supplier', 'purchaseOrder.items.jobOrder.customer', 'supplier', 'items'])->findOrFail($id);
+        $this->grn = GRN::with([
+            'supplierOrder.supplier', 
+            'productionOrder.supplier', 
+            'purchaseOrder.supplier', 
+            'purchaseOrder.items.jobOrder.customer', 
+            'supplier', 
+            'items',
+            'processingBatches.processedBy',
+            'processingBatches.itemBatches'
+        ])->findOrFail($id);
         
         // Set default status if not set
         if (!$this->grn->status) {
@@ -417,37 +427,6 @@ class GRNDetail extends Component
                 return;
             }
 
-            // Filter out items with 0 received quantities
-            $itemsToProcess = $this->partialQuantities;
-            foreach ($itemsToProcess as $itemId => $quantity) {
-                $grnItem = $this->grn->items->find($itemId);
-                if ($grnItem && $grnItem->qty_received_partial <= 0) {
-                    // Remove items with no received quantity from processing
-                    unset($itemsToProcess[$itemId]);
-                    continue;
-                }
-                
-                // Check against remaining available quantity (received - processed)
-                $availableForProcessing = $grnItem->qty_received_partial - ($grnItem->qty_processed ?? 0);
-                
-                // Prevent processing if item is already fully processed
-                if ($availableForProcessing <= 0) {
-                    unset($itemsToProcess[$itemId]);
-                    continue;
-                }
-                
-                if ($grnItem && $quantity > $availableForProcessing) {
-                    session()->flash('error', "Cannot process {$quantity} units for {$grnItem->description}. Only {$availableForProcessing} units are available for processing (Received: {$grnItem->qty_received_partial}, Already Processed: " . ($grnItem->qty_processed ?? 0) . ").");
-                    return;
-                }
-            }
-            
-            // Check if there are any items to process
-            if (empty($itemsToProcess)) {
-                session()->flash('error', 'No items with received quantities to process.');
-                return;
-            }
-            
             $processingService = app(GRNProcessingService::class);
             
             // Get configuration values
@@ -457,10 +436,53 @@ class GRNDetail extends Component
             // Debug: Log the quantities being processed
             \Log::info('Processing quantities', [
                 'partial_quantities' => $this->partialQuantities,
-                'enable_partial_processing' => $enablePartialProcessing
+                'enable_partial_processing' => $enablePartialProcessing,
+                'grn_id' => $this->grn->id
             ]);
             
             if ($enablePartialProcessing) {
+                // Filter out items with 0 received quantities
+                $itemsToProcess = [];
+                foreach ($this->partialQuantities as $itemId => $quantity) {
+                    // Skip items with zero or negative quantities
+                    if (empty($quantity) || $quantity <= 0) {
+                        continue;
+                    }
+                    
+                    $grnItem = $this->grn->items->find($itemId);
+                    if (!$grnItem) {
+                        \Log::warning('GRN item not found', ['item_id' => $itemId]);
+                        continue;
+                    }
+                    
+                    if ($grnItem->qty_received_partial <= 0) {
+                        // Remove items with no received quantity from processing
+                        continue;
+                    }
+                    
+                    // Check against remaining available quantity (received - processed)
+                    $availableForProcessing = $grnItem->qty_received_partial - ($grnItem->qty_processed ?? 0);
+                    
+                    // Prevent processing if item is already fully processed
+                    if ($availableForProcessing <= 0) {
+                        continue;
+                    }
+                    
+                    if ($quantity > $availableForProcessing) {
+                        session()->flash('error', "Cannot process {$quantity} units for {$grnItem->description}. Only {$availableForProcessing} units are available for processing (Received: {$grnItem->qty_received_partial}, Already Processed: " . ($grnItem->qty_processed ?? 0) . ").");
+                        return;
+                    }
+                    
+                    // Add to items to process
+                    $itemsToProcess[$itemId] = $quantity;
+                }
+                
+                // Check if there are any items to process
+                if (empty($itemsToProcess)) {
+                    session()->flash('error', 'No items with valid quantities to process. Please enter quantities greater than 0 for items you want to process.');
+                    return;
+                }
+                
                 // Process with partial quantities (only items with received quantities)
                 $result = $processingService->processGRNToStockPartial($this->grn, $itemsToProcess, $costingMethod);
             } else {
@@ -469,6 +491,9 @@ class GRNDetail extends Component
             }
             
             if ($result['success']) {
+                // Store batch ID for print functionality
+                $this->lastProcessingBatchId = $result['batch_id'] ?? null;
+                
                 // Refresh GRN data to get latest status
                 $this->grn->refresh();
                 $this->grn->load('items');
@@ -504,7 +529,16 @@ class GRNDetail extends Component
                 $this->showProcessingModal = false;
                 
                 // Refresh GRN data
-                $this->grn = GRN::with(['supplierOrder.supplier', 'productionOrder.supplier', 'purchaseOrder.supplier', 'purchaseOrder.items.jobOrder.customer', 'supplier', 'items'])->findOrFail($this->grnId);
+                $this->grn = GRN::with([
+                    'supplierOrder.supplier', 
+                    'productionOrder.supplier', 
+                    'purchaseOrder.supplier', 
+                    'purchaseOrder.items.jobOrder.customer', 
+                    'supplier', 
+                    'items',
+                    'processingBatches.processedBy',
+                    'processingBatches.itemBatches'
+                ])->findOrFail($this->grnId);
                 
                 // Sync all items status in case any updates were needed
                 $this->syncItemsReceivingStatus();
@@ -512,9 +546,19 @@ class GRNDetail extends Component
                 $this->loadProcessingStatus();
                 
             } else {
-                session()->flash('error', 'Failed to process GRN to stock.');
+                $errorMessage = $result['error'] ?? 'Failed to process GRN to stock.';
+                session()->flash('error', $errorMessage);
+                \Log::error('GRN processing failed', [
+                    'grn_id' => $this->grn->id,
+                    'result' => $result
+                ]);
             }
         } catch (\Exception $e) {
+            \Log::error('Error processing GRN to stock', [
+                'grn_id' => $this->grn->id ?? null,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             session()->flash('error', 'Error processing GRN: ' . $e->getMessage());
         }
     }
@@ -690,7 +734,15 @@ class GRNDetail extends Component
      */
     public function refreshGRN()
     {
-        $this->grn = GRN::with(['supplierOrder.supplier', 'productionOrder.supplier', 'purchaseOrder.supplier', 'supplier', 'items'])->findOrFail($this->grnId);
+        $this->grn = GRN::with([
+            'supplierOrder.supplier', 
+            'productionOrder.supplier', 
+            'purchaseOrder.supplier', 
+            'supplier', 
+            'items',
+            'processingBatches.processedBy',
+            'processingBatches.itemBatches'
+        ])->findOrFail($this->grnId);
         $this->syncItemsReceivingStatus();
         $this->loadProcessingStatus();
     }

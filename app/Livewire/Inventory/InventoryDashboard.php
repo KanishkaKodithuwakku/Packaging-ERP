@@ -937,11 +937,16 @@ class InventoryDashboard extends Component
                         }
                     }
                     
-                    $productionOrder = \App\Models\ProductionOrder::where('job_order_id', $jobOrder->id)
+                    $productionOrderQuery = \App\Models\ProductionOrder::where('job_order_id', $jobOrder->id)
                         ->where('notes', 'like', '%' . $transactionIdMarker . '%')
-                        ->whereNull('archived_at') // Exclude archived production orders
-                        ->with(['items', 'jobOrder.customer'])
-                        ->first();
+                        ->whereNull('archived_at'); // Exclude archived production orders
+                    
+                    // By default, exclude completed production orders unless filter explicitly requests them
+                    if (!$this->filterStatus || $this->filterStatus !== 'completed') {
+                        $productionOrderQuery->where('status', '!=', 'completed');
+                    }
+                    
+                    $productionOrder = $productionOrderQuery->with(['items', 'jobOrder.customer'])->first();
                     
                     if ($productionOrder) {
                         $transaction->productionOrder = $productionOrder;

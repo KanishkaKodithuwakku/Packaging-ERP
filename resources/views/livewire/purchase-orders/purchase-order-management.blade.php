@@ -33,7 +33,17 @@
     <div class="bg-white shadow rounded-lg">
         <div class="px-6 py-4 border-b border-gray-200">
             <div class="flex items-center justify-between">
-                <h3 class="text-lg font-medium text-gray-900">All Purchase Orders</h3>
+                <div>
+                    <h3 class="text-lg font-medium text-gray-900">All Purchase Orders</h3>
+                    @if($this->posWithoutGrnCount > 0)
+                        <p class="text-sm text-orange-600 mt-1 flex items-center">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                            </svg>
+                            <strong>{{ $this->posWithoutGrnCount }}</strong> {{ $this->posWithoutGrnCount === 1 ? 'PO' : 'POs' }} without GRN
+                        </p>
+                    @endif
+                </div>
                 <div class="flex items-center space-x-4">
                     <input type="text" wire:model.live="search" placeholder="Search purchase orders..."
                         class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[200px]">
@@ -96,7 +106,10 @@
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                     @forelse($purchaseOrders as $po)
-                    <tr class="hover:bg-gray-50">
+                    @php
+                        $hasNoGrn = $po->grn->isEmpty();
+                    @endphp
+                    <tr class="hover:bg-gray-50 {{ $hasNoGrn ? 'bg-orange-50 border-l-4 border-orange-400' : '' }}">
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm font-medium text-gray-900">{{ $po->po_number }}</div>
                         </td>
@@ -170,7 +183,7 @@
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             @php
                             // Get GRN status for this purchase order
-                            $grn = \App\Models\GRN::where('purchase_order_id', $po->id)->first();
+                            $grn = $po->grn->first();
                             if ($grn) {
                             $totalExpected = $grn->getTotalExpectedQuantity();
                             $totalReceived = $grn->getTotalPartiallyReceivedQuantity();
@@ -195,7 +208,7 @@
                             }
                             } else {
                             $grnStatus = 'No GRN';
-                            $grnColor = 'bg-gray-100 text-gray-800';
+                            $grnColor = 'bg-orange-100 text-orange-800';
                             $progressColor = 'bg-gray-300';
                             $progressWidth = 0;
                             }
@@ -203,6 +216,11 @@
                             <div class="flex flex-col space-y-2">
                                 <span
                                     class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $grnColor }}">
+                                    @if(!$grn)
+                                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                                        </svg>
+                                    @endif
                                     {{ $grnStatus }}
                                 </span>
                                 @if($grn)

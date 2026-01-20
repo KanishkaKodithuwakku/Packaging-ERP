@@ -86,6 +86,16 @@ Route::get('/grns/{id}', GRNDetail::class)
     ->middleware(['auth', 'permission:view grns'])
     ->name('grn-detail');
 
+// GRN Overall Print
+Route::get('/grns/{id}/print', [\App\Http\Controllers\GRNPrintController::class, 'printGRN'])
+    ->middleware(['auth', 'permission:view grns'])
+    ->name('grn-print');
+
+// GRN Processing Receipt Print
+Route::get('/grns/{id}/print-processing/{batchId}', \App\Http\Controllers\GRNPrintController::class)
+    ->middleware(['auth', 'permission:view grns'])
+    ->name('grn-print-processing');
+
 // Test GRN
 Route::get('/test-grn/{id}', \App\Livewire\GRN\TestGRN::class)
     ->middleware(['auth', 'permission:view grns'])
@@ -117,6 +127,10 @@ Route::get('/invoices', \App\Livewire\Invoices\InvoiceManagement::class)
 Route::get('/invoices/{id}', \App\Livewire\Invoices\InvoiceDetail::class)
     ->middleware(['auth'])
     ->name('invoice-detail');
+
+Route::get('/invoices/{id}/print', \App\Http\Controllers\InvoicePrintController::class)
+    ->middleware(['auth'])
+    ->name('invoice-print');
 
 // Inventory Dashboard
 Route::get('/inventory-dashboard', InventoryDashboard::class)
