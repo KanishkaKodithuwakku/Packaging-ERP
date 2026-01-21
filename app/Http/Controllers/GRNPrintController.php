@@ -50,11 +50,11 @@ class GRNPrintController extends Controller
             'purchaseOrder.supplier',
             'purchaseOrder.items.jobOrder.customer',
             'supplier',
-            'items'
+            'items' // Load items with grn relationship
         ])->findOrFail($id);
 
         $batch = GRNProcessingBatch::with([
-            'itemBatches.grnItem',
+            'itemBatches.grnItem.grn', // Eager load grn relationship on grnItem
             'processedBy'
         ])->findOrFail($batchId);
 
@@ -63,7 +63,7 @@ class GRNPrintController extends Controller
             abort(404, 'Batch does not belong to this GRN');
         }
 
-        // Refresh GRN items to get latest processed quantities
+        // Refresh GRN items to get latest processed quantities and ensure grn relationship is loaded
         $grn->load('items');
 
         // Calculate batch totals
@@ -79,6 +79,11 @@ class GRNPrintController extends Controller
             // Fallback to batch's grnItem if not found in GRN items
             if (!$grnItem) {
                 $grnItem = $itemBatch->grnItem;
+            }
+            
+            // Ensure grn relationship is set on the item
+            if ($grnItem && !$grnItem->relationLoaded('grn')) {
+                $grnItem->setRelation('grn', $grn);
             }
             
             // Get current processed quantity for this item
