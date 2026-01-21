@@ -321,14 +321,6 @@
                                 </div>
                             @else
                                 {{ number_format($item->quantity) }}
-                                @if($quantityMismatch)
-                                    <div class="text-xs text-red-600 mt-1">
-                                        <button wire:click="toggleEditMode" 
-                                                class="underline hover:text-red-800">
-                                            Fix Quantity (currently shows job order qty)
-                                        </button>
-                                    </div>
-                                @endif
                             @endif
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
@@ -372,7 +364,7 @@
                             @endphp
                             @if(!$hasReachedLimit && $maxCanComplete > 0)
                                 <div class="space-y-2">
-                                    <div class="flex items-center space-x-2">
+                                    <div class="flex items-center space-x-2" style="display: none;">
                                         <label class="text-xs font-medium text-gray-700 w-24">Used Boards:</label>
                                         <input type="number" 
                                                id="usedBoards-{{ $item->id }}"

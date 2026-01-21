@@ -81,9 +81,13 @@ class InventoryTransactionsHistory extends Component
         }
 
         // First, get all transactions to calculate balances
+        // Important: process receipts/produce BEFORE consume/delivery for the SAME day
+        // to avoid temporarily negative balances showing as 0.
         $allTransactions = $query->with(['inventory', 'grn.purchaseOrder.items.jobOrder', 'grn.productionOrder.jobOrder'])
             ->orderBy('txn_date', 'asc')
+            ->orderByRaw("CASE WHEN txn_type IN ('receipt','produce') THEN 0 ELSE 1 END") // receipts first on same date
             ->orderBy('created_at', 'asc')
+            ->orderBy('id', 'asc')
             ->get();
 
         // Calculate running balances per lot code in chronological order

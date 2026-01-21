@@ -132,7 +132,7 @@
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-lg font-semibold">Available Raw Materials for Production</h3>
                         <div class="flex items-center space-x-2">
-                            @if($filterDateFrom || $filterDateTo || $filterStatus || $filterJobOrder || $filterCustomer)
+                            @if($filterDateFrom || $filterDateTo || ($filterStatus && $filterStatus !== 'not_completed') || $filterJobOrder || $filterCustomer)
                             <button wire:click="resetFilters"
                                     class="inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md text-white bg-red-600 hover:bg-red-700">
                                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -206,13 +206,21 @@
                                                         <div class="bg-green-600 h-2 rounded-full" style="width: {{ min(100, max(0, $transaction->productionProgress ?? 0)) }}%"></div>
                                                     </div>
                                                     @if(isset($transaction->productionStatus))
-                                                        <div class="mt-1">
+                                                        <div class="mt-1 space-y-1">
                                                             @if($transaction->productionStatus === 'completed')
                                                                 <span class="px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-800">Completed</span>
                                                             @elseif($transaction->productionStatus === 'in_production')
                                                                 <span class="px-2 py-0.5 text-xs rounded-full bg-yellow-100 text-yellow-800">In Production</span>
                                                             @else
                                                                 <span class="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-800">{{ ucfirst($transaction->productionStatus) }}</span>
+                                                            @endif
+
+                                                            @if(!empty($transaction->hasPendingGRNToProcess))
+                                                                <div>
+                                                                    <span class="px-2 py-0.5 text-xs rounded-full bg-red-100 text-red-700">
+                                                                        GRN pending to process to stock
+                                                                    </span>
+                                                                </div>
                                                             @endif
                                                         </div>
                                                     @endif
@@ -626,9 +634,10 @@
                         <select wire:model="filterStatus" 
                                 class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
                             <option value="">All Status</option>
-                            <option value="ready">Ready</option>
-                            <option value="in_production">In Production</option>
-                            <option value="completed">Completed</option>
+                            <option value="not_completed">In Production & Ready (Default)</option>
+                            <option value="ready">Ready Only</option>
+                            <option value="in_production">In Production Only</option>
+                            <option value="completed">Completed Only</option>
                         </select>
                     </div>
 

@@ -56,10 +56,8 @@ class DeliveryNoteDetail extends Component
                     $unitPrice = (float) ($box->selling_price ?? $box->supplier_price ?? 0);
                 }
             } elseif ($item->item_type === 'divider') {
-                $divider = JobOrderDivider::find($item->item_id);
-                if ($divider) {
-                    $unitPrice = (float) ($divider->supplier_price ?? 0);
-                }
+                // Dividers always have 0 unit price in invoices
+                $unitPrice = 0;
             }
             
             $this->invoiceItems[] = [

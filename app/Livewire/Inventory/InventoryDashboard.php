@@ -20,7 +20,7 @@ class InventoryDashboard extends Component
     public $showFilterModal = false;
     public $filterDateFrom = '';
     public $filterDateTo = '';
-    public $filterStatus = '';
+    public $filterStatus = 'not_completed'; // Default: show only in_production and ready (exclude completed)
     public $filterJobOrder = '';
     public $filterCustomer = '';
     
@@ -90,7 +90,7 @@ class InventoryDashboard extends Component
     {
         $this->filterDateFrom = '';
         $this->filterDateTo = '';
-        $this->filterStatus = '';
+        $this->filterStatus = 'not_completed'; // Reset to default: show only in_production and ready
         $this->filterJobOrder = '';
         $this->filterCustomer = '';
         $this->clearCache();
@@ -941,16 +941,19 @@ class InventoryDashboard extends Component
                         ->where('notes', 'like', '%' . $transactionIdMarker . '%')
                         ->whereNull('archived_at'); // Exclude archived production orders
                     
-                    // By default, exclude completed production orders unless filter explicitly requests them
-                    if (!$this->filterStatus || $this->filterStatus !== 'completed') {
-                        $productionOrderQuery->where('status', '!=', 'completed');
-                    }
+                    // Always include completed production orders so users can archive them
+                    // The status filter is applied later in the view/filter logic
                     
                     $productionOrder = $productionOrderQuery->with(['items', 'jobOrder.customer'])->first();
                     
                     if ($productionOrder) {
                         $transaction->productionOrder = $productionOrder;
                         $transaction->hasProductionOrder = true;
+                        
+                        // Check if there are any GRNs for this production order that are not fully processed to stock yet
+                        $transaction->hasPendingGRNToProcess = \App\Models\GRN::where('production_order_id', $productionOrder->id)
+                            ->whereIn('status', ['pending', 'partially_processed'])
+                            ->exists();
                         
                         // Calculate progress
                         $totalQuantity = $productionOrder->items->sum('quantity');
@@ -1008,6 +1011,10 @@ class InventoryDashboard extends Component
                                $transaction->hasProductionOrder && 
                                isset($transaction->productionStatus) &&
                                $transaction->productionStatus === 'completed';
+                    } elseif ($this->filterStatus === 'not_completed') {
+                        // Default: exclude completed, show ready and in_production
+                        return !isset($transaction->productionStatus) || 
+                               $transaction->productionStatus !== 'completed';
                     }
                     return true;
                 })->values();

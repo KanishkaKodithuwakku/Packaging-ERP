@@ -416,6 +416,10 @@ class ProductionOrderDetail extends Component
             });
             if ($allCompleted) {
                 $this->productionOrder->update(['status' => 'completed']);
+                Log::info('Production order marked as completed', [
+                    'production_order_id' => $this->productionOrder->id,
+                    'production_order_number' => $this->productionOrder->production_order_number
+                ]);
             }
 
             // Record inventory transaction for raw materials consumed
@@ -454,6 +458,12 @@ class ProductionOrderDetail extends Component
             
             session()->flash('success', $message);
             $this->closeCompleteConfirmModal();
+            
+            // Dispatch refresh event to update inventory dashboard if it's open
+            $this->dispatch('production-order-completed', [
+                'production_order_id' => $this->productionOrder->id,
+                'transaction_id' => $this->extractTransactionIdFromNotes()
+            ]);
         } catch (\Exception $e) {
             Log::error('Error completing production item: ' . $e->getMessage());
             session()->flash('error', 'Error completing production item: ' . $e->getMessage());

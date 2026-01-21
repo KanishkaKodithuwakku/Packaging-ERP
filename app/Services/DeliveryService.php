@@ -146,9 +146,9 @@ class DeliveryService
             }
         }
 
-        // Check FG for dividers
+        // Check FG for dividers - use correct material code pattern (DIV-, not DIVIDER-)
         foreach ($jobOrder->dividers as $divider) {
-            $materialCode = 'DIVIDER-' . $divider->id . '-' . $divider->ply . 'PLY';
+            $materialCode = 'DIV-' . $divider->id . '-' . $divider->ply . 'PLY';
             $availableQty = $this->getAvailableFgQuantity($materialCode);
             
             if ($availableQty > 0) {

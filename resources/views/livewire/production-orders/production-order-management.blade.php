@@ -89,8 +89,25 @@
                                     @endphp
                                     <div class="text-xs text-gray-500">{{ $dimensions }}</div>
                                 </td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                    {{ $po->items->count() }} items
+                                <td class="px-6 py-4 text-sm text-gray-900">
+                                    @foreach($po->items as $item)
+                                        <div class="mb-1">
+                                            @php
+                                                $itemType = ucfirst($item->item_type);
+                                                $quantity = number_format($item->quantity, 0);
+                                                $noOfUps = $item->getNoOfUps();
+                                                $fgQuantity = $noOfUps > 0 ? ($item->quantity * $noOfUps) : $item->quantity;
+                                            @endphp
+                                            <span class="inline-flex items-center">
+                                                <span class="font-medium">{{ $quantity }}</span>
+                                                <span class="mx-1 text-gray-500">×</span>
+                                                <span class="text-gray-700">{{ $itemType }}</span>
+                                                @if($noOfUps > 0)
+                                                    <span class="ml-2 text-xs text-gray-500">({{ number_format($fgQuantity, 0) }} FG)</span>
+                                                @endif
+                                            </span>
+                                        </div>
+                                    @endforeach
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
                                     @php

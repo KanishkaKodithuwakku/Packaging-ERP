@@ -25,7 +25,9 @@ class GRNsCrud extends Component
     // Filter modal and filters
     public $showFilterModal = false;
     public $filterSupplier = '';
-    public $filterReceivingProgress = 'partial_and_not_received'; // Default: show partial and not_received
+    // Default: show ALL receiving states, but NOT processed to stock yet
+    public $filterReceivingProgress = 'all';
+    public $filterStockProcessing = 'not_processed';
     public $filterDateFrom = '';
     public $filterDateTo = '';
     public $search = '';
@@ -74,6 +76,15 @@ class GRNsCrud extends Component
     public function mount()
     {
         $this->resetForm();
+
+        // Ensure default filters are applied (and reflected in the filter UI)
+        // This keeps the GRN list defaulting to "All receiving" + "Not Processed"
+        if (empty($this->filterReceivingProgress)) {
+            $this->filterReceivingProgress = 'all';
+        }
+        if (empty($this->filterStockProcessing)) {
+            $this->filterStockProcessing = 'not_processed';
+        }
 
         // Check if we're creating from a supplier order
         if (request()->has('create_from')) {
@@ -227,7 +238,8 @@ class GRNsCrud extends Component
     public function resetFilters()
     {
         $this->filterSupplier = '';
-        $this->filterReceivingProgress = 'partial_and_not_received';
+        $this->filterReceivingProgress = 'all';
+        $this->filterStockProcessing = 'not_processed';
         $this->filterDateFrom = '';
         $this->filterDateTo = '';
         $this->search = '';
@@ -235,7 +247,20 @@ class GRNsCrud extends Component
 
     public function render()
     {
-        $query = GRN::with(['supplierOrder.supplier', 'productionOrder.supplier', 'productionOrder.jobOrder', 'items', 'purchaseOrder.supplier', 'purchaseOrder.jobOrder']);
+        // Only set defaults on initial mount, not on every render
+        // This allows the user to change filters without them being reset
+        // Note: Default values are already set in property declarations (line 29-30)
+        // We don't need to force them on every render as it prevents users from changing filters
+
+        $query = GRN::with([
+            'supplierOrder.supplier',
+            'productionOrder.supplier',
+            'productionOrder.jobOrder',
+            'items',
+            'purchaseOrder.supplier',
+            'purchaseOrder.jobOrder',
+            'purchaseOrder.items.jobOrder',
+        ]);
 
         // Apply search filter
         if ($this->search) {
@@ -313,6 +338,36 @@ class GRNsCrud extends Component
                          ->whereRaw('NOT EXISTS (SELECT 1 FROM grn_items WHERE grn_items.grn_id = grns.id AND qty_received_partial > 0)');
                 });
             });
+        } elseif ($this->filterReceivingProgress === 'partial_and_fully_received') {
+            // Show partial + fully received (exclude "Not Received")
+            // Partial: has items with qty_received_partial > 0 and at least one not fully received
+            // Fully: all items fully received
+            $query->where(function($q) {
+                // Fully received
+                $q->whereHas('items')->whereDoesntHave('items', function($subQ) {
+                    $subQ->where('is_fully_received', false);
+                })
+                // OR partial receiving
+                ->orWhere(function($subQ) {
+                    $subQ->whereHas('items', function($q2) {
+                        $q2->where('qty_received_partial', '>', 0);
+                    })->whereHas('items', function($q2) {
+                        $q2->where(function($subSubQ) {
+                            $subSubQ->where('is_fully_received', false)
+                                    ->orWhereNull('is_fully_received');
+                        });
+                    });
+                });
+            });
+        }
+
+        // Apply stock processing filter (process to stock)
+        if ($this->filterStockProcessing && $this->filterStockProcessing !== 'all') {
+            if ($this->filterStockProcessing === 'processed') {
+                $query->where('status', 'processed');
+            } elseif ($this->filterStockProcessing === 'not_processed') {
+                $query->whereIn('status', ['pending', 'partially_processed']);
+            }
         }
 
         // Apply date filters

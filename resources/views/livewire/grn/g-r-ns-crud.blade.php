@@ -6,7 +6,7 @@
                 <div class="flex items-center space-x-4">
                     <input type="text" wire:model.live="search" placeholder="Search GRNs..."
                         class="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[200px]">
-                    @if($filterSupplier || ($filterReceivingProgress && $filterReceivingProgress !== 'partial_and_not_received') || $filterDateFrom || $filterDateTo)
+                    @if($filterSupplier || ($filterReceivingProgress && $filterReceivingProgress !== 'all') || ($filterStockProcessing && $filterStockProcessing !== 'not_processed') || $filterDateFrom || $filterDateTo)
                     <button wire:click="resetFilters"
                         class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center">
                         <svg class="w-4 h-4 mr-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
@@ -41,16 +41,20 @@
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">GRN No</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Supplier</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Job Order</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lot Code</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items & Quantities</th>
-                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Receiving Progress</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Receiving / Stock</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Received Date</th>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
                         @foreach($grns as $grn)
-                            <tr class="hover:bg-gray-50 cursor-pointer" wire:key="grn-{{ $grn->id }}" >
+                            @php
+                                $isNotProcessedToStock = ($grn->status ?? 'pending') !== 'processed';
+                            @endphp
+                            <tr class="hover:bg-gray-50 cursor-pointer {{ $isNotProcessedToStock ? 'bg-yellow-50 border-l-4 border-yellow-400' : '' }}" wire:key="grn-{{ $grn->id }}" >
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900" wire:navigate href="{{ route('grn-detail', $grn->id) }}">
                                     {{ $grn->grn_no }}
                                 </td>
@@ -92,6 +96,40 @@
                                         {{ $grn->supplierOrder->po_no ?? 'N/A' }}
                                     @endif
                                 </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500" wire:navigate href="{{ route('grn-detail', $grn->id) }}">
+                                    @php
+                                        $jobNumber = null;
+                                        $jobNumbersList = [];
+
+                                        if ($grn->isFromProductionOrder() && $grn->productionOrder && $grn->productionOrder->jobOrder) {
+                                            $jobNumber = $grn->productionOrder->jobOrder->job_number
+                                                ?? $grn->productionOrder->jobOrder->supplier_po_number
+                                                ?? $grn->productionOrder->jobOrder->job_order_number;
+                                            $jobNumbersList = array_filter([$jobNumber]);
+                                        } elseif ($grn->isFromPurchaseOrder() && $grn->purchaseOrder) {
+                                            // Collect distinct job orders from PO items
+                                            $jobNumbersList = $grn->purchaseOrder->items
+                                                ->map(function($poItem) {
+                                                    return $poItem->jobOrder
+                                                        ? ($poItem->jobOrder->job_number
+                                                            ?? $poItem->jobOrder->supplier_po_number
+                                                            ?? $poItem->jobOrder->job_order_number)
+                                                        : null;
+                                                })
+                                                ->filter()
+                                                ->unique()
+                                                ->values()
+                                                ->toArray();
+                                            $jobNumber = $jobNumbersList[0] ?? null;
+                                        }
+                                    @endphp
+                                    <div class="text-sm text-gray-900">{{ $jobNumber ?? 'N/A' }}</div>
+                                    @if(count($jobNumbersList) > 1)
+                                        <div class="text-xs text-gray-500">
+                                            {{ implode(', ', $jobNumbersList) }}
+                                        </div>
+                                    @endif
+                                </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600" wire:navigate href="{{ route('grn-detail', $grn->id) }}">{{ $grn->lot_code }}</td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                     @if($grn->items->count() > 0)
@@ -131,10 +169,27 @@
                                             $progressColor = 'bg-gray-300';
                                             $progressWidth = 0;
                                         }
+
+                                        // Stock processing status badge
+                                        $stockStatus = $grn->status ?? 'pending';
+                                        if ($stockStatus === 'processed') {
+                                            $stockText = 'Processed to Stock';
+                                            $stockColor = 'bg-green-100 text-green-800';
+                                        } elseif ($stockStatus === 'partially_processed') {
+                                            $stockText = 'Partially Processed';
+                                            $stockColor = 'bg-yellow-100 text-yellow-800';
+                                        } else {
+                                            // pending or null
+                                            $stockText = 'Pending Process to Stock';
+                                            $stockColor = 'bg-red-100 text-red-800';
+                                        }
                                     @endphp
                                     <div class="flex flex-col space-y-2">
                                         <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $statusColor }}">
                                             {{ $statusText }}
+                                        </span>
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $stockColor }}">
+                                            {{ $stockText }}
                                         </span>
                                         <div class="flex items-center space-x-2">
                                             <div class="flex-1 bg-gray-200 rounded-full h-2">
@@ -355,10 +410,23 @@
                                         <select wire:model.live="filterReceivingProgress"
                                             class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                                             <option value="all">All</option>
+                                            <option value="partial_and_fully_received">Partial & Fully Received</option>
                                             <option value="partial_and_not_received">Partial & Not Received</option>
                                             <option value="not_received">Not Received</option>
                                             <option value="partial">Partial</option>
                                             <option value="fully_received">Fully Received</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center gap-3 flex-1">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1 w-1/5">Stock Processing</label>
+                                    <div class="flex-1">
+                                        <select wire:model.live="filterStockProcessing"
+                                            class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                                            <option value="all">All</option>
+                                            <option value="not_processed">Not Processed</option>
+                                            <option value="processed">Processed</option>
                                         </select>
                                     </div>
                                 </div>
