@@ -233,11 +233,14 @@ class GRNItem extends Model
      */
     public function getPurchaseOrderItem()
     {
-        if (!$this->grn || !$this->grn->purchase_order_id) {
+        // Load grn relationship if not already loaded
+        $grn = $this->grn ?? $this->grn()->first();
+        
+        if (!$grn || !$grn->purchase_order_id) {
             return null;
         }
 
-        return \App\Models\PurchaseOrderItem::where('purchase_order_id', $this->grn->purchase_order_id)
+        return \App\Models\PurchaseOrderItem::where('purchase_order_id', $grn->purchase_order_id)
             ->where('item_type', $this->item_type)
             ->where('item_id', $this->item_id)
             ->with('jobOrder.customer')

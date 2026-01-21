@@ -13,6 +13,8 @@ class InventoryTransactionsHistory extends Component
 
     protected $layout = 'components.layouts.app';
 
+    public $groupBy = ''; // Options: '', 'item', 'lot'
+
     public $filters = [
         'lot_code' => '',
         'category' => '',
@@ -21,6 +23,12 @@ class InventoryTransactionsHistory extends Component
         'date_from' => '',
         'date_to' => '',
     ];
+
+    public function updatedGroupBy()
+    {
+        // Reset pagination when changing grouping
+        $this->resetPage();
+    }
 
     public function mount()
     {
@@ -154,8 +162,73 @@ class InventoryTransactionsHistory extends Component
 
     public function render()
     {
+        // If grouping is enabled, get all transactions (no pagination)
+        // Otherwise use paginated results
+        if ($this->groupBy) {
+            $transactions = $this->getTransactionSummaryAll();
+        } else {
+            $transactions = $this->getTransactionSummary();
+        }
+        
+        // Group transactions based on selection
+        $groupedTransactions = null;
+        if ($this->groupBy === 'item') {
+            $groupedTransactions = $transactions->groupBy('item_code');
+        } elseif ($this->groupBy === 'lot') {
+            $groupedTransactions = $transactions->groupBy('lot_code');
+        }
+        
         return view('livewire.inventory.inventory-transactions-history', [
-            'transactions' => $this->getTransactionSummary(),
+            'transactions' => $transactions,
+            'groupedTransactions' => $groupedTransactions,
         ]);
+    }
+    
+    /**
+     * Get all transactions without pagination (for grouping)
+     */
+    public function getTransactionSummaryAll()
+    {
+        $query = InventoryTransaction::query();
+
+        // Apply filters
+        if ($this->filters['lot_code']) {
+            $query->where('lot_code', 'like', '%' . $this->filters['lot_code'] . '%');
+        }
+
+        if ($this->filters['category']) {
+            $query->where('category', $this->filters['category']);
+        }
+
+        if ($this->filters['warehouse']) {
+            $query->where('warehouse', $this->filters['warehouse']);
+        }
+
+        if ($this->filters['txn_type']) {
+            $query->where('txn_type', $this->filters['txn_type']);
+        }
+
+        if ($this->filters['date_from']) {
+            $query->where('txn_date', '>=', $this->filters['date_from']);
+        }
+
+        if ($this->filters['date_to']) {
+            $query->where('txn_date', '<=', $this->filters['date_to']);
+        }
+
+        $transactions = $query->orderBy('txn_date', 'desc')
+                              ->orderBy('created_at', 'desc')
+                              ->get();
+
+        // Calculate balance for each transaction
+        $balances = $this->calculateBalances($transactions);
+        
+        // Attach balance to each transaction
+        foreach ($transactions as $transaction) {
+            $key = $transaction->lot_code . '_' . $transaction->id;
+            $transaction->balance_qty = $balances[$key] ?? 0;
+        }
+
+        return $transactions;
     }
 }

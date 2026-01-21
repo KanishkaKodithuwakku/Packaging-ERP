@@ -1,7 +1,24 @@
 <div>
     <div class="bg-white shadow-sm rounded-lg">
-        <div class="px-6 py-4 border-b border-gray-200">
-            <h2 class="text-xl font-semibold text-gray-800">Inventory Transactions History</h2>
+        <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+            <div class="flex items-center space-x-3">
+                <h2 class="text-xl font-semibold text-gray-800">Inventory Transactions History</h2>
+                @if($groupBy)
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        Grouped by {{ $groupBy === 'item' ? 'Item Code' : 'Lot Code' }}
+                    </span>
+                @endif
+            </div>
+            
+            <!-- Group By Selector -->
+            <div class="flex items-center space-x-2">
+                <label class="text-sm font-medium text-gray-700">Group By:</label>
+                <select wire:model.live="groupBy" class="border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">None (Flat View)</option>
+                    <option value="item">Item Code</option>
+                    <option value="lot">Lot Code</option>
+                </select>
+            </div>
         </div>
 
         <div class="p-6">
@@ -61,7 +78,104 @@
 
             <!-- Transactions Table -->
             <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
+                @if($groupBy && $groupedTransactions)
+                    <!-- Grouped View -->
+                    @foreach($groupedTransactions as $groupKey => $groupTransactions)
+                        <div class="mb-8 border border-gray-200 rounded-lg overflow-hidden">
+                            <!-- Group Header -->
+                            <div class="bg-blue-50 px-4 py-3 border-b border-blue-200">
+                                <div class="flex items-center justify-between">
+                                    <div>
+                                        <span class="text-xs text-blue-600 font-semibold uppercase">{{ $groupBy === 'item' ? 'Item Code' : 'Lot Code' }}</span>
+                                        <h3 class="text-lg font-semibold text-blue-900">{{ $groupKey }}</h3>
+                                    </div>
+                                    <div class="flex items-center space-x-4 text-sm">
+                                        <span class="text-blue-700">
+                                            <span class="font-medium">{{ $groupTransactions->count() }}</span> transactions
+                                        </span>
+                                        @php
+                                            $totalIn = $groupTransactions->whereIn('txn_type', ['receipt', 'produce'])->sum('qty');
+                                            $totalOut = $groupTransactions->whereIn('txn_type', ['consume', 'delivery'])->sum('qty');
+                                            $netQty = $totalIn - $totalOut;
+                                        @endphp
+                                        <span class="text-green-700">
+                                            <span class="font-medium">+{{ number_format($totalIn, 0) }}</span> in
+                                        </span>
+                                        <span class="text-red-700">
+                                            <span class="font-medium">-{{ number_format($totalOut, 0) }}</span> out
+                                        </span>
+                                        <span class="text-blue-900 font-bold">
+                                            Net: {{ number_format($netQty, 0) }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Group Transactions Table -->
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                        @if($groupBy === 'item')
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Lot Code</th>
+                                        @else
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Item</th>
+                                        @endif
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Category</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Job Order</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Balance</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Warehouse</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remarks</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    @foreach($groupTransactions as $transaction)
+                                        @php
+                                            $jobOrder = $transaction->getJobOrder();
+                                            $jobOrderNumber = $jobOrder ? ($jobOrder->supplier_po_number ?? $jobOrder->job_number ?? 'N/A') : 'N/A';
+                                        @endphp
+                                        <tr class="hover:bg-gray-50">
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $transaction->txn_date }}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                                @if($groupBy === 'item')
+                                                    {{ $transaction->lot_code }}
+                                                @else
+                                                    {{ $transaction->item_code }}
+                                                @endif
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                                    @if($transaction->category == 'RAW') bg-blue-100 text-blue-800
+                                                    @elseif($transaction->category == 'WIP') bg-yellow-100 text-yellow-800
+                                                    @elseif($transaction->category == 'FG') bg-green-100 text-green-800
+                                                    @endif">
+                                                    {{ $transaction->category }}
+                                                </span>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                                    @if($transaction->txn_type == 'receipt' || $transaction->txn_type == 'produce') bg-green-100 text-green-800
+                                                    @elseif($transaction->txn_type == 'consume' || $transaction->txn_type == 'delivery') bg-red-100 text-red-800
+                                                    @endif">
+                                                    {{ ucfirst($transaction->txn_type) }}
+                                                </span>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ $jobOrderNumber }}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ number_format($transaction->qty, 0) }} {{ $transaction->uom }}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-right font-medium">{{ number_format($transaction->balance_qty ?? 0, 0) }} {{ $transaction->uom }}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $transaction->warehouse }}</td>
+                                            <td class="px-6 py-4 text-sm text-gray-500">{{ $transaction->remarks }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @endforeach
+                @else
+                    <!-- Standard Flat View -->
+                    <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
@@ -118,12 +232,15 @@
                         @endforelse
                     </tbody>
                 </table>
+                @endif
             </div>
 
-            <!-- Pagination -->
+            <!-- Pagination (only show in flat view) -->
+            @if(!$groupBy)
             <div class="mt-4">
                 {{ $transactions->links() }}
             </div>
+            @endif
         </div>
     </div>
 </div>
