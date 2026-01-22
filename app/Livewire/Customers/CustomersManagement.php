@@ -6,6 +6,7 @@ use App\Models\Customer;
 use App\Models\CustomerOrder;
 use App\Models\JobOrder;
 use App\Models\Ledger;
+use App\Models\Tax;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Livewire\Component;
@@ -59,6 +60,21 @@ class CustomersManagement extends Component
         'tax' => '',
         'bank' => '',
     ];
+    
+    // Tax Tab
+    public array $taxForm = [
+        'customer_type' => 'non_tax_customer', // tax_customer or non_tax_customer
+        // For non-tax customers: whether documents are issued with tax or without tax
+        // (UI-only choice; taxes are only attachable when set to with_tax)
+        'tax_mode' => 'without_tax', // with_tax or without_tax
+        'vat_number' => '',
+        'selected_tax' => null, // Single tax ID for radio button selection
+    ];
+    
+    // Discount Tab
+    public array $discountForm = [
+        'accept_discount' => false,
+    ];
 
     public function updatingSearch()
     {
@@ -105,6 +121,23 @@ class CustomersManagement extends Component
                 'tax' => $customer->tax ?? '',
                 'bank' => $customer->bank ?? '',
             ];
+            
+            // Load tax info
+            $isTaxCustomer = ($customer->customer_type ?? 'non_tax_customer') === 'tax_customer';
+            $hasAssignedTax = $customer->taxes->isNotEmpty();
+            $this->taxForm = [
+                'customer_type' => $customer->customer_type ?? 'non_tax_customer',
+                'tax_mode' => $isTaxCustomer
+                    ? 'with_tax'
+                    : ($hasAssignedTax ? 'with_tax' : 'without_tax'),
+                'vat_number' => $customer->vat_number ?? '',
+                'selected_tax' => $customer->taxes->first()?->id, // Get the first tax ID
+            ];
+            
+            // Load discount info
+            $this->discountForm = [
+                'accept_discount' => (bool) $customer->accept_discount,
+            ];
         } else {
             $this->form = [
                 'name' => '', 'phone' => '', 'email' => '',
@@ -118,6 +151,15 @@ class CustomersManagement extends Component
             ];
             $this->financeForm = [
                 'account_receivable' => '', 'sales_revenue' => '', 'currency' => 'LKR', 'tax' => '', 'bank' => ''
+            ];
+            $this->taxForm = [
+                'customer_type' => 'non_tax_customer',
+                'tax_mode' => 'without_tax',
+                'vat_number' => '',
+                'selected_tax' => null,
+            ];
+            $this->discountForm = [
+                'accept_discount' => false,
             ];
         }
         $this->showModal = true;
@@ -162,6 +204,23 @@ class CustomersManagement extends Component
             'tax' => $customer->tax ?? '',
             'bank' => $customer->bank ?? '',
         ];
+        
+        // Load tax info
+        $isTaxCustomer = ($customer->customer_type ?? 'non_tax_customer') === 'tax_customer';
+        $hasAssignedTax = $customer->taxes->isNotEmpty();
+        $this->taxForm = [
+            'customer_type' => $customer->customer_type ?? 'non_tax_customer',
+            'tax_mode' => $isTaxCustomer
+                ? 'with_tax'
+                : ($hasAssignedTax ? 'with_tax' : 'without_tax'),
+            'vat_number' => $customer->vat_number ?? '',
+            'selected_tax' => $customer->taxes->first()?->id, // Get the first tax ID
+        ];
+        
+        // Load discount info
+        $this->discountForm = [
+            'accept_discount' => (bool) $customer->accept_discount,
+        ];
 
         $this->showModal = true;
     }
@@ -176,6 +235,33 @@ class CustomersManagement extends Component
     public function setActiveTab($tab)
     {
         $this->activeTab = $tab;
+    }
+
+    public function updatedTaxFormCustomerType($value): void
+    {
+        // When switching customer type, keep the UI consistent and avoid stale selections.
+        if ($value === 'tax_customer') {
+            $this->taxForm['tax_mode'] = 'with_tax';
+            return;
+        }
+
+        // Non-tax customer: default to without tax and clear any tax selections.
+        $this->taxForm['tax_mode'] = 'without_tax';
+        $this->taxForm['selected_tax'] = null;
+        $this->taxForm['vat_number'] = '';
+    }
+
+    public function updatedTaxFormTaxMode($value): void
+    {
+        if (($this->taxForm['customer_type'] ?? 'non_tax_customer') !== 'non_tax_customer') {
+            return;
+        }
+
+        // If "without tax" is selected for non-tax customer, ensure no tax is kept.
+        if ($value === 'without_tax') {
+            $this->taxForm['selected_tax'] = null;
+            $this->taxForm['vat_number'] = '';
+        }
     }
 
     private function generateCustomerCode()
@@ -256,6 +342,22 @@ class CustomersManagement extends Component
                 'financeForm.currency' => 'nullable|string|max:3',
                 'financeForm.tax' => 'nullable|string|max:255',
                 'financeForm.bank' => 'nullable|string|max:255',
+                'taxForm.customer_type' => 'required|string|in:tax_customer,non_tax_customer',
+                'taxForm.tax_mode' => 'required|string|in:with_tax,without_tax',
+                'taxForm.vat_number' => 'nullable|string|max:255',
+                // A tax must be selected if:
+                // - Customer is a tax customer, OR
+                // - Customer is non-tax customer but user selected "With Tax"
+                'taxForm.selected_tax' => [
+                    Rule::requiredIf(function () {
+                        $customerType = $this->taxForm['customer_type'] ?? 'non_tax_customer';
+                        $taxMode = $this->taxForm['tax_mode'] ?? 'without_tax';
+                        return $customerType === 'tax_customer' || ($customerType === 'non_tax_customer' && $taxMode === 'with_tax');
+                    }),
+                    'nullable',
+                    'exists:taxes,id',
+                ],
+                'discountForm.accept_discount' => 'boolean',
             ]));
         } catch (ValidationException $e) {
             session()->flash('error', 'Please check some fields are empty or have duplicate values.');
@@ -284,16 +386,44 @@ class CustomersManagement extends Component
             'currency' => $validated['financeForm']['currency'] ?? 'LKR',
             'tax' => $validated['financeForm']['tax'] ?? null,
             'bank' => $validated['financeForm']['bank'] ?? null,
+            'customer_type' => $validated['taxForm']['customer_type'],
+            'vat_number' => $validated['taxForm']['vat_number'] ?? null,
+            'accept_discount' => $validated['discountForm']['accept_discount'],
         ]);
 
         if ($this->editingId) {
             $customer = Customer::where('id', $this->editingId)->first();
             $customer->update($customerData);
+            
+            // Handle single tax assignment
+            $shouldAttachTax = ($validated['taxForm']['customer_type'] === 'tax_customer')
+                || ($validated['taxForm']['customer_type'] === 'non_tax_customer' && ($validated['taxForm']['tax_mode'] ?? 'without_tax') === 'with_tax');
+
+            if ($shouldAttachTax && $validated['taxForm']['selected_tax']) {
+                $customer->taxes()->sync([$validated['taxForm']['selected_tax']]);
+            } else {
+                $customer->taxes()->detach();
+                // Avoid storing VAT numbers when tax isn't applied
+                $customer->update(['vat_number' => null]);
+            }
+            
             session()->flash('success', 'Customer updated successfully');
         } else {
             // Auto-generate customer code
             $customerData['code'] = $this->generateCustomerCode();
-            Customer::create($customerData);
+            $customer = Customer::create($customerData);
+            
+            // Attach single tax if applicable
+            $shouldAttachTax = ($validated['taxForm']['customer_type'] === 'tax_customer')
+                || ($validated['taxForm']['customer_type'] === 'non_tax_customer' && ($validated['taxForm']['tax_mode'] ?? 'without_tax') === 'with_tax');
+
+            if ($shouldAttachTax && $validated['taxForm']['selected_tax']) {
+                $customer->taxes()->attach($validated['taxForm']['selected_tax']);
+            } else {
+                // Avoid storing VAT numbers when tax isn't applied
+                $customer->update(['vat_number' => null]);
+            }
+            
             session()->flash('success', 'Customer added successfully');
         }
 
@@ -382,5 +512,10 @@ class CustomersManagement extends Component
     public function getLedgersProperty()
     {
         return Ledger::orderBy('name')->get();
+    }
+    
+    public function getTaxesProperty()
+    {
+        return Tax::where('status', 1)->orderBy('description')->get();
     }
 }

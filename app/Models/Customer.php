@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Customer extends Model
@@ -29,6 +30,9 @@ class Customer extends Model
         'bank',
         'credit_limit_period',
         'credit_limit_amount',
+        'customer_type', // with_tax or without_tax
+        'vat_number',
+        'accept_discount',
     ];
 
     /**
@@ -45,5 +49,14 @@ class Customer extends Model
     public function customerOrders(): HasMany
     {
         return $this->hasMany(CustomerOrder::class);
+    }
+    
+    /**
+     * Get the taxes assigned to this customer.
+     */
+    public function taxes(): BelongsToMany
+    {
+        return $this->belongsToMany(Tax::class, 'customer_tax')
+                    ->withTimestamps();
     }
 }
