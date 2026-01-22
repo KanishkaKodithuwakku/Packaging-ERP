@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Livewire\Customers;
 
 use App\Models\Customer;
@@ -18,11 +19,17 @@ class CustomersManagement extends Component
     protected $layout = 'components.layouts.app';
 
     public string $search = '';
+
     public bool $showModal = false;
+
     public ?int $editingId = null;
+
     public bool $isViewMode = false;
+
     public string $activeTab = 'general';
+
     public bool $showDeleteConfirmModal = false;
+
     public ?int $customerToDelete = null;
 
     // General Info Tab (no code field)
@@ -58,8 +65,11 @@ class CustomersManagement extends Component
         'currency' => 'LKR',
         'tax' => '',
         'bank' => '',
+        'tax_id' => '',
+        'is_vat' => false, // Add this to track the checkbox state
+        'vat_number' => '',    // This is the input we will show/hide
     ];
-    
+
     // Tax Tab
     public array $taxForm = [
         'customer_type' => 'non_tax_customer', // tax_customer or non_tax_customer
@@ -69,7 +79,7 @@ class CustomersManagement extends Component
         'vat_number' => '',
         'selected_taxes' => [], // Array of tax IDs for checkbox selection
     ];
-    
+
     // Discount Tab
     public array $discountForm = [
         'accept_discount' => false,
@@ -120,7 +130,7 @@ class CustomersManagement extends Component
                 'tax' => $customer->tax ?? '',
                 'bank' => $customer->bank ?? '',
             ];
-            
+
             // Load tax info
             $isTaxCustomer = ($customer->customer_type ?? 'non_tax_customer') === 'tax_customer';
             $hasAssignedTax = $customer->taxes->isNotEmpty();
@@ -132,7 +142,7 @@ class CustomersManagement extends Component
                 'vat_number' => $customer->vat_number ?? '',
                 'selected_taxes' => $customer->taxes->pluck('id')->toArray(), // Get all tax IDs
             ];
-            
+
             // Load discount info
             $this->discountForm = [
                 'accept_discount' => (bool) $customer->accept_discount,
@@ -140,16 +150,16 @@ class CustomersManagement extends Component
         } else {
             $this->form = [
                 'name' => '', 'phone' => '', 'email' => '',
-                'address' => '', 'website' => '', 'notes' => '', 'status' => 'active'
+                'address' => '', 'website' => '', 'notes' => '', 'status' => 'active',
             ];
             $this->contactForm = [
-                'first_name' => '', 'last_name' => '', 'email' => '', 'phone' => '', 'mobile' => ''
+                'first_name' => '', 'last_name' => '', 'email' => '', 'phone' => '', 'mobile' => '',
             ];
             $this->creditLimitForm = [
-                'credit_limit_period' => '', 'credit_limit_amount' => ''
+                'credit_limit_period' => '', 'credit_limit_amount' => '',
             ];
             $this->financeForm = [
-                'account_receivable' => '', 'sales_revenue' => '', 'currency' => 'LKR', 'tax' => '', 'bank' => ''
+                'account_receivable' => '', 'sales_revenue' => '', 'currency' => 'LKR', 'tax' => '', 'bank' => '',
             ];
             $this->taxForm = [
                 'customer_type' => 'non_tax_customer',
@@ -203,7 +213,7 @@ class CustomersManagement extends Component
             'tax' => $customer->tax ?? '',
             'bank' => $customer->bank ?? '',
         ];
-        
+
         // Load tax info
         $isTaxCustomer = ($customer->customer_type ?? 'non_tax_customer') === 'tax_customer';
         $hasAssignedTax = $customer->taxes->isNotEmpty();
@@ -215,7 +225,7 @@ class CustomersManagement extends Component
             'vat_number' => $customer->vat_number ?? '',
             'selected_taxes' => $customer->taxes->pluck('id')->toArray(), // Get all tax IDs
         ];
-        
+
         // Load discount info
         $this->discountForm = [
             'accept_discount' => (bool) $customer->accept_discount,
@@ -241,6 +251,7 @@ class CustomersManagement extends Component
         // When switching customer type, keep the UI consistent and avoid stale selections.
         if ($value === 'tax_customer') {
             $this->taxForm['tax_mode'] = 'with_tax';
+
             return;
         }
 
@@ -271,7 +282,7 @@ class CustomersManagement extends Component
             ->get();
 
         $maxNumber = 0;
-        
+
         foreach ($customers as $customer) {
             // Extract number from code (e.g., CUST001 -> 1)
             $codeNumber = (int) substr($customer->code, 4);
@@ -282,7 +293,8 @@ class CustomersManagement extends Component
 
         // Increment and format as CUST001, CUST002, etc.
         $nextNumber = $maxNumber + 1;
-        return 'CUST' . str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
+
+        return 'CUST'.str_pad($nextNumber, 3, '0', STR_PAD_LEFT);
     }
 
     public function save()
@@ -290,20 +302,20 @@ class CustomersManagement extends Component
         try {
             // Build unique validation rules for general info fields
             $excludeId = $this->editingId;
-            
+
             $uniqueRules = [
                 'form.name' => [
                     'required',
                     'string',
                     'max:255',
-                    $excludeId 
+                    $excludeId
                         ? Rule::unique('customers', 'name')->ignore($excludeId)
                         : Rule::unique('customers', 'name'),
                 ],
                 'form.address' => [
                     'required',
                     'string',
-                    $excludeId 
+                    $excludeId
                         ? Rule::unique('customers', 'address')->ignore($excludeId)
                         : Rule::unique('customers', 'address'),
                 ],
@@ -311,7 +323,7 @@ class CustomersManagement extends Component
                     'required',
                     'string',
                     'max:50',
-                    $excludeId 
+                    $excludeId
                         ? Rule::unique('customers', 'phone')->ignore($excludeId)
                         : Rule::unique('customers', 'phone'),
                 ],
@@ -319,7 +331,7 @@ class CustomersManagement extends Component
                     'nullable',
                     'email',
                     'max:255',
-                    $excludeId 
+                    $excludeId
                         ? Rule::unique('customers', 'email')->ignore($excludeId)
                         : Rule::unique('customers', 'email'),
                 ],
@@ -391,36 +403,36 @@ class CustomersManagement extends Component
         if ($this->editingId) {
             $customer = Customer::where('id', $this->editingId)->first();
             $customer->update($customerData);
-            
+
             // Handle multiple tax assignments
             $shouldAttachTax = ($validated['taxForm']['customer_type'] === 'tax_customer')
                 || ($validated['taxForm']['customer_type'] === 'non_tax_customer' && ($validated['taxForm']['tax_mode'] ?? 'without_tax') === 'with_tax');
 
-            if ($shouldAttachTax && !empty($validated['taxForm']['selected_taxes'])) {
+            if ($shouldAttachTax && ! empty($validated['taxForm']['selected_taxes'])) {
                 $customer->taxes()->sync($validated['taxForm']['selected_taxes']);
             } else {
                 $customer->taxes()->detach();
                 // Avoid storing VAT numbers when tax isn't applied
                 $customer->update(['vat_number' => null]);
             }
-            
+
             session()->flash('success', 'Customer updated successfully');
         } else {
             // Auto-generate customer code
             $customerData['code'] = $this->generateCustomerCode();
             $customer = Customer::create($customerData);
-            
+
             // Attach multiple taxes if applicable
             $shouldAttachTax = ($validated['taxForm']['customer_type'] === 'tax_customer')
                 || ($validated['taxForm']['customer_type'] === 'non_tax_customer' && ($validated['taxForm']['tax_mode'] ?? 'without_tax') === 'with_tax');
 
-            if ($shouldAttachTax && !empty($validated['taxForm']['selected_taxes'])) {
+            if ($shouldAttachTax && ! empty($validated['taxForm']['selected_taxes'])) {
                 $customer->taxes()->attach($validated['taxForm']['selected_taxes']);
             } else {
                 // Avoid storing VAT numbers when tax isn't applied
                 $customer->update(['vat_number' => null]);
             }
-            
+
             session()->flash('success', 'Customer added successfully');
         }
 
@@ -432,9 +444,10 @@ class CustomersManagement extends Component
         // Check if customer is in use
         if ($this->isCustomerInUse($id)) {
             session()->flash('error', 'This customer is in use and cannot be deleted.');
+
             return;
         }
-        
+
         $this->customerToDelete = $id;
         $this->showDeleteConfirmModal = true;
     }
@@ -448,10 +461,11 @@ class CustomersManagement extends Component
     public function delete($id)
     {
         $customer = Customer::find($id);
-        
-        if (!$customer) {
+
+        if (! $customer) {
             session()->flash('error', 'Customer not found.');
             $this->closeDeleteConfirmModal();
+
             return;
         }
 
@@ -459,6 +473,7 @@ class CustomersManagement extends Component
         if ($this->isCustomerInUse($id)) {
             session()->flash('error', 'This customer is in use and cannot be deleted.');
             $this->closeDeleteConfirmModal();
+
             return;
         }
 
@@ -489,8 +504,8 @@ class CustomersManagement extends Component
         $customers = Customer::query()
             ->when($this->search, function ($q) {
                 $q->where('name', 'like', "%{$this->search}%")
-                  ->orWhere('email', 'like', "%{$this->search}%")
-                  ->orWhere('phone', 'like', "%{$this->search}%");
+                    ->orWhere('email', 'like', "%{$this->search}%")
+                    ->orWhere('phone', 'like', "%{$this->search}%");
             })
             ->orderBy('name')
             ->paginate(10);
@@ -498,6 +513,7 @@ class CustomersManagement extends Component
         // Add in-use status to each customer
         $customers->getCollection()->transform(function ($customer) {
             $customer->is_in_use = $this->isCustomerInUse($customer->id);
+
             return $customer;
         });
 
@@ -511,7 +527,7 @@ class CustomersManagement extends Component
     {
         return Ledger::orderBy('name')->get();
     }
-    
+
     public function getTaxesProperty()
     {
         return Tax::where('status', 1)->orderBy('description')->get();
