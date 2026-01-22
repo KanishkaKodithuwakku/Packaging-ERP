@@ -322,35 +322,89 @@
                     <td>{{ $item->description }}</td>
                     <td>{{ $item->material_code }}</td>
                     <td class="text-right">{{ number_format($item->quantity, 0) }}</td>
-                    <td class="text-right">{{ $currencySymbol }}{{ number_format($item->unit_price, 2) }}</td>
-                    <td class="text-right"><strong>{{ $currencySymbol }}{{ number_format($item->line_total, 2) }}</strong></td>
+                    @php
+                        // Determine customer type and tax mode
+                        $customerType = $invoice->customer?->customer_type ?? 'non_tax_customer';
+                        $isNonTaxCustomerWithTax = ($customerType === 'non_tax_customer') && ($invoice->customer?->taxes->isNotEmpty() ?? false);
+                        $isTaxCustomer = ($customerType === 'tax_customer');
+                        
+                        // Get VAT rate if applicable
+                        $hasVatTax = $invoice->customer?->taxes->contains(function($tax) {
+                            return strtoupper($tax->abbreviation) === 'VAT' && (float) $tax->percentage === 15.00;
+                        });
+                        $vatRate = $hasVatTax ? 15.00 : 0.00;
+                        $vatFactor = $vatRate > 0 ? (1 + ($vatRate / 100)) : 1;
+                        
+                        // For Non Tax + With Tax: display VAT-inclusive price
+                        // For Tax Customer: display base price
+                        $basePrice = (float) $item->unit_price;
+                        $displayUnitPrice = $isNonTaxCustomerWithTax 
+                            ? ($basePrice * $vatFactor)
+                            : $basePrice;
+                        $lineTotal = $displayUnitPrice * (float) $item->quantity;
+                    @endphp
+                    <td class="text-right">{{ $currencySymbol }}{{ number_format($displayUnitPrice, 2) }}</td>
+                    <td class="text-right"><strong>{{ $currencySymbol }}{{ number_format($lineTotal, 2) }}</strong></td>
                 </tr>
             @endforeach
         </tbody>
     </table>
 
     <div class="summary-section">
-        @if($invoice->subtotal)
         <div class="summary-item">
             <span class="summary-label">Subtotal:</span>
-            <span class="summary-value">{{ $currencySymbol }}{{ number_format($invoice->subtotal, 2) }}</span>
+            <span class="summary-value">{{ $currencySymbol }}{{ number_format($calculatedSubtotalFromItems, 2) }}</span>
         </div>
-        @endif
-        @if($invoice->tax_amount > 0)
-        <div class="summary-item">
-            <span class="summary-label">Tax:</span>
-            <span class="summary-value">{{ $currencySymbol }}{{ number_format($invoice->tax_amount, 2) }}</span>
-        </div>
-        @endif
         @if($invoice->discount_amount > 0)
         <div class="summary-item">
             <span class="summary-label">Discount:</span>
             <span class="summary-value">-{{ $currencySymbol }}{{ number_format($invoice->discount_amount, 2) }}</span>
         </div>
         @endif
+
+        @php
+            // Calculate subtotal from displayed line totals (matching the view logic)
+            $calculatedSubtotalFromItems = 0;
+            $customerType = $invoice->customer?->customer_type ?? 'non_tax_customer';
+            $isNonTaxCustomerWithTax = ($customerType === 'non_tax_customer') && ($invoice->customer?->taxes->isNotEmpty() ?? false);
+            $hasVatTax = $invoice->customer?->taxes->contains(function($tax) {
+                return strtoupper($tax->abbreviation) === 'VAT' && (float) $tax->percentage === 15.00;
+            });
+            $vatRate = $hasVatTax ? 15.00 : 0.00;
+            $vatFactor = $vatRate > 0 ? (1 + ($vatRate / 100)) : 1;
+            
+            foreach ($invoice->items as $item) {
+                $basePrice = (float) $item->unit_price;
+                $displayUnitPrice = $isNonTaxCustomerWithTax 
+                    ? ($basePrice * $vatFactor)
+                    : $basePrice;
+                $lineTotal = $displayUnitPrice * (float) $item->quantity;
+                $calculatedSubtotalFromItems += $lineTotal;
+            }
+            
+            $taxLines = $invoice->getTaxLines();
+            $taxTotal = collect($taxLines)->sum(fn ($l) => (float) ($l['amount'] ?? 0));
+            
+            // For Non Tax + With Tax: Total = Subtotal - Discount (VAT already included)
+            // For Tax Customer: Total = Subtotal - Discount + Tax
+            if ($isNonTaxCustomerWithTax) {
+                $calculatedTotal = max(0, $calculatedSubtotalFromItems - (float) $invoice->discount_amount);
+            } else {
+                $confirmedNet = max(0, $calculatedSubtotalFromItems - (float) $invoice->discount_amount);
+                $calculatedTotal = $confirmedNet + (float) $taxTotal;
+            }
+        @endphp
+
+        @foreach($taxLines as $line)
+        <div class="summary-item">
+            <span class="summary-label">{{ $line['label'] }} ({{ number_format((float) $line['percentage'], 2) }}%):</span>
+            <span class="summary-value">+{{ $currencySymbol }}{{ number_format((float) $line['amount'], 2) }}</span>
+        </div>
+        @endforeach
+
         <div class="summary-item" style="border-top: 2px solid #333; padding-top: 10px; margin-top: 10px;">
             <span class="summary-label" style="font-size: 18px;">Total Amount:</span>
-            <span class="summary-value" style="font-size: 20px;">{{ $currencySymbol }}{{ number_format($invoice->total_amount, 2) }}</span>
+            <span class="summary-value" style="font-size: 20px;">{{ $currencySymbol }}{{ number_format($calculatedTotal, 2) }}</span>
         </div>
     </div>
 

@@ -218,11 +218,18 @@ class DeliveryNoteDetail extends Component
                 session()->flash('info', 'An invoice already exists for this delivery note (Invoice #' . $this->existingInvoice->invoice_number . '). | <a href="' . $invoiceUrl . '" class="underline font-semibold">View Invoice</a>');
                 return;
             }
+            
+            // Check if customer has VAT (15%) tax
+            $hasVatTax = $customer->taxes->contains(function($tax) {
+                return strtoupper($tax->abbreviation) === 'VAT' && $tax->percentage == 15.00;
+            });
 
             // Build invoice items from form data
             $invoiceItems = [];
             $subtotal = 0;
+            $taxAmount = 0;
             $sortOrder = 0;
+            $vatRate = 15.00;
 
             // Add items from delivery note
             foreach ($this->invoiceItems as $item) {
@@ -231,6 +238,10 @@ class DeliveryNoteDetail extends Component
                 
                 if ($qty > 0 && $unitPrice >= 0) {
                     $lineTotal = $qty * $unitPrice;
+                    if ($hasVatTax) {
+                        $lineTotal = $qty * $unitPrice * (1 + ($vatRate / 100));
+                        $taxAmount += $qty * $unitPrice * ($vatRate / 100);
+                    }
                     $subtotal += $lineTotal;
                     
                     $invoiceItems[] = [
@@ -254,6 +265,10 @@ class DeliveryNoteDetail extends Component
                 
                 if ($qty > 0 && $unitPrice >= 0) {
                     $lineTotal = $qty * $unitPrice;
+                    if ($hasVatTax) {
+                        $lineTotal = $qty * $unitPrice * (1 + ($vatRate / 100));
+                        $taxAmount += $qty * $unitPrice * ($vatRate / 100);
+                    }
                     $subtotal += $lineTotal;
                     
                     $invoiceItems[] = [
@@ -276,6 +291,16 @@ class DeliveryNoteDetail extends Component
                 return;
             }
 
+            // Load customer tax configuration and calculate tax breakdown
+            $customer->loadMissing('taxes');
+            $discountAmount = 0.0;
+            $netAmount = max(0, $subtotal - $discountAmount);
+            
+            if (!$hasVatTax) {
+                $taxLines = Invoice::buildTaxLines($netAmount, $customer->taxes);
+                $taxAmount = Invoice::sumTaxLines($taxLines);
+            }
+
             // Create invoice
             $invoice = Invoice::create([
                 'invoice_number' => Invoice::generateInvoiceNumber(),
@@ -285,9 +310,9 @@ class DeliveryNoteDetail extends Component
                 'invoice_date' => $this->invoiceDate,
                 'due_date' => null, // Can be calculated based on payment terms
                 'subtotal' => $subtotal,
-                'tax_amount' => 0, // Can be calculated if tax is configured
-                'discount_amount' => 0, // Can be applied if discounts are configured
-                'total_amount' => $subtotal,
+                'tax_amount' => $taxAmount,
+                'discount_amount' => $discountAmount,
+                'total_amount' => $hasVatTax ? $netAmount : ($netAmount + $taxAmount),
                 'status' => 'draft',
                 'notes' => $this->remarks,
                 'terms' => null,
@@ -355,4 +380,3 @@ class DeliveryNoteDetail extends Component
         return view('livewire.delivery-notes.delivery-note-detail');
     }
 }
-

@@ -13,7 +13,7 @@ class InvoicePrintController extends Controller
     public function __invoke($id)
     {
         $invoice = Invoice::with([
-            'customer',
+            'customer.taxes',
             'deliveryNote',
             'jobOrder',
             'items'

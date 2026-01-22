@@ -467,41 +467,53 @@
                         <!-- Select Taxes (shown for Tax Customer OR Non Tax Customer when "With Tax" selected) -->
                         @if($taxForm['customer_type'] === 'tax_customer' || ($taxForm['customer_type'] === 'non_tax_customer' && ($taxForm['tax_mode'] ?? 'without_tax') === 'with_tax'))
                             <div class="flex items-start gap-4">
-                                <label class="block text-sm font-medium text-gray-700 min-w-[120px] pt-2">Select Taxes</label>
-                                <div class="flex flex-col gap-2">
-                                    @foreach($this->taxes as $tax)
+                                <label class="block text-sm font-medium text-gray-700 min-w-[120px] pt-2">Select Taxes:</label>
+                                <div class="flex flex-col gap-2 bg-gray-50 p-4 rounded-md border border-gray-200">
+                                    @foreach($taxes as $tax)
                                         <div class="flex items-center">
-                                            <input type="radio" 
-                                                   wire:model.live="taxForm.selected_tax" 
-                                                   id="tax_{{ $tax->id }}" 
-                                                   value="{{ $tax->id }}" 
-                                                   {{ $isViewMode ? 'disabled' : '' }} 
-                                                   class="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500 {{ $isViewMode ? 'cursor-not-allowed' : '' }}">
+                                              <input type="checkbox" 
+                                                  wire:model="taxForm.selected_taxes" 
+                                                  id="tax_{{ $tax->id }}" 
+                                                  value="{{ $tax->id }}" 
+                                                  {{ $isViewMode ? 'disabled' : '' }} 
+                                                  class="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 {{ $isViewMode ? 'cursor-not-allowed' : '' }}">
                                             <label for="tax_{{ $tax->id }}" class="ml-2 text-sm text-gray-700">
                                                 {{ $tax->description }} ({{ $tax->abbreviation }} - {{ number_format($tax->percentage, 2) }}%)
                                             </label>
                                         </div>
                                     @endforeach
-                                    @error('taxForm.selected_tax')
+                                    @error('taxForm.selected_taxes')
                                         <span class="text-red-500 text-sm">{{ $message }}</span>
                                     @enderror
                                 </div>
                             </div>
                         @endif
 
-                        <!-- VAT Number (shown when "With Tax" applies and Value Added Tax selected) -->
-                        @if(($taxForm['customer_type'] === 'tax_customer' || ($taxForm['customer_type'] === 'non_tax_customer' && ($taxForm['tax_mode'] ?? 'without_tax') === 'with_tax')) && $taxForm['selected_tax'])
+                        <!-- VAT Number (shown when "With Tax" applies and Value Added Tax is among selected taxes) -->
+                        @if(
+                            ($taxForm['customer_type'] === 'tax_customer' || 
+                            ($taxForm['customer_type'] === 'non_tax_customer' && ($taxForm['tax_mode'] ?? 'without_tax') === 'with_tax'))
+                        )
                             @php
-                                $selectedTax = $this->taxes->firstWhere('id', $taxForm['selected_tax']);
+                                $selectedTaxes = is_array($taxForm['selected_taxes'] ?? null) ? $taxForm['selected_taxes'] : [];
+                                $hasVAT = false;
+                                foreach($selectedTaxes as $taxId) {
+                                    $tax = $taxes->firstWhere('id', $taxId);
+                                    if($tax && (strtolower($tax->description) === 'value added tax' || strtoupper($tax->abbreviation) === 'VAT')) {
+                                        $hasVAT = true;
+                                        break;
+                                    }
+                                }
                             @endphp
-                            @if($selectedTax && $selectedTax->description === 'Value Added Tax')
-                            <div class="flex items-center gap-4">
-                                <label class="block text-sm font-medium text-gray-700 min-w-[120px]">VAT Number</label>
-                                <input type="text" 
-                                       wire:model.defer="taxForm.vat_number" 
-                                       {{ $isViewMode ? 'readonly' : '' }} 
-                                       class="w-64 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 {{ $isViewMode ? 'bg-gray-100 cursor-not-allowed' : '' }}" />
-                            </div>
+                            @if($hasVAT)
+                                <div class="flex items-center gap-4">
+                                    <label class="block text-sm font-medium text-gray-700 min-w-[120px]">VAT Number<span class="text-red-500">*</span></label>
+                                    <input type="text" 
+                                           wire:model.defer="taxForm.vat_number" 
+                                           placeholder="Enter VAT number"
+                                           {{ $isViewMode ? 'readonly' : '' }} 
+                                           class="w-64 px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 {{ $isViewMode ? 'bg-gray-100 cursor-not-allowed' : '' }}" />
+                                </div>
                             @endif
                         @endif
                     </div>

@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Livewire\Customers;
 
 use App\Models\Customer;
@@ -68,7 +67,7 @@ class CustomersManagement extends Component
         // (UI-only choice; taxes are only attachable when set to with_tax)
         'tax_mode' => 'without_tax', // with_tax or without_tax
         'vat_number' => '',
-        'selected_tax' => null, // Single tax ID for radio button selection
+        'selected_taxes' => [], // Array of tax IDs for checkbox selection
     ];
     
     // Discount Tab
@@ -131,7 +130,7 @@ class CustomersManagement extends Component
                     ? 'with_tax'
                     : ($hasAssignedTax ? 'with_tax' : 'without_tax'),
                 'vat_number' => $customer->vat_number ?? '',
-                'selected_tax' => $customer->taxes->first()?->id, // Get the first tax ID
+                'selected_taxes' => $customer->taxes->pluck('id')->toArray(), // Get all tax IDs
             ];
             
             // Load discount info
@@ -156,7 +155,7 @@ class CustomersManagement extends Component
                 'customer_type' => 'non_tax_customer',
                 'tax_mode' => 'without_tax',
                 'vat_number' => '',
-                'selected_tax' => null,
+                'selected_taxes' => [],
             ];
             $this->discountForm = [
                 'accept_discount' => false,
@@ -214,7 +213,7 @@ class CustomersManagement extends Component
                 ? 'with_tax'
                 : ($hasAssignedTax ? 'with_tax' : 'without_tax'),
             'vat_number' => $customer->vat_number ?? '',
-            'selected_tax' => $customer->taxes->first()?->id, // Get the first tax ID
+            'selected_taxes' => $customer->taxes->pluck('id')->toArray(), // Get all tax IDs
         ];
         
         // Load discount info
@@ -345,16 +344,14 @@ class CustomersManagement extends Component
                 'taxForm.customer_type' => 'required|string|in:tax_customer,non_tax_customer',
                 'taxForm.tax_mode' => 'required|string|in:with_tax,without_tax',
                 'taxForm.vat_number' => 'nullable|string|max:255',
-                // A tax must be selected if:
+                // Taxes can be selected if:
                 // - Customer is a tax customer, OR
                 // - Customer is non-tax customer but user selected "With Tax"
-                'taxForm.selected_tax' => [
-                    Rule::requiredIf(function () {
-                        $customerType = $this->taxForm['customer_type'] ?? 'non_tax_customer';
-                        $taxMode = $this->taxForm['tax_mode'] ?? 'without_tax';
-                        return $customerType === 'tax_customer' || ($customerType === 'non_tax_customer' && $taxMode === 'with_tax');
-                    }),
+                'taxForm.selected_taxes' => [
+                    'array',
                     'nullable',
+                ],
+                'taxForm.selected_taxes.*' => [
                     'exists:taxes,id',
                 ],
                 'discountForm.accept_discount' => 'boolean',
@@ -395,12 +392,12 @@ class CustomersManagement extends Component
             $customer = Customer::where('id', $this->editingId)->first();
             $customer->update($customerData);
             
-            // Handle single tax assignment
+            // Handle multiple tax assignments
             $shouldAttachTax = ($validated['taxForm']['customer_type'] === 'tax_customer')
                 || ($validated['taxForm']['customer_type'] === 'non_tax_customer' && ($validated['taxForm']['tax_mode'] ?? 'without_tax') === 'with_tax');
 
-            if ($shouldAttachTax && $validated['taxForm']['selected_tax']) {
-                $customer->taxes()->sync([$validated['taxForm']['selected_tax']]);
+            if ($shouldAttachTax && !empty($validated['taxForm']['selected_taxes'])) {
+                $customer->taxes()->sync($validated['taxForm']['selected_taxes']);
             } else {
                 $customer->taxes()->detach();
                 // Avoid storing VAT numbers when tax isn't applied
@@ -413,12 +410,12 @@ class CustomersManagement extends Component
             $customerData['code'] = $this->generateCustomerCode();
             $customer = Customer::create($customerData);
             
-            // Attach single tax if applicable
+            // Attach multiple taxes if applicable
             $shouldAttachTax = ($validated['taxForm']['customer_type'] === 'tax_customer')
                 || ($validated['taxForm']['customer_type'] === 'non_tax_customer' && ($validated['taxForm']['tax_mode'] ?? 'without_tax') === 'with_tax');
 
-            if ($shouldAttachTax && $validated['taxForm']['selected_tax']) {
-                $customer->taxes()->attach($validated['taxForm']['selected_tax']);
+            if ($shouldAttachTax && !empty($validated['taxForm']['selected_taxes'])) {
+                $customer->taxes()->attach($validated['taxForm']['selected_taxes']);
             } else {
                 // Avoid storing VAT numbers when tax isn't applied
                 $customer->update(['vat_number' => null]);
@@ -506,6 +503,7 @@ class CustomersManagement extends Component
 
         return view('livewire.customers.management', [
             'customers' => $customers,
+            'taxes' => $this->taxes,
         ]);
     }
 
