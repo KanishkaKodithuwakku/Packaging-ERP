@@ -81,8 +81,19 @@ class GRNPrintController extends Controller
                 $grnItem = $itemBatch->grnItem;
             }
             
+            // Skip if grnItem is still null
+            if (!$grnItem) {
+                \Log::warning('GRN item not found for batch item', [
+                    'grn_id' => $grn->id,
+                    'batch_id' => $batch->id,
+                    'item_batch_id' => $itemBatch->id,
+                    'grn_item_id' => $itemBatch->grn_item_id
+                ]);
+                continue;
+            }
+            
             // Ensure grn relationship is set on the item
-            if ($grnItem && !$grnItem->relationLoaded('grn')) {
+            if (!$grnItem->relationLoaded('grn')) {
                 $grnItem->setRelation('grn', $grn);
             }
             

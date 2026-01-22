@@ -330,6 +330,12 @@
                 @php
                     $itemBatch = $itemData['item_batch'];
                     $grnItem = $itemData['grn_item'];
+                    
+                    // Skip if grnItem is null
+                    if (!$grnItem) {
+                        continue;
+                    }
+                    
                     $purchaseOrderItem = $grn->isFromPurchaseOrder() ? $grnItem->getPurchaseOrderItem() : null;
                     $jobOrder = null;
                     $customer = null;
