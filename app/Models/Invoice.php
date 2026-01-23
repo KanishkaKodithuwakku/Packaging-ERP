@@ -161,38 +161,13 @@ class Invoice extends Model
         // Check customer type
         $customerType = $this->customer?->customer_type ?? 'non_tax_customer';
         $isNonTaxCustomerWithTax = ($customerType === 'non_tax_customer') && $taxes->isNotEmpty();
-        $isTaxCustomer = ($customerType === 'tax_customer');
 
         // For Non Tax Customer + With Tax: VAT is included in unit prices, don't show as separate line.
         if ($isNonTaxCustomerWithTax) {
             return [];
         }
 
-        // Check if customer has VAT (15%) tax
-        $hasVatTax = $taxes->contains(function($tax) {
-            return strtoupper($tax->abbreviation) === 'VAT' && $tax->percentage == 15.00;
-        });
-        
-        if ($hasVatTax && $isTaxCustomer) {
-            // For Tax Customer: show VAT as a separate line calculated on subtotal (after discount).
-            $vatTax = $taxes->first(function($tax) {
-                return strtoupper($tax->abbreviation) === 'VAT' && $tax->percentage == 15.00;
-            });
-            
-            if ($vatTax) {
-                $netAmount = $this->getNetAmount();
-                $vatAmount = $netAmount * ((float) $vatTax->percentage / 100);
-                
-                return [[
-                    'label' => $vatTax->tax_label ?? 'VAT',
-                    'abbreviation' => 'VAT',
-                    'percentage' => (float) $vatTax->percentage,
-                    'amount' => round($vatAmount, 2),
-                ]];
-            }
-        }
-
-        // For other tax types, show separate tax lines
+        // For Tax Customers: calculate all taxes using buildTaxLines (supports multiple taxes)
         return self::buildTaxLines($this->getNetAmount(), $taxes);
     }
 }

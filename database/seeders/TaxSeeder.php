@@ -15,7 +15,7 @@ class TaxSeeder extends Seeder
     {
         $taxes = [
             [
-                'description' => 'Value Added Tax',
+                'description' => 'VAT',
                 'abbreviation' => 'VAT',
                 'percentage' => 15.0000,
                 'reverse_calculation' => 1.1500,
@@ -23,7 +23,7 @@ class TaxSeeder extends Seeder
                 'status' => 1,
             ],
             [
-                'description' => 'SSCL Tax',
+                'description' => 'SSCL',
                 'abbreviation' => 'SSCL',
                 'percentage' => 2.5000,
                 'reverse_calculation' => 1.0250,

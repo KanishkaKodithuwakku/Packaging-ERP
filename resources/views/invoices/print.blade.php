@@ -328,18 +328,17 @@
                         $isNonTaxCustomerWithTax = ($customerType === 'non_tax_customer') && ($invoice->customer?->taxes->isNotEmpty() ?? false);
                         $isTaxCustomer = ($customerType === 'tax_customer');
                         
-                        // Get VAT rate if applicable
-                        $hasVatTax = $invoice->customer?->taxes->contains(function($tax) {
-                            return strtoupper($tax->abbreviation) === 'VAT' && (float) $tax->percentage === 15.00;
-                        });
-                        $vatRate = $hasVatTax ? 15.00 : 0.00;
-                        $vatFactor = $vatRate > 0 ? (1 + ($vatRate / 100)) : 1;
+                        // Calculate total tax factor for all taxes
+                        $totalTaxPercentage = $invoice->customer?->taxes
+                            ->filter(fn($tax) => (int)($tax->status ?? 1) === 1)
+                            ->sum(fn($tax) => (float)($tax->percentage ?? 0)) ?? 0;
+                        $taxFactor = 1 + ($totalTaxPercentage / 100);
                         
-                        // For Non Tax + With Tax: display VAT-inclusive price
+                        // For Non Tax + With Tax: display tax-inclusive price
                         // For Tax Customer: display base price
                         $basePrice = (float) $item->unit_price;
                         $displayUnitPrice = $isNonTaxCustomerWithTax 
-                            ? ($basePrice * $vatFactor)
+                            ? ($basePrice * $taxFactor)
                             : $basePrice;
                         $lineTotal = $displayUnitPrice * (float) $item->quantity;
                     @endphp
@@ -349,6 +348,40 @@
             @endforeach
         </tbody>
     </table>
+
+    @php
+        // Calculate subtotal from displayed line totals (matching the view logic)
+        $calculatedSubtotalFromItems = 0;
+        $customerType = $invoice->customer?->customer_type ?? 'non_tax_customer';
+        $isNonTaxCustomerWithTax = ($customerType === 'non_tax_customer') && ($invoice->customer?->taxes->isNotEmpty() ?? false);
+        
+        // Calculate total tax factor for all taxes
+        $totalTaxPercentage = $invoice->customer?->taxes
+            ->filter(fn($tax) => (int)($tax->status ?? 1) === 1)
+            ->sum(fn($tax) => (float)($tax->percentage ?? 0)) ?? 0;
+        $taxFactor = 1 + ($totalTaxPercentage / 100);
+        
+        foreach ($invoice->items as $item) {
+            $basePrice = (float) $item->unit_price;
+            $displayUnitPrice = $isNonTaxCustomerWithTax 
+                ? ($basePrice * $taxFactor)
+                : $basePrice;
+            $lineTotal = $displayUnitPrice * (float) $item->quantity;
+            $calculatedSubtotalFromItems += $lineTotal;
+        }
+        
+        $taxLines = $invoice->getTaxLines();
+        $taxTotal = collect($taxLines)->sum(fn ($l) => (float) ($l['amount'] ?? 0));
+        
+        // For Non Tax + With Tax: Total = Subtotal - Discount (taxes already included)
+        // For Tax Customer: Total = Subtotal - Discount + Tax
+        if ($isNonTaxCustomerWithTax) {
+            $calculatedTotal = max(0, $calculatedSubtotalFromItems - (float) $invoice->discount_amount);
+        } else {
+            $confirmedNet = max(0, $calculatedSubtotalFromItems - (float) $invoice->discount_amount);
+            $calculatedTotal = $confirmedNet + (float) $taxTotal;
+        }
+    @endphp
 
     <div class="summary-section">
         <div class="summary-item">
@@ -361,39 +394,6 @@
             <span class="summary-value">-{{ $currencySymbol }}{{ number_format($invoice->discount_amount, 2) }}</span>
         </div>
         @endif
-
-        @php
-            // Calculate subtotal from displayed line totals (matching the view logic)
-            $calculatedSubtotalFromItems = 0;
-            $customerType = $invoice->customer?->customer_type ?? 'non_tax_customer';
-            $isNonTaxCustomerWithTax = ($customerType === 'non_tax_customer') && ($invoice->customer?->taxes->isNotEmpty() ?? false);
-            $hasVatTax = $invoice->customer?->taxes->contains(function($tax) {
-                return strtoupper($tax->abbreviation) === 'VAT' && (float) $tax->percentage === 15.00;
-            });
-            $vatRate = $hasVatTax ? 15.00 : 0.00;
-            $vatFactor = $vatRate > 0 ? (1 + ($vatRate / 100)) : 1;
-            
-            foreach ($invoice->items as $item) {
-                $basePrice = (float) $item->unit_price;
-                $displayUnitPrice = $isNonTaxCustomerWithTax 
-                    ? ($basePrice * $vatFactor)
-                    : $basePrice;
-                $lineTotal = $displayUnitPrice * (float) $item->quantity;
-                $calculatedSubtotalFromItems += $lineTotal;
-            }
-            
-            $taxLines = $invoice->getTaxLines();
-            $taxTotal = collect($taxLines)->sum(fn ($l) => (float) ($l['amount'] ?? 0));
-            
-            // For Non Tax + With Tax: Total = Subtotal - Discount (VAT already included)
-            // For Tax Customer: Total = Subtotal - Discount + Tax
-            if ($isNonTaxCustomerWithTax) {
-                $calculatedTotal = max(0, $calculatedSubtotalFromItems - (float) $invoice->discount_amount);
-            } else {
-                $confirmedNet = max(0, $calculatedSubtotalFromItems - (float) $invoice->discount_amount);
-                $calculatedTotal = $confirmedNet + (float) $taxTotal;
-            }
-        @endphp
 
         @foreach($taxLines as $line)
         <div class="summary-item">

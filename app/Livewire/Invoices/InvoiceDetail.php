@@ -26,19 +26,16 @@ class InvoiceDetail extends Component
         ])->findOrFail($id);
 
         // Initialize item prices for editing/display.
-        // For Non Tax Customer + With Tax: show VAT-inclusive prices.
+        // For Non Tax Customer + With Tax: show tax-inclusive prices (all taxes added).
         // For Tax Customer: show base prices.
         $isNonTaxWithTax = $this->isNonTaxCustomerWithTax();
-        $vatRate = $this->getVatRate();
-        $vatFactor = $vatRate > 0 ? (1 + ($vatRate / 100)) : 1;
+        $taxFactor = $isNonTaxWithTax ? $this->getTotalTaxFactor() : 1;
         
         foreach ($this->invoice->items as $item) {
             $basePrice = (float) $item->unit_price;
-            // For Non Tax + With Tax: display VAT-inclusive price
+            // For Non Tax + With Tax: display tax-inclusive price
             // For Tax Customer: display base price
-            $this->itemPrices[$item->id] = $isNonTaxWithTax 
-                ? ($basePrice * $vatFactor)
-                : $basePrice;
+            $this->itemPrices[$item->id] = $basePrice * $taxFactor;
         }
     }
 
@@ -46,19 +43,6 @@ class InvoiceDetail extends Component
     {
         // Validate and update displayed unit price (always base price, no VAT).
         $this->itemPrices[$key] = max(0, (float) $value);
-    }
-
-    /**
-     * Check if customer has VAT (15%) tax assigned.
-     */
-    private function hasVat15Tax(): bool
-    {
-        $this->invoice->loadMissing('customer.taxes');
-        $taxes = $this->invoice->customer?->taxes ?? collect();
-
-        return $taxes->contains(function ($tax) {
-            return strtoupper($tax->abbreviation) === 'VAT' && (float) $tax->percentage === 15.00;
-        });
     }
 
     /**
@@ -85,14 +69,19 @@ class InvoiceDetail extends Component
     }
 
     /**
-     * Get VAT rate (15%) if customer has VAT tax.
+     * Get total tax factor for all customer taxes (for tax-inclusive pricing).
+     * Example: If VAT=18% and SSCL=2.5%, factor = 1.205 (1 + 0.18 + 0.025)
      */
-    private function getVatRate(): float
+    private function getTotalTaxFactor(): float
     {
-        if (!$this->hasVat15Tax()) {
-            return 0.0;
-        }
-        return 15.00;
+        $this->invoice->loadMissing('customer.taxes');
+        $taxes = $this->invoice->customer?->taxes ?? collect();
+        
+        $totalTaxPercentage = $taxes
+            ->filter(fn($tax) => (int)($tax->status ?? 1) === 1)
+            ->sum(fn($tax) => (float)($tax->percentage ?? 0));
+        
+        return 1 + ($totalTaxPercentage / 100);
     }
 
     public function getCalculatedSubtotalProperty()
@@ -119,19 +108,10 @@ class InvoiceDetail extends Component
             return 0;
         }
         
-        // For Tax Customer: calculate VAT on subtotal (after discount).
+        // For Tax Customer: calculate all taxes on subtotal (after discount).
         $this->invoice->loadMissing('customer.taxes');
         $taxes = $this->invoice->customer?->taxes ?? collect();
-        $hasVatTax = $this->hasVat15Tax();
         
-        if ($hasVatTax) {
-            $vatRate = $this->getVatRate();
-            $baseAmount = max(0, (float) $this->calculatedSubtotal - (float) $this->invoice->discount_amount);
-            $taxAmount = $baseAmount * ($vatRate / 100);
-            return $taxAmount;
-        }
-        
-        // For other tax types, calculate tax on total subtotal
         $baseAmount = max(0, (float) $this->calculatedSubtotal - (float) $this->invoice->discount_amount);
         $taxLines = Invoice::buildTaxLines($baseAmount, $taxes);
         return Invoice::sumTaxLines($taxLines);
@@ -163,9 +143,7 @@ class InvoiceDetail extends Component
             $taxes = $this->invoice->customer?->taxes ?? collect();
             $isNonTaxWithTax = $this->isNonTaxCustomerWithTax();
             $isTaxCustomer = $this->isTaxCustomer();
-            $hasVatTax = $this->hasVat15Tax();
-            $vatRate = $this->getVatRate();
-            $vatFactor = $vatRate > 0 ? (1 + ($vatRate / 100)) : 1;
+            $taxFactor = $isNonTaxWithTax ? $this->getTotalTaxFactor() : 1;
             
             $subtotal = 0;
 
@@ -173,14 +151,14 @@ class InvoiceDetail extends Component
                 $displayUnitPrice = (float) ($this->itemPrices[$item->id] ?? $item->unit_price);
                 
                 if ($isNonTaxWithTax) {
-                    // For Non Tax + With Tax: displayed price is VAT-inclusive.
-                    // Store base price in DB, but line_total includes VAT.
-                    $baseUnitPrice = $vatFactor > 0 ? ($displayUnitPrice / $vatFactor) : $displayUnitPrice;
-                    $lineTotal = $displayUnitPrice * (float) $item->quantity; // VAT-inclusive line total
+                    // For Non Tax + With Tax: displayed price is tax-inclusive.
+                    // Store base price in DB, but line_total includes all taxes.
+                    $baseUnitPrice = $taxFactor > 0 ? ($displayUnitPrice / $taxFactor) : $displayUnitPrice;
+                    $lineTotal = $displayUnitPrice * (float) $item->quantity; // Tax-inclusive line total
                     
                     $item->update([
                         'unit_price' => $baseUnitPrice, // Store base price
-                        'line_total' => $lineTotal, // Store VAT-inclusive line total
+                        'line_total' => $lineTotal, // Store tax-inclusive line total
                     ]);
                 } else {
                     // For Tax Customer: displayed price is base price.
@@ -204,10 +182,8 @@ class InvoiceDetail extends Component
             if ($isNonTaxWithTax) {
                 // For Non Tax + With Tax: VAT is already in subtotal, so tax_amount = 0.
                 $taxAmount = 0;
-            } elseif ($hasVatTax && $isTaxCustomer) {
-                // For Tax Customer: calculate VAT on subtotal (after discount).
-                $taxAmount = $netAmount * ($vatRate / 100);
             } else {
+                // For Tax Customer: calculate all taxes using buildTaxLines (supports multiple taxes)
                 $taxLines = Invoice::buildTaxLines($netAmount, $taxes);
                 $taxAmount = Invoice::sumTaxLines($taxLines);
             }
@@ -233,9 +209,7 @@ class InvoiceDetail extends Component
             // Update item prices array with saved values
             foreach ($this->invoice->items as $item) {
                 $basePrice = (float) $item->unit_price;
-                $this->itemPrices[$item->id] = $isNonTaxWithTax 
-                    ? ($basePrice * $vatFactor)
-                    : $basePrice;
+                $this->itemPrices[$item->id] = $basePrice * $taxFactor;
             }
 
             session()->flash('success', 'Invoice saved successfully.');

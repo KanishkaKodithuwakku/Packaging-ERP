@@ -219,17 +219,15 @@ class DeliveryNoteDetail extends Component
                 return;
             }
             
-            // Check if customer has VAT (15%) tax
-            $hasVatTax = $customer->taxes->contains(function($tax) {
-                return strtoupper($tax->abbreviation) === 'VAT' && $tax->percentage == 15.00;
-            });
+            // Check customer type for tax handling
+            $customerType = $customer->customer_type ?? 'non_tax_customer';
+            $isNonTaxCustomerWithTax = ($customerType === 'non_tax_customer') && $customer->taxes->isNotEmpty();
+            $isTaxCustomer = ($customerType === 'tax_customer');
 
             // Build invoice items from form data
             $invoiceItems = [];
             $subtotal = 0;
-            $taxAmount = 0;
             $sortOrder = 0;
-            $vatRate = 15.00;
 
             // Add items from delivery note
             foreach ($this->invoiceItems as $item) {
@@ -238,10 +236,6 @@ class DeliveryNoteDetail extends Component
                 
                 if ($qty > 0 && $unitPrice >= 0) {
                     $lineTotal = $qty * $unitPrice;
-                    if ($hasVatTax) {
-                        $lineTotal = $qty * $unitPrice * (1 + ($vatRate / 100));
-                        $taxAmount += $qty * $unitPrice * ($vatRate / 100);
-                    }
                     $subtotal += $lineTotal;
                     
                     $invoiceItems[] = [
@@ -265,10 +259,6 @@ class DeliveryNoteDetail extends Component
                 
                 if ($qty > 0 && $unitPrice >= 0) {
                     $lineTotal = $qty * $unitPrice;
-                    if ($hasVatTax) {
-                        $lineTotal = $qty * $unitPrice * (1 + ($vatRate / 100));
-                        $taxAmount += $qty * $unitPrice * ($vatRate / 100);
-                    }
                     $subtotal += $lineTotal;
                     
                     $invoiceItems[] = [
@@ -296,7 +286,9 @@ class DeliveryNoteDetail extends Component
             $discountAmount = 0.0;
             $netAmount = max(0, $subtotal - $discountAmount);
             
-            if (!$hasVatTax) {
+            // Calculate all taxes for Tax Customers, no taxes for Non-Tax Customers
+            $taxAmount = 0;
+            if ($isTaxCustomer) {
                 $taxLines = Invoice::buildTaxLines($netAmount, $customer->taxes);
                 $taxAmount = Invoice::sumTaxLines($taxLines);
             }
@@ -312,7 +304,7 @@ class DeliveryNoteDetail extends Component
                 'subtotal' => $subtotal,
                 'tax_amount' => $taxAmount,
                 'discount_amount' => $discountAmount,
-                'total_amount' => $hasVatTax ? $netAmount : ($netAmount + $taxAmount),
+                'total_amount' => $netAmount + $taxAmount,
                 'status' => 'draft',
                 'notes' => $this->remarks,
                 'terms' => null,
