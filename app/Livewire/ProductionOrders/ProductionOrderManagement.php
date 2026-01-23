@@ -15,6 +15,10 @@ class ProductionOrderManagement extends Component
     public $selectedPurchaseOrderId = null;
     public $selectedPurchaseOrder = null;
     public $form = [];
+    
+    // Filter properties
+    public $statusFilter = 'pending'; // Default to pending
+    public $search = '';
 
     protected $rules = [
         'form.purchase_order_id' => 'required',
@@ -30,9 +34,25 @@ class ProductionOrderManagement extends Component
 
     public function loadProductionOrders()
     {
-        $this->productionOrders = ProductionOrder::with(['supplier', 'jobOrder.customer', 'items', 'grns'])
-            ->orderBy('created_at', 'desc')
-            ->get();
+        $query = ProductionOrder::with(['supplier', 'jobOrder.customer', 'items', 'grns'])
+            ->orderBy('created_at', 'desc');
+        
+        // Apply status filter
+        if ($this->statusFilter && $this->statusFilter !== 'all') {
+            $query->where('status', $this->statusFilter);
+        }
+        
+        // Apply search filter
+        if ($this->search) {
+            $query->where(function($q) {
+                $q->where('production_order_number', 'like', '%' . $this->search . '%')
+                  ->orWhereHas('jobOrder', function($subQuery) {
+                      $subQuery->where('supplier_po_number', 'like', '%' . $this->search . '%');
+                  });
+            });
+        }
+        
+        $this->productionOrders = $query->get();
     }
 
     public function resetForm()
@@ -44,6 +64,22 @@ class ProductionOrderManagement extends Component
         ];
         $this->selectedPurchaseOrderId = null;
         $this->selectedPurchaseOrder = null;
+    }
+    
+    /**
+     * Update filter and reload data
+     */
+    public function updatedStatusFilter()
+    {
+        $this->loadProductionOrders();
+    }
+    
+    /**
+     * Update search and reload data
+     */
+    public function updatedSearch()
+    {
+        $this->loadProductionOrders();
     }
 
     public function openCreateModal($purchaseOrderId = null)

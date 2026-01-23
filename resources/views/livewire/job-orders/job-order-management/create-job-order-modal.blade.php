@@ -49,6 +49,18 @@
                 </div>
                 @endif
 
+                <!-- Currency Mismatch Error -->
+                @if($currencyMismatchError)
+                <div class="mb-4 bg-yellow-100 border border-yellow-400 text-yellow-800 px-4 py-3 rounded">
+                    <div class="flex items-center">
+                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        {{ $currencyMismatchError }}
+                    </div>
+                </div>
+                @endif
+
                 <!-- Form -->
                 <div class="mt-6">
                     <form wire:submit.prevent="saveJobOrder">
@@ -178,7 +190,9 @@
                                 Cancel
                             </button>
                             <button type="submit"
-                                    class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                                    @if($currencyMismatchError) disabled @endif
+                                    class="{{ $currencyMismatchError ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-700' }} text-white font-bold py-2 px-4 rounded"
+                                    @if($currencyMismatchError) title="{{ $currencyMismatchError }}" @endif>
                                 Create Job Order
                             </button>
                         </div>

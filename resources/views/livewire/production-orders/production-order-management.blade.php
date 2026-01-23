@@ -27,15 +27,31 @@
         <!-- Production Orders Table -->
         <div class="bg-white shadow rounded-lg">
             <div class="px-6 py-4 border-b border-gray-200">
-                <div class="flex items-center justify-between">
+                <div class="flex items-center justify-between mb-4">
                     <h3 class="text-lg font-medium text-gray-900">All Production Orders</h3>
-                    {{-- <button wire:click="openCreateModal" 
-                            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors flex items-center">
-                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                        </svg>
-                        Create Production Order
-                    </button> --}}
+                </div>
+                        
+                <!-- Filters -->
+                <div class="flex items-center space-x-4">
+                    <!-- Search -->
+                    <div class="flex-1">
+                        <input type="text" 
+                               wire:model.live="search" 
+                               placeholder="Search by PO Number or Purchase Order..."
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                            
+                    <!-- Status Filter -->
+                    <div class="w-48">
+                        <select wire:model.live="statusFilter" 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="all">All Status</option>
+                            <option value="pending">Pending</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="completed">Completed</option>
+                            <option value="cancelled">Cancelled</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 

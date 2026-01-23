@@ -52,6 +52,9 @@ class JobOrderManagement extends Component
         'status' => 'pending'
     ];
 
+    // Currency validation
+    public $currencyMismatchError = '';
+
     // Box form data
     public $boxForm = [
         'order_qty' => '',
@@ -280,6 +283,9 @@ class JobOrderManagement extends Component
         }
         // Trigger dimension calculations when supplier changes
         $this->calculateDimensions();
+        
+        // Check currency compatibility
+        $this->checkCurrencyCompatibility();
     }
 
     public function updatedFormCustomerId($value)
@@ -290,12 +296,48 @@ class JobOrderManagement extends Component
                 $this->form['customer_address'] = $customer->address;
             }
         }
+        
+        // Check currency compatibility
+        $this->checkCurrencyCompatibility();
     }
 
     public function updatedBoxFormPly($value)
     {
         $this->resetCombinationFields();
         $this->calculateDimensions();
+    }
+
+    /**
+     * Check if customer and supplier have compatible currencies.
+     */
+    private function checkCurrencyCompatibility()
+    {
+        $this->currencyMismatchError = '';
+        
+        if (!empty($this->form['customer_id']) && !empty($this->form['supplier_id'])) {
+            $customer = Customer::find($this->form['customer_id']);
+            $supplier = Supplier::find($this->form['supplier_id']);
+            
+            if ($customer && $supplier) {
+                $customerCurrency = $customer->currency ?? '';
+                $supplierCurrency = $supplier->currency ?? '';
+                
+                // If either currency is not set or they don't match, show error
+                if (empty($customerCurrency) || empty($supplierCurrency)) {
+                    $this->currencyMismatchError = 'Both customer and supplier must have a currency set.';
+                } elseif ($customerCurrency !== $supplierCurrency) {
+                    $this->currencyMismatchError = "Currency mismatch: Customer uses {$customerCurrency} but Supplier uses {$supplierCurrency}. Please select customer and supplier with the same currency.";
+                }
+            }
+        }
+    }
+    
+    /**
+     * Check if currency validation passes (computed property).
+     */
+    public function getCurrencyValidProperty()
+    {
+        return empty($this->currencyMismatchError);
     }
 
     public function updatedDividerFormPly($value)
@@ -1069,6 +1111,13 @@ class JobOrderManagement extends Component
                 'form.status' => 'required|in:pending,draft,confirmed,in_production,completed,cancelled',
             ]);
 
+            // Validate currency compatibility
+            $this->checkCurrencyCompatibility();
+            if ($this->currencyMismatchError) {
+                session()->flash('error', $this->currencyMismatchError);
+                return;
+            }
+
             if ($this->editingJobOrder && $this->currentJobOrderId) {
                 // UPDATE EXISTING JOB ORDER
                 \Log::info('Updating existing job order', ['job_order_id' => $this->currentJobOrderId]);
@@ -1194,6 +1243,7 @@ class JobOrderManagement extends Component
         $this->boxes = [];
         $this->dividers = [];
         $this->currentJobOrderId = null;
+        $this->currencyMismatchError = '';
 
         $this->resetErrorBag();
     }

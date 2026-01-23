@@ -116,6 +116,12 @@
                 </div>
             </div>
             <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Currency</label>
+                <div class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900">
+                    {{ optional($deliveryNote->jobOrder)->customer->currency ?? 'N/A' }}
+                </div>
+            </div>
+            <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
                 <div class="w-full px-3 py-2">
                     <span class="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full
@@ -197,6 +203,7 @@
                     <div>
                         <h3 style="font-weight: bold; margin-bottom: 10px;">Customer Information</h3>
                         <p><strong>Customer:</strong> {{ optional($deliveryNote->jobOrder)->customer->name ?? 'N/A' }}</p>
+                        <p><strong>Currency:</strong> {{ optional($deliveryNote->jobOrder)->customer->currency ?? 'N/A' }}</p>
                         <p><strong>Job Order:</strong> {{ optional($deliveryNote->jobOrder)->job_number ?? 'N/A' }}</p>
                     </div>
                     <div>

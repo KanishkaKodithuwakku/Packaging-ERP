@@ -20,6 +20,7 @@ use App\Livewire\Suppliers\SupplierDetail;
 use App\Livewire\Customers\CustomersManagement;
 use App\Livewire\Permissions\RolePermissionEditor;
 use App\Livewire\ConsumableItemsCrud;
+use App\Livewire\TaxManagement;
 
 // Redirect root to dashboard (protected)
 Route::get('/', [App\Http\Controllers\DashboardController::class, 'index'])
@@ -288,6 +289,11 @@ Route::get('/uom-conversion-examples', function () {
 Route::get('/configuration-management', \App\Livewire\Configuration\ConfigurationManagement::class)
     ->middleware(['auth'])
     ->name('configuration-management');
+
+// Tax Management
+Route::get('/tax-management', TaxManagement::class)
+    ->middleware(['auth'])
+    ->name('tax-management');
 
 // Purchase Order Creation
 Route::get('/create-purchase-order', \App\Livewire\PurchaseOrders\CreatePurchaseOrder::class)
