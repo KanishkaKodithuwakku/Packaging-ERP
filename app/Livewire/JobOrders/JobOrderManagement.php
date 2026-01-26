@@ -364,23 +364,60 @@ class JobOrderManagement extends Component
         session()->flash('success', 'Type changed to: ' . $value);
     }
 
-    public function updatedBoxFormLength($value)
-    {
-        \Log::info('updatedBoxFormLength called', ['value' => $value, 'boxForm' => $this->boxForm]);
-        $this->calculateDimensions();
-    }
+    // DISABLED - Using updatedBoxForm instead to prevent race conditions
+    // public function updatedBoxFormLength($value)
+    // {
+    //     // Store selling_price before calculation
+    //     $originalSellingPrice = $this->boxForm['selling_price'] ?? '';
+    //     
+    //     \Log::info('updatedBoxFormLength called', ['value' => $value, 'boxForm' => $this->boxForm, 'selling_price' => $originalSellingPrice]);
+    //     $this->calculateDimensions();
+    //     
+    //     // Restore selling_price after calculation
+    //     if ($originalSellingPrice !== '') {
+    //         $this->boxForm['selling_price'] = $originalSellingPrice;
+    //     }
+    // }
 
-    public function updatedBoxFormWidth($value)
-    {
-        \Log::info('updatedBoxFormWidth called', ['value' => $value, 'boxForm' => $this->boxForm]);
-        $this->calculateDimensions();
-    }
+    // DISABLED - Using updatedBoxForm instead to prevent race conditions
+    // public function updatedBoxFormWidth($value)
+    // {
+    //     // Store selling_price before calculation
+    //     $originalSellingPrice = $this->boxForm['selling_price'] ?? '';
+    //     
+    //     \Log::info('updatedBoxFormWidth called', [
+    //         'value' => $value, 
+    //         'boxForm' => $this->boxForm, 
+    //         'selling_price_before' => $originalSellingPrice
+    //     ]);
+    //     
+    //     $this->calculateDimensions();
+    //     
+    //     \Log::info('After calculateDimensions', [
+    //         'selling_price_after_calc' => $this->boxForm['selling_price'] ?? 'not set'
+    //     ]);
+    //     
+    //     // Restore selling_price after calculation
+    //     if ($originalSellingPrice !== '') {
+    //         $this->boxForm['selling_price'] = $originalSellingPrice;
+    //         \Log::info('Restored selling_price', ['value' => $originalSellingPrice]);
+    //     }
+    // }
 
-    public function updatedBoxFormHeight($value)
-    {
-        \Log::info('updatedBoxFormHeight called', ['value' => $value, 'boxForm' => $this->boxForm]);
-        $this->calculateDimensions();
-    }
+    // DISABLED - Using updatedBoxForm instead to prevent race conditions
+    // public function updatedBoxFormHeight($value)
+    // {
+    //     // Store selling_price before calculation
+    //     $originalSellingPrice = $this->boxForm['selling_price'] ?? '';
+    //     
+    //     \Log::info('updatedBoxFormHeight called', ['value' => $value, 'boxForm' => $this->boxForm, 'selling_price' => $originalSellingPrice]);
+    //     $this->calculateDimensions();
+    //     
+    //     // Restore selling_price after calculation
+    //     if ($originalSellingPrice !== '') {
+    //         $this->boxForm['selling_price'] = $originalSellingPrice;
+    //     }
+    // }
 
     public function updatedBoxForm($value, $field)
     {
@@ -389,15 +426,18 @@ class JobOrderManagement extends Component
             'value' => $value,
             'current_length' => $this->boxForm['length'] ?? 'not set',
             'current_order_qty' => $this->boxForm['order_qty'] ?? 'not set',
+            'current_selling_price' => $this->boxForm['selling_price'] ?? 'not set',
             'boxForm' => $this->boxForm
         ]);
 
         // Don't trigger calculations if user is manually editing calculated fields
-        if (in_array($field, ['reel_size', 'cut_size', 'board_qty'])) {
+        if (in_array($field, ['reel_size', 'cut_size', 'board_qty', 'selling_price'])) {
             // User is manually editing, don't recalculate
             return;
         }
 
+        // Store selling_price to prevent accidental overwrites
+        $originalSellingPrice = $this->boxForm['selling_price'] ?? '';
         // Safeguard: Ensure order_qty changes don't affect length
         $originalLength = $this->boxForm['length'] ?? '';
         
@@ -417,6 +457,11 @@ class JobOrderManagement extends Component
                 // Restore original length
                 $this->boxForm['length'] = $originalLength;
             }
+        }
+        
+        // Restore selling_price if it was changed during calculations
+        if ($originalSellingPrice !== '' && $field !== 'selling_price') {
+            $this->boxForm['selling_price'] = $originalSellingPrice;
         }
     }
     

@@ -54,7 +54,7 @@
                                 <td class="px-2 py-2 border border-gray-300">
                                     <input type="number"
                                            step="0.01"
-                                           wire:model="boxForm.selling_price"
+                                           wire:model.defer="boxForm.selling_price"
                                            class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                                            placeholder="0.00">
                                     @error('boxForm.selling_price') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
@@ -64,7 +64,7 @@
                                 <td class="px-2 py-2 text-sm font-medium text-gray-700 border border-gray-300" style="width: 40%;">Activity <span class="text-red-500">*</span></td>
                                 <td class="px-2 py-2 border border-gray-300">
                                     <input type="text"
-                                           wire:model="boxForm.activity"
+                                           wire:model.defer="boxForm.activity"
                                            class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                                            placeholder="Activity type">
                                     @error('boxForm.activity') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
@@ -143,34 +143,64 @@
                             <tr>
                                 <td class="px-2 py-2 text-sm font-medium text-gray-700 border border-gray-300" style="width: 40%;">Length (L) <span class="text-red-500">*</span></td>
                                 <td class="px-2 py-2 border border-gray-300">
-                                    <input type="number"
-                                           id="box-form-length"
-                                           step="0.01"
-                                           wire:model.live.debounce.500ms="boxForm.length"
-                                           class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                                           placeholder="0.00">
+                                    <div x-data="{ 
+                                        length: $wire.entangle('boxForm.length', false),
+                                        updateLength(value) {
+                                            this.length = value;
+                                            $wire.set('boxForm.length', value, false);
+                                            setTimeout(() => { $wire.call('calculateDimensions'); }, 500);
+                                        }
+                                    }">
+                                        <input type="number"
+                                               id="box-form-length"
+                                               step="0.01"
+                                               x-model="length"
+                                               @input="updateLength($event.target.value)"
+                                               class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                               placeholder="0.00">
+                                    </div>
                                     @error('boxForm.length') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                                 </td>
                             </tr>
                             <tr>
                                 <td class="px-2 py-2 text-sm font-medium text-gray-700 border border-gray-300" style="width: 40%;">Width (W) <span class="text-red-500">*</span></td>
                                 <td class="px-2 py-2 border border-gray-300">
-                                    <input type="number"
-                                           step="0.01"
-                                           wire:model.live.debounce.500ms="boxForm.width"
-                                           class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                                           placeholder="0.00">
+                                    <div x-data="{ 
+                                        width: $wire.entangle('boxForm.width', false),
+                                        updateWidth(value) {
+                                            this.width = value;
+                                            $wire.set('boxForm.width', value, false);
+                                            setTimeout(() => { $wire.call('calculateDimensions'); }, 500);
+                                        }
+                                    }">
+                                        <input type="number"
+                                               step="0.01"
+                                               x-model="width"
+                                               @input="updateWidth($event.target.value)"
+                                               class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                               placeholder="0.00">
+                                    </div>
                                     @error('boxForm.width') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                                 </td>
                             </tr>
                             <tr>
                                 <td class="px-2 py-2 text-sm font-medium text-gray-700 border border-gray-300" style="width: 40%;">Height (H) <span class="text-red-500">*</span></td>
                                 <td class="px-2 py-2 border border-gray-300">
-                                    <input type="number"
-                                           step="0.01"
-                                           wire:model.live.debounce.500ms="boxForm.height"
-                                           class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                                           placeholder="0.00">
+                                    <div x-data="{ 
+                                        height: $wire.entangle('boxForm.height', false),
+                                        updateHeight(value) {
+                                            this.height = value;
+                                            $wire.set('boxForm.height', value, false);
+                                            setTimeout(() => { $wire.call('calculateDimensions'); }, 500);
+                                        }
+                                    }">
+                                        <input type="number"
+                                               step="0.01"
+                                               x-model="height"
+                                               @input="updateHeight($event.target.value)"
+                                               class="block w-full px-2 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                               placeholder="0.00">
+                                    </div>
                                     @error('boxForm.height') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                                 </td>
                             </tr>
