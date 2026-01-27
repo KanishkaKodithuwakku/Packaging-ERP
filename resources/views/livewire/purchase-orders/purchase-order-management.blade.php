@@ -472,75 +472,358 @@
                 </div>
 
                 <!-- Print Content (Hidden, shown only when printing) -->
-                <div id="purchaseOrderPrintContent" class="hidden print:block print:p-6" style="display: none;">
-                    <!-- Print Header -->
-                    <div class="text-center mb-6 border-b-2 border-gray-800 pb-4">
-                        <h2 class="text-3xl font-bold text-gray-900">PURCHASE ORDER</h2>
-                        <p class="text-lg text-gray-700 mt-2">PO Number: {{ $selectedPurchaseOrder->po_number }}</p>
-                        <p class="text-sm text-gray-600">Date: {{ \App\Helpers\DateFormatHelper::format($selectedPurchaseOrder->date) }}</p>
-                    </div>
-
-                    <!-- Print Details -->
-                    <div class="grid grid-cols-2 gap-6 mb-6">
-                        <div>
-                            <h4 class="font-semibold text-gray-900 mb-2">Supplier Information</h4>
-                            <p class="text-sm text-gray-700"><strong>Supplier:</strong> {{ $selectedPurchaseOrder->supplier->name ?? 'N/A' }} ({{ $selectedPurchaseOrder->supplier->code ?? 'N/A' }})</p>
-                            <p class="text-sm text-gray-700"><strong>Status:</strong> {{ ucfirst($selectedPurchaseOrder->status) }}</p>
+                @php
+                    $accountSettings = \App\Models\AccountSetting::getInstance();
+                    $companyName = $accountSettings->company_name ?? 'Kings Packaging (Pvt) Ltd';
+                    $companyAddress = $accountSettings->address ?? '182/16, Panaluwa Industrial Zone, Panaluwa, Watareka, Padukka.';
+                    $companyEmail = $accountSettings->email ?? 'ranasingha@kingspack.lk';
+                    $companyPhone = '011-4948706'; // Default phone from image
+                    $companyWebsite = 'www.kingspack.lk'; // Default website from image
+                @endphp
+                <div id="purchaseOrderPrintContent" class="hidden print:block" style="display: none;">
+                    <style>
+                        @media print {
+                            @page {
+                                margin: 0.5cm;
+                                size: A4;
+                            }
+                            body {
+                                margin: 0;
+                                padding: 0;
+                            }
+                        }
+                        .po-print-container {
+                            font-family: Arial, sans-serif;
+                            padding: 20px;
+                            background: white;
+                            color: #000;
+                        }
+                        .po-header {
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: flex-start;
+                            margin-bottom: 30px;
+                            gap: 20px;
+                        }
+                        .po-company-section {
+                            flex: 1;
+                            text-align: left;
+                            display: flex;
+                            flex-direction: row;
+                            align-items: flex-start;
+                            gap: 15px;
+                        }
+                        .po-logo-area {
+                            width: auto;
+                            max-width: 120px;
+                            background-color: transparent;
+                            border-radius: 0;
+                            display: flex;
+                            flex-direction: column;
+                            align-items: flex-start;
+                            justify-content: flex-start;
+                            margin-bottom: 0;
+                            padding: 0;
+                            box-sizing: border-box;
+                            position: relative;
+                            flex-shrink: 0;
+                        }
+                        .po-company-info {
+                            flex: 1;
+                            display: flex;
+                            flex-direction: column;
+                        }
+                        .po-logo-area img {
+                            max-width: 100%;
+                            height: auto;
+                            object-fit: contain;
+                            display: block;
+                        }
+                        .po-company-name {
+                            font-size: 24px;
+                            font-weight: bold;
+                            color: #1e3a8a;
+                            margin-bottom: 6px;
+                            line-height: 1.2;
+                        }
+                        .po-company-slogan-image {
+                            margin-bottom: 8px;
+                            max-width: 100%;
+                        }
+                        .po-company-slogan-image img {
+                            max-width: 100%;
+                            height: auto;
+                            display: block;
+                        }
+                        .po-company-details {
+                            font-size: 11px;
+                            color: #000;
+                            line-height: 1.6;
+                            margin-top: 10px;
+                        }
+                        .po-details-section {
+                            flex: 1;
+                            text-align: right;
+                        }
+                        .po-title-box {
+                            background-color: #4a5568;
+                            color: white;
+                            padding: 12px 20px;
+                            border-radius: 6px;
+                            font-size: 18px;
+                            font-weight: bold;
+                            text-align: center;
+                            margin-bottom: 10px;
+                        }
+                        .po-detail-box {
+                            background-color: white;
+                            border: 1px solid #000;
+                            border-radius: 6px;
+                            padding: 8px 12px;
+                            margin-bottom: 8px;
+                            text-align: left;
+                            font-size: 12px;
+                        }
+                        .po-detail-label {
+                            font-weight: bold;
+                            color: #000;
+                        }
+                        .po-supplier-section {
+                            margin-top: 25px;
+                            margin-bottom: 20px;
+                            width: 50%;
+                        }
+                        .po-supplier-label {
+                            font-weight: bold;
+                            font-size: 12px;
+                            text-transform: uppercase;
+                            margin-bottom: 8px;
+                            color: #000;
+                        }
+                        .po-supplier-box {
+                            border: 1px solid #000;
+                            border-radius: 6px;
+                            padding: 12px 15px;
+                            background-color: white;
+                            font-size: 12px;
+                            line-height: 1.6;
+                            color: #000;
+                            min-height: 60px;
+                            width: 100%;
+                            box-sizing: border-box;
+                        }
+                        .po-items-table {
+                            width: 100%;
+                            border-collapse: collapse;
+                            margin-top: 20px;
+                            margin-bottom: 20px;
+                        }
+                        .po-items-table th {
+                            background-color: #9ea7b6;
+                            color: white;
+                            padding: 10px 8px;
+                            text-align: left;
+                            font-size: 11px;
+                            font-weight: bold;
+                            border: 1px solid #000;
+                        }
+                        .po-items-table td {
+                            padding: 8px;
+                            border: 1px solid #000;
+                            font-size: 11px;
+                            text-align: left;
+                        }
+                        .po-items-table td.text-right {
+                            text-align: right;
+                        }
+                        .po-items-table tbody tr {
+                            background-color: white;
+                        }
+                        .po-total-row {
+                            background-color: #9ea7b6 !important;
+                            color: white !important;
+                            font-weight: bold;
+                        }
+                        .po-total-row td {
+                            background-color: #9ea7b6 !important;
+                            color: white !important;
+                            font-weight: bold;
+                        }
+                        .po-signature-section {
+                            display: flex;
+                            justify-content: space-between;
+                            margin-top: 40px;
+                            padding-top: 20px;
+                        }
+                        .po-signature-box {
+                            width: 200px;
+                            text-align: center;
+                        }
+                        .po-signature-label {
+                            font-weight: bold;
+                            font-size: 11px;
+                            text-transform: uppercase;
+                            margin-bottom: 50px;
+                        }
+                        .po-signature-line {
+                            border-top: 1px dotted #000;
+                            margin-top: 5px;
+                        }
+                    </style>
+                    <div class="po-print-container">
+                        <!-- Header Section -->
+                        <div class="po-header">
+                            <!-- Company Section (Left) -->
+                            <div class="po-company-section">
+                                <div class="po-logo-area">
+                                    <img src="{{ asset('src/images/logo/client-logo.png') }}" alt="Company Logo" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                                </div>
+                                <div class="po-company-info">
+                                    <div class="po-company-slogan-image">
+                                        <img src="{{ asset('src/images/logo/slogan.png') }}" alt="Company Slogan" style="max-width: 100%; height: auto; display: block;">
+                                    </div>
+                                    <div class="po-company-details">
+                                        {{ $companyAddress }}<br>
+                                        Tel: {{ $companyPhone }}<br>
+                                        E Mail: {{ $companyEmail }}<br>
+                                        Web: {{ $companyWebsite }}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- PO Details Section (Right) -->
+                            <div class="po-details-section">
+                                <div class="po-title-box">PURCHASE ORDER</div>
+                                <div class="po-detail-box">
+                                    <span class="po-detail-label">PO NO:</span> {{ $selectedPurchaseOrder->po_number }}
+                                </div>
+                                <div class="po-detail-box">
+                                    <span class="po-detail-label">PO DATE:</span> {{ \App\Helpers\DateFormatHelper::format($selectedPurchaseOrder->date) }}
+                                </div>
+                                <div class="po-detail-box">
+                                    <span class="po-detail-label">TERMS OF PAYMENT:</span> 
+                                    @php
+                                        $paymentTerms = $selectedPurchaseOrder->payment_terms 
+                                            ?? $selectedPurchaseOrder->supplier->payment_terms 
+                                            ?? $selectedPurchaseOrder->supplier->notes 
+                                            ?? '';
+                                    @endphp
+                                    {{ $paymentTerms }}
+                                </div>
+                                <div class="po-detail-box">
+                                    <span class="po-detail-label">STATUS:</span> {{ strtoupper($selectedPurchaseOrder->status) }}
+                                </div>
+                            </div>
                         </div>
-                        <div>
-                            <h4 class="font-semibold text-gray-900 mb-2">Order Information</h4>
-                            @php
-                                $jobOrders = $selectedPurchaseOrder->jobOrders();
-                            @endphp
-                            <p class="text-sm text-gray-700">
-                                <strong>Job Order{{ $jobOrders->count() > 1 ? 's' : '' }}:</strong> 
-                                @if($jobOrders->count() > 0)
-                                    {{ $jobOrders->map(function($jo) { return $jo->supplier_po_number ?? $jo->job_order_number ?? $jo->job_number ?? 'N/A'; })->implode(', ') }}
-                                @else
-                                    N/A
+
+                        <!-- Supplier Section -->
+                        <div class="po-supplier-section">
+                            <div class="po-supplier-label">SUPPLIER:</div>
+                            <div class="po-supplier-box">
+                                {{ $selectedPurchaseOrder->supplier->name ?? 'N/A' }}<br>
+                                @if($selectedPurchaseOrder->supplier && $selectedPurchaseOrder->supplier->address)
+                                    {{ $selectedPurchaseOrder->supplier->address }}
                                 @endif
-                            </p>
-                            <p class="text-sm text-gray-700"><strong>Total Amount:</strong> {{ $selectedPurchaseOrder->getFormattedTotalAmount() }}</p>
+                            </div>
                         </div>
-                    </div>
 
-                    <!-- Print Items Table -->
-                    <div class="mb-6">
-                        <h4 class="text-lg font-semibold text-gray-900 mb-3">Purchase Order Items</h4>
-                        <table class="min-w-full border border-gray-300" style="border-collapse: collapse;">
+                        <!-- Items Table -->
+                        @if($displayFormat === 'dimensions')
+                        <table class="po-items-table">
                             <thead>
-                                <tr class="bg-gray-100">
-                                    <th class="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">Item Type</th>
-                                    <th class="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">Job Order</th>
-                                    <th class="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">Description</th>
-                                    @if($displayFormat === 'reel_cuts')
-                                    <th class="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">Reel Size</th>
-                                    <th class="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">Cut Size</th>
-                                    @else
-                                    <th class="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">Dimensions</th>
-                                    @endif
-                                    <th class="border border-gray-300 px-4 py-2 text-right text-xs font-medium text-gray-700 uppercase">Quantity</th>
-                                    <th class="border border-gray-300 px-4 py-2 text-right text-xs font-medium text-gray-700 uppercase">Unit Price</th>
-                                    <th class="border border-gray-300 px-4 py-2 text-right text-xs font-medium text-gray-700 uppercase">Total</th>
+                                <tr>
+                                    <th>NO</th>
+                                    <th>DESCRIPTION</th>
+                                    <th>DIMENTION</th>
+                                    <th>DELIVERY</th>
+                                    <th>Qty</th>
+                                    <th>UNIT PRICE</th>
+                                    <th>AMOUNT</th>
                                 </tr>
                             </thead>
                             <tbody>
+                                @php
+                                    $itemNumber = 1;
+                                    $totalAmount = 0;
+                                @endphp
                                 @foreach($selectedPurchaseOrder->items as $item)
+                                @php
+                                    $dimensions = '-';
+                                    if ($item->item_type === 'box') {
+                                        $box = $item->getItem();
+                                        if ($box) {
+                                            $dimensions = number_format($box->length, 2) . ' x ' . number_format($box->width, 2) . ' x ' . number_format($box->height, 2) . ' ' . ($box->unit ?? 'Cm') . ' (External)';
+                                        }
+                                    }
+                                    $deliveryDate = '-';
+                                    if ($item->jobOrder && $item->jobOrder->delivery_date) {
+                                        $deliveryDate = \App\Helpers\DateFormatHelper::format($item->jobOrder->delivery_date);
+                                    }
+                                    $totalAmount += $item->total_price;
+                                @endphp
                                 <tr>
-                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">{{ ucfirst($item->item_type) }}</td>
-                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">
-                                        @if($item->jobOrder)
-                                            {{ $item->jobOrder->supplier_po_number ?? $item->jobOrder->job_order_number ?? $item->jobOrder->job_number ?? 'N/A' }}
-                                        @else
-                                            N/A
-                                        @endif
-                                    </td>
-                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">{{ $item->description }}</td>
-                                    @if($displayFormat === 'reel_cuts')
-                                    @php
+                                    <td>{{ $selectedPurchaseOrder->po_number }}-{{ $itemNumber }}</td>
+                                    <td>{{ $item->description }}</td>
+                                    <td>{{ $dimensions }}</td>
+                                    <td>{{ $deliveryDate }}</td>
+                                    <td class="text-right">{{ number_format($item->quantity) }}</td>
+                                    <td class="text-right">{{ number_format($item->unit_price, 2) }}</td>
+                                    <td class="text-right">{{ number_format($item->total_price, 2) }}</td>
+                                </tr>
+                                @php $itemNumber++; @endphp
+                                @endforeach
+                                <!-- Empty rows for additional items -->
+                                @for($i = $itemNumber; $i <= 5; $i++)
+                                <tr>
+                                    <td>&nbsp;</td>
+                                    <td>&nbsp;</td>
+                                    <td>&nbsp;</td>
+                                    <td>&nbsp;</td>
+                                    <td>&nbsp;</td>
+                                    <td>&nbsp;</td>
+                                    <td>&nbsp;</td>
+                                </tr>
+                                @endfor
+                            </tbody>
+                            <tfoot>
+                                <tr class="po-total-row">
+                                    <td colspan="4" style="text-align: right; padding-right: 10px;">TOTAL</td>
+                                    <td style="text-align: center;">{{ $selectedPurchaseOrder->currency ?? 'USD' }}</td>
+                                    <td colspan="2" style="text-align: right; padding-right: 10px;">{{ number_format($totalAmount, 2) }}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                        @elseif($displayFormat === 'reel_cuts')
+                        <table class="po-items-table">
+                            <thead>
+                                <tr>
+                                    <th>NO</th>
+                                    <th>DESCRIPTION</th>
+                                    <th>REEL SIZE</th>
+                                    <th>CUT SIZE</th>
+                                    <th>DELIVERY</th>
+                                    <th>Qty</th>
+                                    <th>UNIT PRICE</th>
+                                    <th>AMOUNT</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @php
+                                    $itemNumber = 1;
+                                    $totalAmount = 0;
+                                @endphp
+                                @foreach($selectedPurchaseOrder->items as $item)
+                                @php
+                                    $reelSize = '-';
+                                    $cutSize = '-';
+                                    
+                                    if ($item->item_type === 'box') {
+                                        // Get reel_size and cut_size from item
                                         $reelSize = $item->reel_size;
                                         $cutSize = $item->cut_size;
-                                        if (($reelSize === null || $cutSize === null || $reelSize == 0 || $cutSize == 0) && $item->item_type === 'box') {
+                                        
+                                        // If values are not stored, try to get from the related box
+                                        if (($reelSize === null || $cutSize === null || $reelSize == 0 || $cutSize == 0)) {
                                             $box = $item->getItem();
                                             if ($box) {
                                                 // Use stored values if available, otherwise calculate
@@ -566,43 +849,66 @@
                                                 }
                                             }
                                         }
-                                    @endphp
-                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">{{ $reelSize && $reelSize > 0 ? number_format($reelSize, 2) . '"' : '-' }}</td>
-                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">{{ $cutSize && $cutSize > 0 ? number_format($cutSize, 2) . '"' : '-' }}</td>
-                                    @else
-                                    @php
-                                        $dimensions = '-';
-                                        if ($item->item_type === 'box') {
-                                            // Use getItem() method to get the box directly
-                                            $box = $item->getItem();
-                                            if ($box) {
-                                                $dimensions = number_format($box->length, 2) . ' x ' . number_format($box->width, 2) . ' x ' . number_format($box->height, 2) . ' ' . ($box->unit ?? 'CM');
-                                            }
-                                        }
-                                    @endphp
-                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">{{ $dimensions }}</td>
-                                    @endif
-                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900 text-right">{{ number_format($item->quantity) }}</td>
-                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900 text-right">{{ $selectedPurchaseOrder->getCurrencySymbol() }}{{ number_format($item->unit_price, 2) }}</td>
-                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900 text-right">{{ $selectedPurchaseOrder->getCurrencySymbol() }}{{ number_format($item->total_price, 2) }}</td>
+                                        
+                                        // Format the values with 2 decimal places
+                                        $reelSize = ($reelSize && $reelSize > 0) ? number_format($reelSize, 2) : '-';
+                                        $cutSize = ($cutSize && $cutSize > 0) ? number_format($cutSize, 2) : '-';
+                                    }
+                                    
+                                    $deliveryDate = '-';
+                                    if ($item->jobOrder && $item->jobOrder->delivery_date) {
+                                        $deliveryDate = \App\Helpers\DateFormatHelper::format($item->jobOrder->delivery_date);
+                                    }
+                                    $totalAmount += $item->total_price;
+                                @endphp
+                                <tr>
+                                    <td>{{ $selectedPurchaseOrder->po_number }}-{{ $itemNumber }}</td>
+                                    <td>{{ $item->description }}</td>
+                                    <td class="text-right">{{ $reelSize }}</td>
+                                    <td class="text-right">{{ $cutSize }}</td>
+                                    <td>{{ $deliveryDate }}</td>
+                                    <td class="text-right">{{ number_format($item->quantity) }}</td>
+                                    <td class="text-right">{{ number_format($item->unit_price, 2) }}</td>
+                                    <td class="text-right">{{ number_format($item->total_price, 2) }}</td>
                                 </tr>
+                                @php $itemNumber++; @endphp
                                 @endforeach
+                                <!-- Empty rows for additional items -->
+                                @for($i = $itemNumber; $i <= 5; $i++)
+                                <tr>
+                                    <td>&nbsp;</td>
+                                    <td>&nbsp;</td>
+                                    <td>&nbsp;</td>
+                                    <td>&nbsp;</td>
+                                    <td>&nbsp;</td>
+                                    <td>&nbsp;</td>
+                                    <td>&nbsp;</td>
+                                    <td>&nbsp;</td>
+                                </tr>
+                                @endfor
                             </tbody>
                             <tfoot>
-                                <tr>
-                                    <td colspan="{{ $displayFormat === 'reel_cuts' ? 6 : 5 }}" class="border border-gray-300 px-4 py-2 text-right font-semibold text-gray-900">Total Amount:</td>
-                                    <td class="border border-gray-300 px-4 py-2 text-right font-semibold text-gray-900">{{ $selectedPurchaseOrder->getFormattedTotalAmount() }}</td>
+                                <tr class="po-total-row">
+                                    <td colspan="5" style="text-align: right; padding-right: 10px;">TOTAL</td>
+                                    <td style="text-align: center;">{{ $selectedPurchaseOrder->currency ?? 'LKR' }}</td>
+                                    <td colspan="2" style="text-align: right; padding-right: 10px;">{{ number_format($totalAmount, 2) }}</td>
                                 </tr>
                             </tfoot>
                         </table>
-                    </div>
+                        @endif
 
-                    @if($selectedPurchaseOrder->notes)
-                    <div class="mt-6">
-                        <h4 class="font-semibold text-gray-900 mb-2">Notes:</h4>
-                        <p class="text-sm text-gray-700">{{ $selectedPurchaseOrder->notes }}</p>
+                        <!-- Signature Section -->
+                        <div class="po-signature-section">
+                            <div class="po-signature-box">
+                                <div class="po-signature-label">PREPARED BY</div>
+                                <div class="po-signature-line"></div>
+                            </div>
+                            <div class="po-signature-box">
+                                <div class="po-signature-label">APPROVED BY</div>
+                                <div class="po-signature-line"></div>
+                            </div>
+                        </div>
                     </div>
-                    @endif
                 </div>
 
                 <!-- Modal Body -->
@@ -1192,20 +1498,20 @@
             // Show print content and hide modal
             printContent.style.display = 'block';
 
+            // Get the base URL for assets
+            var baseUrl = window.location.origin;
+            var contentHtml = printContent.innerHTML;
+            
+            // Convert relative asset paths to absolute paths for images
+            contentHtml = contentHtml.replace(/src="\/src\//g, 'src="' + baseUrl + '/src/');
+            contentHtml = contentHtml.replace(/src='\/src\//g, "src='" + baseUrl + '/src/');
+
             // Create a new window for printing
             var printWindow = window.open('', '_blank', 'width=800,height=600');
-            printWindow.document.write('<html><head><title>Purchase Order - {{ $selectedPurchaseOrder->po_number ?? "" }}</title>');
-            printWindow.document.write('<style>');
-            printWindow.document.write('body{font-family:Arial,sans-serif;margin:20px;padding:20px;}');
-            printWindow.document.write('table{border-collapse:collapse;width:100%;margin-top:20px;}');
-            printWindow.document.write('th,td{border:1px solid #000;padding:8px;text-align:left;}');
-            printWindow.document.write('th{background-color:#f3f4f6;font-weight:bold;}');
-            printWindow.document.write('.text-center{text-align:center;}');
-            printWindow.document.write('.text-right{text-align:right;}');
-            printWindow.document.write('@media print { @page { margin: 0.5cm; } body { margin: 0; } }');
-            printWindow.document.write('</style>');
+            printWindow.document.write('<!DOCTYPE html><html><head><title>Purchase Order - {{ $selectedPurchaseOrder->po_number ?? "" }}</title>');
+            printWindow.document.write('<meta charset="UTF-8">');
             printWindow.document.write('</head><body>');
-            printWindow.document.write(printContent.innerHTML);
+            printWindow.document.write(contentHtml);
             printWindow.document.write('</body></html>');
             printWindow.document.close();
 

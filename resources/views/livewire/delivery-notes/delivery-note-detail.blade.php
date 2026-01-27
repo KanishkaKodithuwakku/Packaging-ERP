@@ -190,61 +190,409 @@
     </div>
 
     <!-- Print content for full delivery note -->
+    @php
+        $accountSettings = \App\Models\AccountSetting::getInstance();
+        $companyName = $accountSettings->company_name ?? 'Kings Packaging (Pvt) Ltd';
+        $companyAddress = $accountSettings->address ?? '182/16, Panaluwa Industrial Zone, Panaluwa, Watareka, Padukka.';
+        $companyEmail = $accountSettings->email ?? 'ranasingha@kingspack.lk';
+        $companyPhone = '011-4948706';
+        $companyWebsite = 'www.kingspack.lk';
+        $vatRegNo = '114623598-7000'; // Default VAT Reg No
+    @endphp
     <div id="printContent" style="display: none;">
-        <div style="max-width: 800px; margin: 0 auto; padding: 20px;">
-            <div style="text-align: center; margin-bottom: 30px;">
-                <h2 style="font-size: 28px; font-weight: bold; margin-bottom: 10px;">DELIVERY NOTE</h2>
-                <p style="font-size: 18px;">DN Number: {{ $deliveryNote->dn_number }}</p>
-                <p style="font-size: 14px;">Date: {{ $deliveryNote->dispatch_date->format('M d, Y') }}</p>
-            </div>
-
-            <div style="margin-bottom: 30px;">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                    <div>
-                        <h3 style="font-weight: bold; margin-bottom: 10px;">Customer Information</h3>
-                        <p><strong>Customer:</strong> {{ optional($deliveryNote->jobOrder)->customer->name ?? 'N/A' }}</p>
-                        <p><strong>Currency:</strong> {{ optional($deliveryNote->jobOrder)->customer->currency ?? 'N/A' }}</p>
-                        <p><strong>Job Order:</strong> {{ optional($deliveryNote->jobOrder)->job_number ?? 'N/A' }}</p>
+        <style>
+            @media print {
+                @page {
+                    margin: 0.5cm;
+                    size: A5 landscape;
+                }
+                body {
+                    margin: 0;
+                    padding: 0;
+                }
+                * {
+                    page-break-inside: avoid;
+                    page-break-after: avoid;
+                    page-break-before: avoid;
+                }
+                html, body {
+                    height: 100%;
+                    overflow: hidden;
+                }
+            }
+            .aod-print-container {
+                font-family: Arial, sans-serif;
+                padding: 15px;
+                background: white;
+                color: #000;
+                display: flex;
+                flex-direction: column;
+                height: calc(100vh - 1cm);
+                max-height: calc(100vh - 1cm);
+                overflow: hidden;
+                page-break-inside: avoid;
+            }
+            @media print {
+                .aod-print-container {
+                    height: calc(100vh - 1cm);
+                    max-height: calc(100vh - 1cm);
+                    overflow: hidden;
+                    page-break-inside: avoid;
+                    page-break-after: avoid;
+                    page-break-before: avoid;
+                }
+            }
+            .aod-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                margin-bottom: 15px;
+                gap: 30px;
+                width: 100%;
+                page-break-inside: avoid;
+                flex-shrink: 0;
+            }
+            .aod-company-section {
+                flex: 1;
+                text-align: left;
+                display: flex;
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .aod-company-top {
+                display: flex;
+                flex-direction: row;
+                align-items: flex-start;
+                gap: 15px;
+                width: 100%;
+            }
+            .aod-logo-area {
+                width: auto;
+                max-width: 120px;
+                background-color: transparent;
+                display: flex;
+                flex-direction: column;
+                align-items: flex-start;
+                justify-content: flex-start;
+                padding: 0;
+                flex-shrink: 0;
+            }
+            .aod-logo-area img {
+                max-width: 100%;
+                height: auto;
+                object-fit: contain;
+                display: block;
+            }
+            .aod-company-info {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+            }
+            .aod-company-name {
+                font-size: 24px;
+                font-weight: bold;
+                color: #1e3a8a;
+                margin-bottom: 6px;
+                line-height: 1.2;
+            }
+            .aod-company-slogan-image {
+                margin-bottom: 8px;
+                max-width: 100%;
+            }
+            .aod-company-slogan-image img {
+                max-width: 100%;
+                height: auto;
+                display: block;
+            }
+            .aod-company-slogan {
+                font-size: 12px;
+                color: #000;
+                margin-bottom: 4px;
+                line-height: 1.4;
+                font-weight: normal;
+            }
+            .aod-company-slogan-italic {
+                font-size: 11px;
+                color: #000;
+                margin-bottom: 8px;
+                font-style: italic;
+                font-family: 'Times New Roman', serif;
+                line-height: 1.4;
+            }
+            .aod-company-details {
+                font-size: 11px;
+                color: #000;
+                line-height: 1.6;
+                margin-top: 10px;
+            }
+            .aod-aod-box {
+                margin-top: 15px;
+                width: 100%;
+            }
+            .aod-title-section {
+                flex: 1;
+                text-align: right;
+                display: flex;
+                flex-direction: column;
+                align-items: flex-end;
+                min-width: 300px;
+            }
+            .aod-title {
+                font-size: 24px;
+                font-weight: bold;
+                color: #000;
+                text-align: center;
+                margin-bottom: 15px;
+                width: 100%;
+            }
+            .aod-right-section {
+                width: 100%;
+                max-width: 350px;
+            }
+            .aod-details-section {
+                display: none;
+            }
+            .aod-detail-box {
+                background-color: white;
+                border: 1px solid #000;
+                border-radius: 6px;
+                padding: 12px 15px;
+                margin-bottom: 15px;
+                text-align: left;
+                font-size: 12px;
+            }
+            .aod-detail-label {
+                font-weight: bold;
+                color: #000;
+                margin-bottom: 5px;
+                display: block;
+            }
+            .aod-detail-content {
+                color: #000;
+                line-height: 1.6;
+            }
+            .aod-items-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: -15px; /*table top margin  */
+                margin-bottom: 15px;
+                table-layout: fixed;
+                border: 1px solid #000;
+                page-break-inside: avoid;
+                flex: 1;
+            }
+            .aod-items-table th:first-child {
+                width: 25%;
+            }
+            .aod-items-table th:nth-child(2) {
+                width: 55%;
+            }
+            .aod-items-table th:last-child {
+                width: 20%;
+            }
+            .aod-items-table th {
+                background-color: #9ea7b6;
+                color: white;
+                padding: 3px 4px;
+                text-align: center;
+                font-size: 12px;
+                font-weight: bold;
+                border-left: 1px solid #000;
+                border-right: 1px solid #000;
+                border-top: 1px solid #000;
+                border-bottom: 1px solid #000;
+                text-transform: uppercase;
+                line-height: 1.2;
+            }
+            .aod-items-table th:first-child {
+                border-left: none;
+            }
+            .aod-items-table th:last-child {
+                border-right: none;
+            }
+            .aod-items-table td {
+                padding: 0px 4px 0px 8px;
+                border-left: 1px solid #000;
+                border-right: 1px solid #000;
+                border-top: none;
+                border-bottom: none;
+                font-size: 11px;
+                text-align: left;
+                vertical-align: top;
+                height: auto;
+                line-height: 1.0;
+            }
+            .aod-items-table td:first-child {
+                border-left: none;
+            }
+            .aod-items-table td:last-child {
+                border-right: none;
+            }
+            .aod-items-table tbody tr {
+                background-color: white;
+                page-break-inside: avoid;
+                page-break-after: avoid;
+            }
+            .aod-items-table tbody tr:empty {
+                height: auto;
+            }
+            .aod-items-table tbody tr:first-child td {
+                padding-top: 10px;
+            }
+            .aod-items-table tbody tr:last-child td {
+                border-bottom: 1px solid #000;
+                padding-bottom: 30px;
+            }
+            .aod-items-table tbody td {
+                padding-top: 0px;
+                padding-bottom: 0px;
+            }
+            .aod-footer {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                margin-top: auto;
+                padding-top: 0px;
+                page-break-inside: avoid;
+                flex-shrink: 0;
+            }
+            .aod-footer-left {
+                flex: 1;
+            }
+            .aod-footer-right {
+                flex: 1;
+                text-align: right;
+                display: flex;
+                flex-direction: column;
+                align-items: flex-end;
+            }
+            .aod-signature-label {
+                font-size: 11px;
+                color: #000;
+                margin-bottom: 5px;
+            }
+            .aod-footer-top-label {
+                font-size: 11px;
+                color: #000;
+                margin-bottom: 60px;
+            }
+            .aod-signature-line {
+                border-top: 1px dotted #000;
+                margin-top: 0px;
+                margin-bottom: 5px;
+                height: 0;
+            }
+            .aod-signature-line-short {
+                width: 120px;
+            }
+            .aod-signature-line-long {
+                width: 120px;
+            }
+            
+        </style>
+        <div class="aod-print-container">
+            <!-- Header Section -->
+            <div class="aod-header">
+                <!-- Company Section (Left) -->
+                <div class="aod-company-section">
+                    <div class="aod-company-top">
+                        <div class="aod-logo-area">
+                            <img src="{{ asset('src/images/logo/client-logo.png') }}" alt="Company Logo" style="max-width: 100%; height: auto; display: block;">
+                        </div>
+                        <div class="aod-company-info">
+                            <div class="aod-company-slogan-image">
+                                <img src="{{ asset('src/images/logo/slogan.png') }}" alt="Company Slogan" style="max-width: 100%; height: auto; display: block;">
+                            </div>
+                            <div class="aod-company-details">
+                                {{ $companyAddress }}<br>
+                                Tel: {{ $companyPhone }}<br>
+                                E Mail: {{ $companyEmail }}<br>
+                                Web: {{ $companyWebsite }}<br>
+                                <span class="aod-vat-reg">VAT Reg No:</span> {{ $vatRegNo }}
+                            </div>
+                        </div>
                     </div>
-                    <div>
-                        <h3 style="font-weight: bold; margin-bottom: 10px;">Delivery Information</h3>
-                        <p><strong>Status:</strong> {{ ucfirst($deliveryNote->status) }}</p>
-                        <p><strong>Address:</strong> {{ $deliveryNote->delivery_address ?: 'N/A' }}</p>
+                    <div class="aod-aod-box">
+                        <div class="aod-detail-box">
+                            <div class="aod-detail-label">AOD NO: {{ $deliveryNote->dn_number }}</div>
+                           
+                            <div class="aod-detail-label" style="margin-top: 10px;">AOD DATE:{{ \App\Helpers\DateFormatHelper::format($deliveryNote->dispatch_date) }}</div>
+                           
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Title Section (Right) -->
+                <div class="aod-title-section">
+                    <div class="aod-title">ADVICE OF DISPATCH</div>
+                    <div class="aod-right-section">
+                    <div class="aod-detail-box" style="margin-bottom: 15px;">
+                        <div class="aod-detail-label">CUSTOMER:</div>
+                        <div class="aod-detail-content">
+                            {{ optional($deliveryNote->jobOrder)->customer->name ?? 'N/A' }}<br>
+                            @if(optional($deliveryNote->jobOrder)->customer && optional($deliveryNote->jobOrder)->customer->address)
+                                @php
+                                    $customerAddress = optional($deliveryNote->jobOrder)->customer->address;
+                                    $addressLines = explode("\n", $customerAddress);
+                                @endphp
+                                @foreach($addressLines as $line)
+                                    {{ trim($line) }}@if(!$loop->last),<br>@endif
+                                @endforeach
+                            @endif
+                        </div>
+                    </div>
+                    <div class="aod-detail-box">
+                        <div class="aod-detail-label">DELIVER TO:</div>
+                        <div class="aod-detail-content">
+                            @if($deliveryNote->delivery_address)
+                                @php
+                                    $deliveryAddress = $deliveryNote->delivery_address;
+                                    $deliveryLines = explode("\n", $deliveryAddress);
+                                @endphp
+                                @foreach($deliveryLines as $line)
+                                    {{ trim($line) }}@if(!$loop->last),<br>@endif
+                                @endforeach
+                            @else
+                                {{ optional($deliveryNote->jobOrder)->customer->address ?? 'N/A' }}
+                            @endif
+                        </div>
+                    </div>
                     </div>
                 </div>
             </div>
 
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+            <!-- Items Table -->
+            <table class="aod-items-table">
                 <thead>
-                    <tr style="background-color: #f3f4f6; border-bottom: 2px solid #000;">
-                        <th style="padding: 10px; text-align: left; border: 1px solid #000;">No</th>
-                        <th style="padding: 10px; text-align: left; border: 1px solid #000;">Item Description</th>
-                        <th style="padding: 10px; text-align: left; border: 1px solid #000;">Material Code</th>
-                        <th style="padding: 10px; text-align: right; border: 1px solid #000;">Quantity</th>
+                    <tr>
+                        <th>CUSTOMER PO</th>
+                        <th>DESCRIPTION</th>
+                        <th>QTY</th>
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach($deliveryNote->items as $index => $item)
-                        <tr style="border-bottom: 1px solid #000;">
-                            <td style="padding: 10px; border: 1px solid #000;">{{ $index + 1 }}</td>
-                            <td style="padding: 10px; border: 1px solid #000;">{{ $item->description }}</td>
-                            <td style="padding: 10px; border: 1px solid #000;">{{ $item->material_code }}</td>
-                            <td style="padding: 10px; text-align: right; border: 1px solid #000;">{{ number_format($item->quantity, 0) }}</td>
-                        </tr>
+                    @foreach($deliveryNote->items as $item)
+                    <tr>
+                        <td class="text-center">{{ optional($deliveryNote->jobOrder)->supplier_po_number ?? optional($deliveryNote->jobOrder)->job_number ?? '-' }}</td>
+                        <td>{{ $item->description }}</td>
+                        <td class="text-center">{{ number_format($item->quantity, 0) }}</td>
+                    </tr>
                     @endforeach
                 </tbody>
             </table>
 
-            @if($deliveryNote->notes)
-            <div style="margin-bottom: 20px;">
-                <h3 style="font-weight: bold; margin-bottom: 10px;">Notes</h3>
-                <p>{{ $deliveryNote->notes }}</p>
-            </div>
-            @endif
-
-            <div style="margin-top: 50px; border-top: 2px solid #000; padding-top: 20px;">
-                <p>Prepared By: ________________</p>
-                <p style="margin-top: 40px;">Received By: ________________</p>
+            <!-- Footer Section -->
+            <div class="aod-footer">
+                <div class="aod-footer-left">
+                    <div class="aod-footer-top-label">Vehicle No :</div>
+                    <div class="aod-signature-line aod-signature-line-short"></div>
+                    <div class="aod-signature-label">Dispatched by</div>
+                </div>
+                <div class="aod-footer-right">
+                    <div class="aod-footer-top-label" style="text-align: right;">Received the items detailed above</div>
+                    <div class="aod-signature-line aod-signature-line-long" style="margin-left: auto;"></div>
+                    <div class="aod-signature-label" style="text-align: right;">Signature of Recipient</div>
+                </div>
             </div>
         </div>
     </div>

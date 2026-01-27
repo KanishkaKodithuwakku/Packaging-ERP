@@ -1230,112 +1230,500 @@
                 </div>
 
                 <!-- Print Preview Content -->
+                @php
+                    $accountSettings = \App\Models\AccountSetting::getInstance();
+                    $companyName = $accountSettings->company_name ?? 'KINGS PACKAGING (PVT) LTD';
+                    $companyAddress = $accountSettings->address ?? '182/16, Panaluwa Industrial Zone, Panaluwa, Watareka, Padukka.';
+                    $companyEmail = $accountSettings->email ?? 'ranasingha@kingspack.lk';
+                    $companyPhone = '011-4948706';
+                    $companyWebsite = 'www.kingspack.lk';
+                @endphp
                 <div class="border border-gray-300 rounded-lg p-6 bg-white print-preview" id="printContent">
-                    <!-- Job Order Header -->
-                    <div class="text-center mb-6">
-                        <h2 class="text-2xl font-bold text-gray-900">JOB ORDER</h2>
-                        <p class="text-lg text-gray-700">Job Number: {{ $jobOrder->job_number }}</p>
-                        <p class="text-sm text-gray-600">Date: {{ $jobOrder->date ? $jobOrder->date->format('M d, Y') : 'N/A' }}</p>
-                    </div>
-
-                    <!-- Job Order Details -->
-                    <div class="grid grid-cols-2 gap-6 mb-6">
-                        <div>
-                            <h4 class="font-semibold text-gray-900 mb-2">Supplier Information</h4>
-                            <p class="text-sm text-gray-700"><strong>Supplier:</strong> {{ $jobOrder->supplier->name ?? 'N/A' }} ({{ $jobOrder->supplier->code ?? 'N/A' }})</p>
-                            <p class="text-sm text-gray-700"><strong>Supplier PO:</strong> {{ $jobOrder->supplier_po_number ?? 'N/A' }}</p>
-                            <p class="text-sm text-gray-700"><strong>Purchase Order:</strong> {{ $jobOrder->po_number ?? 'N/A' }}</p>
-                            <p class="text-sm text-gray-700"><strong>PO Date:</strong> {{ $jobOrder->po_date ? $jobOrder->po_date->format('M d, Y') : 'N/A' }}</p>
+                    <style>
+                        @media print {
+                            @page {
+                                margin: 0.5cm;
+                                size: A4;
+                            }
+                            body {
+                                margin: 0;
+                                padding: 0;
+                            }
+                            * {
+                                page-break-inside: avoid;
+                            }
+                        }
+                        .pos-print-container {
+                            font-family: Arial, sans-serif;
+                            padding: 20px;
+                            background: white;
+                            color: #000;
+                        }
+                        .pos-header {
+                            display: flex;
+                            justify-content: space-between;
+                            align-items: flex-start;
+                            margin-bottom: 30px;
+                            gap: 20px;
+                        }
+                        .pos-company-section {
+                            flex: 1;
+                            text-align: left;
+                            display: flex;
+                            flex-direction: row;
+                            align-items: flex-start;
+                            gap: 15px;
+                        }
+                        .pos-logo-area {
+                            width: auto;
+                            max-width: 120px;
+                            background-color: transparent;
+                            border-radius: 0;
+                            display: flex;
+                            flex-direction: column;
+                            align-items: flex-start;
+                            justify-content: flex-start;
+                            margin-bottom: 0;
+                            padding: 0;
+                            box-sizing: border-box;
+                            position: relative;
+                            flex-shrink: 0;
+                        }
+                        .pos-company-info {
+                            flex: 1;
+                            display: flex;
+                            flex-direction: column;
+                        }
+                        .pos-logo-area img {
+                            max-width: 100%;
+                            height: auto;
+                            object-fit: contain;
+                            display: block;
+                        }
+                        .pos-company-slogan-image {
+                            margin-bottom: 8px;
+                            max-width: 100%;
+                        }
+                        .pos-company-slogan-image img {
+                            max-width: 100%;
+                            height: auto;
+                            display: block;
+                        }
+                        .pos-company-details {
+                            font-size: 11px;
+                            color: #000;
+                            line-height: 1.6;
+                            margin-top: 10px;
+                        }
+                        .pos-details-section {
+                            flex: 1;
+                            text-align: right;
+                        }
+                        .pos-title-box {
+                            background-color: #4a5568;
+                            color: white;
+                            padding: 12px 20px;
+                            border-radius: 6px;
+                            font-size: 18px;
+                            font-weight: bold;
+                            text-align: center;
+                            margin-bottom: 10px;
+                        }
+                        .pos-detail-box {
+                            background-color: white;
+                            border: 1px solid #000;
+                            border-radius: 6px;
+                            padding: 8px 12px;
+                            margin-bottom: 8px;
+                            text-align: left;
+                            font-size: 12px;
+                        }
+                        .pos-detail-label {
+                            font-weight: bold;
+                            color: #000;
+                        }
+                        .pos-form-table {
+                            width: 100%;
+                            border-collapse: collapse;
+                            margin-bottom: 15px;
+                        }
+                        .pos-form-table td {
+                            padding: 8px 10px;
+                            border: 1px solid #000;
+                            font-size: 12px;
+                            vertical-align: top;
+                        }
+                        .pos-label {
+                            font-weight: bold;
+                            width: 180px;
+                            background-color: #f0f0f0;
+                        }
+                        .pos-value {
+                            width: auto;
+                        }
+                        .pos-dotted-line {
+                            border-bottom: 1px dotted #000;
+                            min-height: 20px;
+                        }
+                        .pos-section-title {
+                            font-weight: bold;
+                            font-size: 13px;
+                            background-color: #e0e0e0;
+                            text-align: center;
+                        }
+                        .pos-signature-section {
+                            margin-top: 30px;
+                            display: flex;
+                            justify-content: space-between;
+                        }
+                        .pos-signature-box {
+                            width: 200px;
+                        }
+                        .pos-signature-label {
+                            font-size: 11px;
+                            font-weight: bold;
+                            margin-bottom: 50px;
+                        }
+                        .pos-signature-line {
+                            border-top: 1px dotted #000;
+                            margin-top: 5px;
+                        }
+                    </style>
+                    <div class="pos-print-container">
+                        <!-- Header Section -->
+                        <div class="pos-header">
+                            <!-- Company Section (Left) -->
+                            <div class="pos-company-section">
+                                <div class="pos-logo-area">
+                                    <img src="{{ asset('src/images/logo/client-logo.png') }}" alt="Company Logo" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                                </div>
+                                <div class="pos-company-info">
+                                    <div class="pos-company-slogan-image">
+                                        <img src="{{ asset('src/images/logo/slogan.png') }}" alt="Company Slogan" style="max-width: 100%; height: auto; display: block;">
+                                    </div>
+                                    <div class="pos-company-details">
+                                        {{ $companyAddress }}<br>
+                                        Tel: {{ $companyPhone }}<br>
+                                        E Mail: {{ $companyEmail }}<br>
+                                        Web: {{ $companyWebsite }}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Production Order Details Section (Right) -->
+                            <div class="pos-details-section">
+                                <div class="pos-title-box">PRODUCTION ORDER SHEET</div>
+                                <div class="pos-detail-box">
+                                    <span class="pos-detail-label">JOB NO:</span> {{ $jobOrder->job_number ?? 'N/A' }}
+                                </div>
+                                <div class="pos-detail-box">
+                                    <span class="pos-detail-label">HJC Po NO:</span> {{ $jobOrder->supplier_po_number ?? 'N/A' }}
+                                </div>
+                                <div class="pos-detail-box">
+                                    <span class="pos-detail-label">DATE:</span> {{ $jobOrder->date ? \App\Helpers\DateFormatHelper::format($jobOrder->date) : 'N/A' }}
+                                </div>
+                            </div>
                         </div>
-                        <div>
-                            <h4 class="font-semibold text-gray-900 mb-2">Customer Information</h4>
-                            <p class="text-sm text-gray-700"><strong>Customer:</strong> {{ $jobOrder->customer->name ?? 'N/A' }} ({{ $jobOrder->customer->code ?? 'N/A' }})</p>
-                            <p class="text-sm text-gray-700"><strong>Address:</strong> {{ $jobOrder->customer_address ?? 'N/A' }}</p>
-                        </div>
-                    </div>
 
-                    <!-- Material Specification -->
-                    <div class="mb-4">
-                        <p class="text-sm text-gray-700"><strong>Material:</strong> {{ $jobOrder->material_specification ?? '5PLY(135KL/112M/140TL/112M/140TL) B/C Flute' }}</p>
-                    </div>
-
-                    <!-- Items Table -->
-                    @php
-                        // Get supplier currency symbol for print preview
-                        $supplierCurrency = ($jobOrder->supplier && $jobOrder->supplier->currency) ? $jobOrder->supplier->currency : 'LKR';
-                        $supplierCurrencySymbol = match($supplierCurrency) {
-                            'LKR' => 'Rs.',
-                            'USD' => '$',
-                            'EUR' => '€',
-                            'GBP' => '£',
-                            'INR' => '₹',
-                            default => $supplierCurrency . ' '
-                        };
-                    @endphp
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full border border-gray-300">
-                            <thead class="bg-gray-100">
-                                <tr>
-                                    <th class="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">No</th>
-                                    <th class="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">Description</th>
-                                    <th class="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">Delivery</th>
-                                    <th class="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">QTY</th>
-                                    <th class="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">Unit Price {{ $supplierCurrencySymbol }}</th>
-                                    <th class="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">Total</th>
-                                    <th class="border border-gray-300 px-4 py-2 text-left text-xs font-medium text-gray-700 uppercase">Previous Po No</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($boxes as $index => $box)
-                                <tr>
-                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">{{ $index + 1 }}</td>
-                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">
-                                        @if($printDisplayFormat === 'reel_cuts')
-                                            Reel Size - {{ number_format($box['reel_size'] ?? 0, 2) }}" Cut Size - {{ number_format($box['cut_size'] ?? 0, 2) }}"
-                                        @else
-                                            {{ $box['length'] }}x{{ $box['width'] }}x{{ $box['height'] }}{{ $box['unit'] }} {{ $box['dimension_type'] }}
+                        <!-- Form Table -->
+                        <table class="pos-form-table">
+                            <!-- Row 1: Customer's Name -->
+                            <tr>
+                                <td class="pos-label">CUSTOMER'S NAME:</td>
+                                <td class="pos-value pos-dotted-line" colspan="3">{{ $jobOrder->customer->name ?? '________________' }}</td>
+                            </tr>
+                            
+                            <!-- Row 3: Address -->
+                            <tr>
+                                <td class="pos-label">ADDRESS:</td>
+                                <td class="pos-value pos-dotted-line" colspan="3">
+                                    @if($jobOrder->customer_address)
+                                        @php
+                                            $addressLines = explode("\n", $jobOrder->customer_address);
+                                        @endphp
+                                        @foreach($addressLines as $line)
+                                            {{ trim($line) }}@if(!$loop->last)<br>@endif
+                                        @endforeach
+                                    @else
+                                        {{ $jobOrder->customer->address ?? '________________' }}
+                                    @endif
+                                </td>
+                            </tr>
+                            
+                            <!-- Row 4: Purchase Order NO, Estimate NO -->
+                            <tr>
+                                <td class="pos-label">PURCHASE ORDER NO:</td>
+                                <td class="pos-value pos-dotted-line">{{ $jobOrder->purchase_order_no ?? '________________' }}</td>
+                                <td class="pos-label">ESTIMATE NO:</td>
+                                <td class="pos-value pos-dotted-line">________________</td>
+                            </tr>
+                            
+                            <!-- Row 5: PO Date, Estimate Date, Order Quantity -->
+                            <tr>
+                                <td class="pos-label">DATE:</td>
+                                <td class="pos-value pos-dotted-line">{{ $jobOrder->po_date ? \App\Helpers\DateFormatHelper::format($jobOrder->po_date) : '________________' }}</td>
+                                <td class="pos-label">DATE:</td>
+                                <td class="pos-value pos-dotted-line">________________</td>
+                            </tr>
+                            <tr>
+                                <td class="pos-label">ORDER QUANTITY:</td>
+                                <td class="pos-value pos-dotted-line" colspan="3">
+                                    @php
+                                        $totalOrderQty = 0;
+                                        foreach($boxes as $box) {
+                                            $totalOrderQty += (float)($box['order_qty'] ?? 0);
+                                        }
+                                        foreach($dividers as $divider) {
+                                            $totalOrderQty += (float)($divider['quantity'] ?? 0);
+                                        }
+                                    @endphp
+                                    {{ number_format($totalOrderQty, 0) }}
+                                </td>
+                            </tr>
+                            
+                            <!-- Production Specifications Section -->
+                            <tr>
+                                <td class="pos-section-title" colspan="4">PRODUCTION SPECIFICATIONS</td>
+                            </tr>
+                            
+                            <!-- Row: Printing Instructions, Activity -->
+                            <tr>
+                                <td class="pos-label">PRINTING INSTRUCTIONS:</td>
+                                <td class="pos-value pos-dotted-line">
+                                    @php
+                                        $firstBox = count($boxes) > 0 ? $boxes[0] : null;
+                                        $printingInstruction = $firstBox && isset($firstBox['printing_instruction']) && $firstBox['printing_instruction'] ? $firstBox['printing_instruction'] : null;
+                                    @endphp
+                                    {{ $printingInstruction ?? '________________' }}
+                                </td>
+                                <td class="pos-label">ACTIVITY:</td>
+                                <td class="pos-value pos-dotted-line">
+                                    @php
+                                        $activity = $firstBox && isset($firstBox['activity']) && $firstBox['activity'] ? $firstBox['activity'] : null;
+                                    @endphp
+                                    {{ $activity ?? '________________' }}
+                                </td>
+                            </tr>
+                            
+                            <!-- Row: No. of Colours, Stitched/Glued -->
+                            <tr>
+                                <td class="pos-label">NO. OF COLOURS:</td>
+                                <td class="pos-value pos-dotted-line">
+                                    @php
+                                        $noOfColours = $firstBox && isset($firstBox['no_of_colours']) && $firstBox['no_of_colours'] !== null ? $firstBox['no_of_colours'] : null;
+                                    @endphp
+                                    {{ $noOfColours ?? '________________' }}
+                                </td>
+                                <td class="pos-label">STICHED/GLUED:</td>
+                                <td class="pos-value pos-dotted-line">
+                                    @php
+                                        $stitchedGlued = $firstBox && isset($firstBox['stitched_glued']) && $firstBox['stitched_glued'] ? strtoupper($firstBox['stitched_glued']) : null;
+                                    @endphp
+                                    {{ $stitchedGlued ?? '________________' }}
+                                </td>
+                            </tr>
+                            
+                            <!-- Row: Sample Available, Sample Attached -->
+                            <tr>
+                                <td class="pos-label">SAMPLE AVAILABLE:</td>
+                                <td class="pos-value pos-dotted-line">
+                                    @php
+                                        $sampleAvailable = $firstBox && isset($firstBox['sample_available']) ? (bool)$firstBox['sample_available'] : null;
+                                    @endphp
+                                    @if($sampleAvailable !== null)
+                                        {{ $sampleAvailable ? 'YES' : 'NO' }}
+                                    @else
+                                        YES / NO
+                                    @endif
+                                </td>
+                                <td class="pos-label">SAMPLE ATTACHED:</td>
+                                <td class="pos-value pos-dotted-line">
+                                    @php
+                                        $sampleAttached = $firstBox && isset($firstBox['sample_attached']) ? (bool)$firstBox['sample_attached'] : null;
+                                    @endphp
+                                    @if($sampleAttached !== null)
+                                        {{ $sampleAttached ? 'YES' : 'NO' }}
+                                    @else
+                                        YES / NO
+                                    @endif
+                                </td>
+                            </tr>
+                            
+                            <!-- Box / Product Specifications Section -->
+                            <tr>
+                                <td class="pos-section-title" colspan="4">BOX / PRODUCT SPECIFICATIONS</td>
+                            </tr>
+                            
+                            <!-- Row: Box Size L, W, H -->
+                            <tr>
+                                <td class="pos-label">BOX SIZE:</td>
+                                <td class="pos-value" colspan="3">
+                                    @php
+                                        $firstBox = count($boxes) > 0 ? $boxes[0] : null;
+                                    @endphp
+                                    <table style="width: 100%; border: none;">
+                                        <tr>
+                                            <td style="border: none; padding: 0; width: 80px;"><strong>L:</strong> 
+                                                @if($firstBox && isset($firstBox['length']) && $firstBox['length'] > 0)
+                                                    {{ number_format((float)$firstBox['length'], 2) }} {{ $firstBox['unit'] ?? 'CM' }}
+                                                @else
+                                                    ________________
+                                                @endif
+                                            </td>
+                                            <td style="border: none; padding: 0; width: 80px;"><strong>W:</strong> 
+                                                @if($firstBox && isset($firstBox['width']) && $firstBox['width'] > 0)
+                                                    {{ number_format((float)$firstBox['width'], 2) }} {{ $firstBox['unit'] ?? 'CM' }}
+                                                @else
+                                                    ________________
+                                                @endif
+                                            </td>
+                                            <td style="border: none; padding: 0; width: 80px;"><strong>H:</strong> 
+                                                @if($firstBox && isset($firstBox['height']) && $firstBox['height'] > 0)
+                                                    {{ number_format((float)$firstBox['height'], 2) }} {{ $firstBox['unit'] ?? 'CM' }}
+                                                @else
+                                                    ________________
+                                                @endif
+                                            </td>
+                                            <td style="border: none; padding: 0;">
+                                                <strong>(Internal/External):</strong> 
+                                                @if($firstBox && isset($firstBox['dimension_type']))
+                                                    {{ $firstBox['dimension_type'] }}
+                                                @else
+                                                    ________________
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                            
+                            <!-- Row: Top Liner, Ply -->
+                            <tr>
+                                <td class="pos-label">TOP LINER:</td>
+                                <td class="pos-value pos-dotted-line">
+                                    @php
+                                        $topLiner = $firstBox && isset($firstBox['top_liner']) && $firstBox['top_liner'] ? $firstBox['top_liner'] : null;
+                                    @endphp
+                                    @if($topLiner)
+                                        ({{ $topLiner }})
+                                    @else
+                                        (BROWN / WHITE)
+                                    @endif
+                                </td>
+                                <td class="pos-label">PLY:</td>
+                                <td class="pos-value pos-dotted-line">
+                                    @php
+                                        $ply = $firstBox && isset($firstBox['ply']) && $firstBox['ply'] ? $firstBox['ply'] : null;
+                                    @endphp
+                                    {{ $ply ?? '________________' }}
+                                </td>
+                            </tr>
+                            
+                            <!-- Row: Combination -->
+                            <tr>
+                                <td class="pos-label">COMBINATION:</td>
+                                <td class="pos-value pos-dotted-line" colspan="3">
+                                    @php
+                                        $combination = [];
+                                        if($firstBox) {
+                                            for($i = 1; $i <= 7; $i++) {
+                                                $key = 'combination_' . $i;
+                                                if(isset($firstBox[$key]) && $firstBox[$key] && trim($firstBox[$key]) !== '') {
+                                                    $combination[] = $firstBox[$key];
+                                                }
+                                            }
+                                        }
+                                    @endphp
+                                    {{ !empty($combination) ? implode(' / ', $combination) : '________________' }}
+                                </td>
+                            </tr>
+                            
+                            <!-- Row: Flute -->
+                            <tr>
+                                <td class="pos-label">FIUTE:</td>
+                                <td class="pos-value pos-dotted-line" colspan="3">
+                                    @php
+                                        $flute = $firstBox && isset($firstBox['flute']) && $firstBox['flute'] ? $firstBox['flute'] : null;
+                                        $reelSize = $firstBox && isset($firstBox['reel_size']) && $firstBox['reel_size'] > 0 ? (float)$firstBox['reel_size'] : null;
+                                        $cutSize = $firstBox && isset($firstBox['cut_size']) && $firstBox['cut_size'] > 0 ? (float)$firstBox['cut_size'] : null;
+                                    @endphp
+                                    @if($flute)
+                                        {{ $flute }}
+                                        @if($reelSize !== null)
+                                            <br><strong>SF SIZE:</strong> {{ number_format($reelSize, 2) }}" 
+                                            <strong>REEL:</strong> ________________ 
+                                            <strong>CUT:</strong> {{ $cutSize !== null ? number_format($cutSize, 2) . '"' : '________________' }}
                                         @endif
-                                        <!-- Debug: Format is {{ $printDisplayFormat }} -->
-                                    </td>
-                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900"></td>
-                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">{{ number_format((float)($box['board_qty'] ?? $box['order_qty'])) }}</td>
-                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">{{ $supplierCurrencySymbol }} {{ number_format((float)($box['supplier_price'] ?? 0), 2) }}</td>
-                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">{{ $supplierCurrencySymbol }} {{ number_format((float)($box['supplier_price'] ?? 0) * (float)($box['board_qty'] ?? $box['order_qty']), 2) }}</td>
-                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900"></td>
-                                </tr>
-                                @endforeach
-                                @foreach($dividers as $index => $divider)
-                                <tr>
-                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">{{ count($boxes) + $index + 1 }}</td>
-                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">
-                                        @if($printDisplayFormat === 'reel_cuts')
-                                            Divider - {{ $divider['ply'] }} PLY
-                                        @else
-                                            Divider - {{ $divider['ply'] }} PLY
-                                        @endif
-                                    </td>
-                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900"></td>
-                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">{{ number_format((float)($divider['quantity'])) }}</td>
-                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">{{ $supplierCurrencySymbol }} {{ number_format((float)($divider['supplier_price'] ?? 0), 2) }}</td>
-                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900">{{ $supplierCurrencySymbol }} {{ number_format((float)($divider['supplier_price'] ?? 0) * (float)$divider['quantity'], 2) }}</td>
-                                    <td class="border border-gray-300 px-4 py-2 text-sm text-gray-900"></td>
-                                </tr>
-                                @endforeach
-                            </tbody>
+                                    @else
+                                        ________________
+                                    @endif
+                                </td>
+                            </tr>
+                            
+                            <!-- Row: No. of UPS, FSC Claim -->
+                            <tr>
+                                <td class="pos-label">NO. OF UPS:</td>
+                                <td class="pos-value pos-dotted-line">
+                                    @php
+                                        $noOfUps = $firstBox && isset($firstBox['no_of_ups']) && $firstBox['no_of_ups'] ? $firstBox['no_of_ups'] : null;
+                                    @endphp
+                                    {{ $noOfUps ?? '________________' }}
+                                </td>
+                                <td class="pos-label">FSC Claim:</td>
+                                <td class="pos-value pos-dotted-line">
+                                    @php
+                                        $fscClaim = $firstBox && isset($firstBox['fsc_claim']) && $firstBox['fsc_claim'] ? $firstBox['fsc_claim'] : null;
+                                    @endphp
+                                    {{ $fscClaim ?? '________________' }}
+                                </td>
+                            </tr>
+                            
+                            <!-- Row: Board Qty, Paper Qty -->
+                            <tr>
+                                <td class="pos-label">BOARD QTY:</td>
+                                <td class="pos-value pos-dotted-line">
+                                    @php
+                                        $boardQty = $firstBox && isset($firstBox['board_qty']) && $firstBox['board_qty'] > 0 ? (float)$firstBox['board_qty'] : null;
+                                    @endphp
+                                    @if($boardQty !== null)
+                                        {{ number_format($boardQty, 0) }}
+                                    @else
+                                        ________________
+                                    @endif
+                                </td>
+                                <td class="pos-label">PAPER QTY:</td>
+                                <td class="pos-value pos-dotted-line">________________</td>
+                            </tr>
+                            
+                            <!-- Delivery Address -->
+                            <tr>
+                                <td class="pos-label">DELIVERY ADDRESS:</td>
+                                <td class="pos-value pos-dotted-line" colspan="3">
+                                    @if($jobOrder->customer_address)
+                                        @php
+                                            $deliveryLines = explode("\n", $jobOrder->customer_address);
+                                        @endphp
+                                        @foreach($deliveryLines as $line)
+                                            {{ trim($line) }}@if(!$loop->last)<br>@endif
+                                        @endforeach
+                                    @else
+                                        {{ $jobOrder->customer->address ?? '________________' }}
+                                    @endif
+                                </td>
+                            </tr>
                         </table>
-                    </div>
-
-                    <!-- Notes -->
-                    @if($jobOrder->notes)
-                    <div class="mt-6">
-                        <h4 class="font-semibold text-gray-900 mb-2">Notes:</h4>
-                        <p class="text-sm text-gray-700">{{ $jobOrder->notes }}</p>
-                    </div>
-                    @endif
-
-                    <!-- Footer -->
-                    <div class="mt-8 text-sm text-gray-600">
-                        <p>Prepared By: ________________</p>
+                        
+                        <!-- Signature Section -->
+                        <div class="pos-signature-section">
+                            <div class="pos-signature-box">
+                                <div class="pos-signature-label">PREPARED BY:</div>
+                                <div class="pos-signature-line"></div>
+                            </div>
+                            <div class="pos-signature-box">
+                                <div class="pos-signature-label">AUTHORIZED BY:</div>
+                                <div class="pos-signature-line"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -1388,14 +1776,28 @@
                 return;
             }
 
-            var originalContents = document.body.innerHTML;
+            // Get the base URL for assets
+            var baseUrl = window.location.origin;
+            var contentHtml = printContent.innerHTML;
+            
+            // Convert relative asset paths to absolute paths for images
+            contentHtml = contentHtml.replace(/src="\/src\//g, 'src="' + baseUrl + '/src/');
+            contentHtml = contentHtml.replace(/src='\/src\//g, "src='" + baseUrl + '/src/');
+
+            // Extract styles from the printContent
+            var styles = '';
+            var styleElements = printContent.querySelectorAll('style');
+            styleElements.forEach(function(styleEl) {
+                styles += styleEl.innerHTML;
+            });
 
             // Create a new window for printing
             var printWindow = window.open('', '_blank', 'width=800,height=600');
-            printWindow.document.write('<html><head><title>Job Order Print</title>');
-            printWindow.document.write('<style>body{font-family:Arial,sans-serif;margin:20px;}table{border-collapse:collapse;width:100%;}th,td{border:1px solid #000;padding:8px;text-align:left;}</style>');
+            printWindow.document.write('<!DOCTYPE html><html><head><title>Production Order Sheet - {{ $jobOrder->job_number ?? "" }}</title>');
+            printWindow.document.write('<meta charset="UTF-8">');
+            printWindow.document.write('<style>' + styles + '</style>');
             printWindow.document.write('</head><body>');
-            printWindow.document.write(printContent.innerHTML);
+            printWindow.document.write(contentHtml);
             printWindow.document.write('</body></html>');
             printWindow.document.close();
 
